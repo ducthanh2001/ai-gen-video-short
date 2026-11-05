@@ -1,0 +1,19 @@
+# Rendered output: rebuild with the steps in ep01-price-of-light/BUILD.md
+**/film/out/
+*.mp4
+*.mov
+**/audio/
+**/voice/*.wav
+**/voice-samples/
+
+# Python environments and caches
+tools/kvenv/
+.venv/
+__pycache__/
+*.pyc
+
+# OS / editor
+Thumbs.db
+.DS_Store
+desktop.ini
+.vscode/

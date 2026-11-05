@@ -1,0 +1,10 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>The Price of Light — style frames</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;position:absolute;left:0;top:0}</style>
+</head><body><canvas id="c" width="1920" height="1080"></canvas>
+<script type="module">
+const style = new URLSearchParams(location.search).get('style') || 'woodcut';
+await import(`./${style}/scene.js`);
+</script></body></html>

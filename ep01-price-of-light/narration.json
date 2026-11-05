@@ -1,0 +1,55 @@
+[
+  ["h1", "You just turned on a light. It cost you about two-tenths of a second of work."],
+  ["h2", "In eighteen hundred, the same amount of light cost five and a half hours."],
+  ["h3", "In ancient Babylon, more than a full working week."],
+  ["h4", "This is one of the biggest price collapses in human history. And for almost two hundred years, the people whose job was to measure prices... mostly missed it."],
+  ["h5", "By the end of this video, you'll see why. And why your great-great-grandparents may have woken up in the middle of every night, on purpose."],
+
+  ["u1", "Money is a terrible way to compare prices across centuries. So on this channel, we use something simpler: how long would an ordinary worker have to work to buy it?"],
+  ["u2", "Our unit tonight: a thousand lumen-hours. That's roughly one ordinary household bulb, burning for an hour and a quarter."],
+  ["u3", "To match that one bulb with candles, you'd need about sixty of them."],
+
+  ["a1", "For most of human history, light meant fire. And fire meant work."],
+  ["a2", "The economist William Nordhaus estimated that for early humans, a thousand lumen-hours from an open fire cost around fifty-eight hours, mostly spent gathering wood."],
+  ["a3", "Stone lamps burning animal fat brought it down to about fifty."],
+  ["a4", "By seventeen fifty B.C., Babylon had a market for lamp oil made from sesame. Better, but still about forty-one and a half hours."],
+  ["a5", "Think about that. For the light of one modern bulb, burning for about an hour, a Babylonian worker would have worked longer than you do in a whole week."],
+  ["a6", "So mostly... people went without. When the sun went down, the day was over."],
+  ["a7", "And then, for thousands of years... almost nothing changed."],
+
+  ["b1", "By the Middle Ages, candle-making was a real trade. In twelve ninety-two, the tax rolls of Paris listed seventy-two candle makers."],
+  ["b2", "Most candles were tallow, rendered animal fat. They smoked, they dripped, and they were still expensive."],
+  ["b3", "In eighteen hundred, our thousand lumen-hours of tallow candlelight cost about five and a half hours of work."],
+  ["b4", "Better than Babylon. But imagine working your whole morning for one evening of light."],
+  ["b5", "In the seventeen hundreds and eighteen hundreds, lamps burning whale oil, and candles made from whales, became the light of choice."],
+  ["b6", "Then, in eighteen fifty-five, a Yale chemist named Benjamin Silliman Junior ran a careful experiment. He burned different fuels side by side, and measured how much light each gave for the money."],
+  ["b7", "One of the fuels on his bench was rock oil. What we'd call petroleum."],
+  ["b8", "Within fifteen years, kerosene lamps changed everything. By eighteen seventy, the price of our light had fallen to about twenty minutes of work."],
+  ["b9", "As one writer put it in nineteen thirty-eight, petroleum gave kerosene to the world, and life to the few remaining whales."],
+
+  ["e1", "In eighteen seventy-nine, Joseph Swan and Thomas Edison each produced a working carbon-filament bulb. And at first, it was no bargain. Edison priced his electric light to match gaslight."],
+  ["e2", "Gas had already been lighting city streets for decades. Pall Mall in London got gas street lamps in eighteen twenty."],
+  ["e3", "And when the bulb arrived, gas fought back. A new invention, the Welsbach mantle, made gas lamps about seven times more efficient. For a while, it was a real race."],
+  ["e4", "In nineteen hundred, our thousand lumen-hours still cost about thirteen minutes of work."],
+  ["e5", "But electric light kept getting better, and cheaper, almost every decade. By nineteen twenty, under a minute. By nineteen fifty, about seven seconds."],
+  ["e6", "And it wasn't just cheaper. It was safer. In nineteen hundred, about one in three fires in New York's tenement buildings was caused by lamps or candles."],
+  ["e7", "Light stopped being something you rationed... and became something you didn't even think about."],
+
+  ["t1", "Here's where it gets strange."],
+  ["t2", "Official price statistics don't measure light. They measure the price of things. Candles, lamp oil, gas, electricity."],
+  ["t3", "But a kerosene lamp gives far more light per drop than a candle, and a bulb far more per dollar than a lamp. The price of the fuel can go up, while the price of light falls through the floor."],
+  ["t4", "When Nordhaus compared the two, he found that traditional price indexes had overstated the rise in the price of light by a factor of nine hundred to sixteen hundred."],
+  ["t5", "And if prices are measured wrong, so is wealth. Official numbers say real wages grew about thirteen times from eighteen hundred to nineteen ninety-two. Nordhaus estimated the true figure might be forty times. Maybe far more."],
+  ["t6", "In other words, we may be much richer than the statistics say. We just stopped noticing, because the things that got cheapest are the things we no longer think about."],
+
+  ["m1", "Myth check. Did people really sleep in two shifts before electric light?"],
+  ["m2", "The historian Roger Ekirch found references to a first sleep and a second sleep in court records, medical books and letters, in English, French, Italian and Latin."],
+  ["m3", "People went to bed early, woke for an hour or so in the dark, to pray, talk, tend the fire, then slept again."],
+  ["m4", "Ekirch links its decline to cheaper artificial light and changing habits during the Industrial Revolution."],
+  ["m5", "But other researchers point out that it doesn't appear everywhere. One sleep historian found no trace of it in Japan. And the evidence is suggestive, not definitive."],
+  ["m6", "Verdict: partly true. Common in many old records, but how universal it was is still debated."],
+
+  ["z1", "So, back to that switch. For the electricity alone, today's thousand lumen-hours costs an average American worker about two-tenths of a second."],
+  ["z2", "That's roughly a hundred thousand times cheaper than in eighteen hundred, and more than seven hundred thousand times cheaper than in Babylon."],
+  ["z3", "Every everyday thing has a price history like this. Next time: frozen water, and the strange business of shipping ice across oceans."]
+]

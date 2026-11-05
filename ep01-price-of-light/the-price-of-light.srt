@@ -1,0 +1,351 @@
+1
+00:00:01,000 --> 00:00:02,462
+You just turned on a light.
+
+2
+00:00:02,462 --> 00:00:05,115
+It cost you about two-tenths of a second of work.
+
+3
+00:00:05,615 --> 00:00:09,657
+In 1800, the same amount of light cost five and a half hours.
+
+4
+00:00:10,157 --> 00:00:12,953
+In ancient Babylon, more than a full working week.
+
+5
+00:00:13,553 --> 00:00:17,513
+This is one of the biggest price collapses in human history.
+
+6
+00:00:17,513 --> 00:00:22,199
+And for almost 200 years, the people whose job was to measure prices...
+
+7
+00:00:22,199 --> 00:00:23,321
+mostly missed it.
+
+8
+00:00:23,421 --> 00:00:25,659
+By the end of this video, you'll see why.
+
+9
+00:00:25,659 --> 00:00:30,953
+And why your great-great-grandparents may have woken up in the middle of every night, on purpose.
+
+10
+00:00:32,453 --> 00:00:36,093
+Money is a terrible way to compare prices across centuries.
+
+11
+00:00:36,093 --> 00:00:42,447
+So on this channel, we use something simpler: how long would an ordinary worker have to work to buy it?
+
+12
+00:00:43,097 --> 00:00:45,718
+Our unit tonight: a thousand lumen-hours.
+
+13
+00:00:45,718 --> 00:00:50,704
+That's roughly one ordinary household bulb, burning for an hour and a quarter.
+
+14
+00:00:51,154 --> 00:00:54,792
+To match that one bulb with candles, you'd need about 60 of them.
+
+15
+00:00:58,292 --> 00:01:01,047
+For most of human history, light meant fire.
+
+16
+00:01:01,047 --> 00:01:02,299
+And fire meant work.
+
+17
+00:01:02,749 --> 00:01:13,330
+The economist William Nordhaus estimated that for early humans, a thousand lumen-hours from an open fire cost around 58 hours, mostly spent gathering wood.
+
+18
+00:01:13,780 --> 00:01:17,496
+Stone lamps burning animal fat brought it down to about 50.
+
+19
+00:01:17,946 --> 00:01:23,758
+By 1750 BC, Babylon had a market for lamp oil made from sesame.
+
+20
+00:01:23,758 --> 00:01:26,895
+Better, but still about 41½ hours.
+
+21
+00:01:27,345 --> 00:01:28,323
+Think about that.
+
+22
+00:01:28,323 --> 00:01:36,028
+For the light of one modern bulb, burning for about an hour, a Babylonian worker would have worked longer than you do in a whole week.
+
+23
+00:01:36,178 --> 00:01:36,908
+So mostly...
+
+24
+00:01:36,908 --> 00:01:38,123
+people went without.
+
+25
+00:01:38,123 --> 00:01:40,616
+When the sun went down, the day was over.
+
+26
+00:01:40,816 --> 00:01:42,870
+And then, for thousands of years...
+
+27
+00:01:42,870 --> 00:01:44,220
+almost nothing changed.
+
+28
+00:01:47,620 --> 00:01:51,761
+By the Middle Ages, candle-making was a real trade.
+
+29
+00:01:51,761 --> 00:01:56,308
+In 1292, the tax rolls of Paris listed 72 candle makers.
+
+30
+00:01:56,758 --> 00:01:59,484
+Most candles were tallow, rendered animal fat.
+
+31
+00:01:59,484 --> 00:02:02,861
+They smoked, they dripped, and they were still expensive.
+
+32
+00:02:03,011 --> 00:02:09,585
+In 1800, our thousand lumen-hours of tallow candlelight cost about five and a half hours of work.
+
+33
+00:02:10,035 --> 00:02:11,110
+Better than Babylon.
+
+34
+00:02:11,110 --> 00:02:14,551
+But imagine working your whole morning for one evening of light.
+
+35
+00:02:14,701 --> 00:02:22,257
+In the 1700s and 1800s, lamps burning whale oil, and candles made from whales, became the light of choice.
+
+36
+00:02:22,507 --> 00:02:26,675
+Then, in 1855, a Yale chemist named Benjamin Silliman Jr.
+
+37
+00:02:26,675 --> 00:02:28,502
+ran a careful experiment.
+
+38
+00:02:28,502 --> 00:02:35,229
+He burned different fuels side by side, and measured how much light each gave for the money.
+
+39
+00:02:35,679 --> 00:02:38,162
+One of the fuels on his bench was rock oil.
+
+40
+00:02:38,162 --> 00:02:39,605
+What we'd call petroleum.
+
+41
+00:02:39,755 --> 00:02:43,576
+Within fifteen years, kerosene lamps changed everything.
+
+42
+00:02:43,576 --> 00:02:48,420
+By 1870, the price of our light had fallen to about 20 minutes of work.
+
+43
+00:02:48,670 --> 00:02:55,915
+As one writer put it in 1938, petroleum gave kerosene to the world, and life to the few remaining whales.
+
+44
+00:03:00,465 --> 00:03:06,701
+In 1879, Joseph Swan and Thomas Edison each produced a working carbon-filament bulb.
+
+45
+00:03:06,701 --> 00:03:09,076
+And at first, it was no bargain.
+
+46
+00:03:09,076 --> 00:03:12,862
+Edison priced his electric light to match gaslight.
+
+47
+00:03:13,512 --> 00:03:17,045
+Gas had already been lighting city streets for decades.
+
+48
+00:03:17,045 --> 00:03:20,192
+Pall Mall in London got gas street lamps in 1820.
+
+49
+00:03:20,842 --> 00:03:23,686
+And when the bulb arrived, gas fought back.
+
+50
+00:03:23,686 --> 00:03:29,374
+A new invention, the Welsbach mantle, made gas lamps about seven times more efficient.
+
+51
+00:03:29,374 --> 00:03:31,491
+For a while, it was a real race.
+
+52
+00:03:32,141 --> 00:03:37,087
+In 1900, our thousand lumen-hours still cost about 13 minutes of work.
+
+53
+00:03:37,537 --> 00:03:43,121
+But electric light kept getting better, and cheaper, almost every decade.
+
+54
+00:03:43,121 --> 00:03:44,957
+By 1920, under a minute.
+
+55
+00:03:44,957 --> 00:03:46,869
+By 1950, about 7 seconds.
+
+56
+00:03:47,519 --> 00:03:49,405
+And it wasn't just cheaper.
+
+57
+00:03:49,405 --> 00:03:50,313
+It was safer.
+
+58
+00:03:50,313 --> 00:03:57,157
+In 1900, about one in three fires in New York's tenement buildings was caused by lamps or candles.
+
+59
+00:03:57,107 --> 00:03:59,364
+Light stopped being something you rationed...
+
+60
+00:03:59,364 --> 00:04:01,821
+and became something you didn't even think about.
+
+61
+00:04:04,221 --> 00:04:05,661
+Here's where it gets strange.
+
+62
+00:04:06,111 --> 00:04:09,023
+Official price statistics don't measure light.
+
+63
+00:04:09,023 --> 00:04:11,112
+They measure the price of things.
+
+64
+00:04:11,112 --> 00:04:13,391
+Candles, lamp oil, gas, electricity.
+
+65
+00:04:15,491 --> 00:04:21,667
+But a kerosene lamp gives far more light per drop than a candle, and a bulb far more per dollar than a lamp.
+
+66
+00:04:21,667 --> 00:04:26,356
+The price of the fuel can go up, while the price of light falls through the floor.
+
+67
+00:04:27,006 --> 00:04:36,867
+When Nordhaus compared the two, he found that traditional price indexes had overstated the rise in the price of light by a factor of 900 to 1,600.
+
+68
+00:04:37,767 --> 00:04:41,432
+And if prices are measured wrong, so is wealth.
+
+69
+00:04:41,432 --> 00:04:46,892
+Official numbers say real wages grew about 13 times from 1800 to 1992.
+
+70
+00:04:46,892 --> 00:04:51,025
+Nordhaus estimated the true figure might be 40 times.
+
+71
+00:04:51,025 --> 00:04:52,195
+Maybe far more.
+
+72
+00:04:52,245 --> 00:04:55,796
+In other words, we may be much richer than the statistics say.
+
+73
+00:04:55,796 --> 00:05:01,696
+We just stopped noticing, because the things that got cheapest are the things we no longer think about.
+
+74
+00:05:05,796 --> 00:05:06,394
+Myth check.
+
+75
+00:05:06,394 --> 00:05:09,655
+Did people really sleep in two shifts before electric light?
+
+76
+00:05:09,905 --> 00:05:20,347
+The historian Roger Ekirch found references to a first sleep and a second sleep in court records, medical books and letters, in English, French, Italian and Latin.
+
+77
+00:05:20,597 --> 00:05:26,873
+People went to bed early, woke for an hour or so in the dark, to pray, talk, tend the fire, then slept again.
+
+78
+00:05:27,023 --> 00:05:33,577
+Ekirch links its decline to cheaper artificial light and changing habits during the Industrial Revolution.
+
+79
+00:05:33,827 --> 00:05:37,959
+But other researchers point out that it doesn't appear everywhere.
+
+80
+00:05:37,959 --> 00:05:41,090
+One sleep historian found no trace of it in Japan.
+
+81
+00:05:41,090 --> 00:05:44,033
+And the evidence is suggestive, not definitive.
+
+82
+00:05:44,283 --> 00:05:45,725
+Verdict: partly true.
+
+83
+00:05:45,725 --> 00:05:50,532
+Common in many old records, but how universal it was is still debated.
+
+84
+00:05:52,132 --> 00:05:53,688
+So, back to that switch.
+
+85
+00:05:53,688 --> 00:06:01,341
+For the electricity alone, today's thousand lumen-hours costs an average American worker about two-tenths of a second.
+
+86
+00:06:01,491 --> 00:06:09,366
+That's roughly 100,000 times cheaper than in 1800, and more than 700,000 times cheaper than in Babylon.
+
+87
+00:06:09,516 --> 00:06:12,853
+Every everyday thing has a price history like this.
+
+88
+00:06:12,853 --> 00:06:18,087
+Next time: frozen water, and the strange business of shipping ice across oceans.

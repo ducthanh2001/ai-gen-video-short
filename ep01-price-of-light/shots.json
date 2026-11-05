@@ -1,0 +1,843 @@
+{
+ "fps": 24,
+ "total": 382.087,
+ "shots": [
+  {
+   "id": "s01",
+   "sec": "hook",
+   "q": "style=today&on=.55&tags=today@3.46&tagpos=96,760,1&now=0&T=5.46",
+   "start": 0.0,
+   "dur": 5.465,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 131
+  },
+  {
+   "id": "s02",
+   "sec": "hook",
+   "q": "style=engraving&tags=1800@12.97&tagpos=1290,390,1&now=0&T=4.54",
+   "start": 5.465,
+   "dur": 4.542,
+   "t0": 10,
+   "kb": [
+    [
+     900,
+     540,
+     1.0
+    ],
+    [
+     900,
+     540,
+     1.05
+    ]
+   ],
+   "xf": 0,
+   "frames": 109
+  },
+  {
+   "id": "s03",
+   "sec": "hook",
+   "q": "style=woodcut&plate=babylon&tags=babylon@1.27&tagpos=110,96,1&now=0&T=3.25",
+   "start": 10.007,
+   "dur": 3.246,
+   "t0": 0,
+   "kb": [
+    [
+     1000,
+     600,
+     1.0
+    ],
+    [
+     1000,
+     600,
+     1.05
+    ]
+   ],
+   "xf": 0,
+   "frames": 78
+  },
+  {
+   "id": "s04",
+   "sec": "hook",
+   "q": "style=house&grow=1&g0=.3&g1=2.6&g2=3.9&g3=5.2&T=10.47",
+   "start": 13.253,
+   "dur": 10.468,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 251
+  },
+  {
+   "id": "s05",
+   "sec": "hook",
+   "q": "style=woodcut&plate=sleep&stamp=999&T=9.13",
+   "start": 23.221,
+   "dur": 9.132,
+   "t0": 0,
+   "kb": [
+    [
+     960,
+     540,
+     1.0
+    ],
+    [
+     960,
+     560,
+     1.36
+    ]
+   ],
+   "xf": 0.5,
+   "frames": 219
+  },
+  {
+   "id": "s06",
+   "sec": "unit",
+   "q": "style=card&kind=hours&k1=4.18&T=10.84",
+   "start": 31.953,
+   "dur": 10.844,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.4,
+   "frames": 260
+  },
+  {
+   "id": "s07",
+   "sec": "unit",
+   "q": "style=card&kind=unit&k1=8.36&T=13.39",
+   "start": 42.797,
+   "dur": 13.395,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 321
+  },
+  {
+   "id": "s08",
+   "sec": "ch1",
+   "q": "style=woodcut&plate=fire&carve=2.4&chap=I|Fire%20and%20oil&cin=.5&tags=fire@13.83,stone@19.95&tagpos=110,96,1&T=22.15",
+   "start": 55.692,
+   "dur": 22.154,
+   "t0": 0,
+   "kb": [
+    [
+     960,
+     600,
+     1.0
+    ],
+    [
+     960,
+     620,
+     1.07
+    ]
+   ],
+   "xf": 0.5,
+   "frames": 532
+  },
+  {
+   "id": "s09",
+   "sec": "ch1",
+   "q": "style=woodcut&plate=babylon&carve=1.6&tags=babylon@6.82&tagpos=110,96,1&T=19.03",
+   "start": 77.346,
+   "dur": 19.032,
+   "t0": 0,
+   "kb": [
+    [
+     1000,
+     600,
+     1.0
+    ],
+    [
+     980,
+     640,
+     1.08
+    ]
+   ],
+   "xf": 0.5,
+   "frames": 457
+  },
+  {
+   "id": "s10",
+   "sec": "ch1",
+   "q": "style=woodcut&plate=sleep&stamp=999&hl=1@0&T=5.14",
+   "start": 95.878,
+   "dur": 5.138,
+   "t0": 0,
+   "kb": [
+    [
+     520,
+     560,
+     1.25
+    ],
+    [
+     520,
+     580,
+     1.32
+    ]
+   ],
+   "xf": 0.5,
+   "frames": 123
+  },
+  {
+   "id": "s11",
+   "sec": "ch1",
+   "q": "style=card&kind=years&T=5.50",
+   "start": 100.516,
+   "dur": 5.504,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.5,
+   "frames": 132
+  },
+  {
+   "id": "s12",
+   "sec": "ch2",
+   "q": "style=engraving&chap=II|Candles%2C%20whales%20%26%20rock%20oil&cin=.3&cf=Bodoni%20Moda&T=17.79",
+   "start": 105.42,
+   "dur": 17.791,
+   "t0": 0,
+   "kb": [
+    [
+     900,
+     540,
+     1.0
+    ],
+    [
+     400,
+     580,
+     1.45
+    ]
+   ],
+   "xf": 0.6,
+   "frames": 427
+  },
+  {
+   "id": "s13",
+   "sec": "ch2",
+   "q": "style=engraving&tags=1800@14.40&tagpos=1440,520,.68&nowpos=1450,120,380&T=12.19",
+   "start": 122.711,
+   "dur": 12.19,
+   "t0": 10,
+   "kb": [
+    [
+     960,
+     540,
+     1.0
+    ],
+    [
+     960,
+     540,
+     1.03
+    ]
+   ],
+   "xf": 0.5,
+   "frames": 293
+  },
+  {
+   "id": "s14",
+   "sec": "ch2",
+   "q": "style=engraving&T=8.21",
+   "start": 134.401,
+   "dur": 8.206,
+   "t0": 10,
+   "kb": [
+    [
+     740,
+     560,
+     1.5
+    ],
+    [
+     740,
+     540,
+     1.62
+    ]
+   ],
+   "xf": 0.5,
+   "frames": 197
+  },
+  {
+   "id": "s15",
+   "sec": "ch2",
+   "q": "style=engraving&plate=silliman&es=1.3&k1=15.51&T=17.85",
+   "start": 142.107,
+   "dur": 17.848,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.5,
+   "frames": 428
+  },
+  {
+   "id": "s16",
+   "sec": "ch2",
+   "q": "style=engraving&tags=1870@16.62&tagpos=1290,600,.85&now=0&T=9.31",
+   "start": 159.455,
+   "dur": 9.315,
+   "t0": 10,
+   "kb": [
+    [
+     1150,
+     560,
+     1.4
+    ],
+    [
+     1180,
+     560,
+     1.45
+    ]
+   ],
+   "xf": 0.5,
+   "frames": 224
+  },
+  {
+   "id": "s17",
+   "sec": "ch2",
+   "q": "style=engraving&plate=quote&T=9.64",
+   "start": 168.27,
+   "dur": 9.645,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.5,
+   "frames": 231
+  },
+  {
+   "id": "s18",
+   "sec": "ch3",
+   "q": "style=silent&card=1&bar=1879&l1=Chapter%20III&l2=The%20electric%20age.&T=2.95",
+   "start": 177.315,
+   "dur": 2.95,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.6,
+   "frames": 71
+  },
+  {
+   "id": "s19",
+   "sec": "ch3",
+   "q": "style=silent&card=1&bar=1879&l1=Swan%20and%20Edison%2C%201879&l2=A%20working%20carbon-filament%20bulb%2C%20at%20first%20priced%20to%20match%20gaslight.&T=12.95",
+   "start": 180.265,
+   "dur": 12.947,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 311
+  },
+  {
+   "id": "s20",
+   "sec": "ch3",
+   "q": "style=silent&bar=1820&walk=0&T=7.33",
+   "start": 193.212,
+   "dur": 7.33,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 176
+  },
+  {
+   "id": "s21",
+   "sec": "ch3",
+   "q": "style=silent&card=1&bar=1890s&l1=Gas%20fights%20back&l2=The%20Welsbach%20mantle%20made%20gas%20lamps%20about%20seven%20times%20more%20efficient.&T=11.30",
+   "start": 200.542,
+   "dur": 11.299,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 271
+  },
+  {
+   "id": "s22",
+   "sec": "ch3",
+   "q": "style=silent&bar=1900&tags=1900@2.89,1920@10.33,1950@12.59&tagpos=270,800,.8&nowpos=1270,50,380&T=15.38",
+   "start": 211.841,
+   "dur": 15.378,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 369
+  },
+  {
+   "id": "s23",
+   "sec": "ch3",
+   "q": "style=silent&card=1&bar=1900&l1=New%20York%2C%201900&l2=About%20one%20in%20three%20tenement%20fires%20was%20caused%20by%20lamps%20or%20candles.&T=10.29",
+   "start": 227.219,
+   "dur": 10.288,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 247
+  },
+  {
+   "id": "s24",
+   "sec": "ch3",
+   "q": "style=today&on=.6&T=7.11",
+   "start": 236.707,
+   "dur": 7.114,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.8,
+   "frames": 171
+  },
+  {
+   "id": "s25",
+   "sec": "twist",
+   "q": "style=card&kind=things&k1=2.69&k2=7.73&k3=9.97&T=11.77",
+   "start": 243.421,
+   "dur": 11.77,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.4,
+   "frames": 282
+  },
+  {
+   "id": "s26",
+   "sec": "twist",
+   "q": "style=card&kind=fuel&k1=6.50&T=11.52",
+   "start": 255.191,
+   "dur": 11.515,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 276
+  },
+  {
+   "id": "s27",
+   "sec": "twist",
+   "q": "style=card&kind=gap&k1=8.25&T=10.76",
+   "start": 266.706,
+   "dur": 10.761,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 258
+  },
+  {
+   "id": "s28",
+   "sec": "twist",
+   "q": "style=card&kind=wages&k1=3.39&k2=10.09&k3=13.76&T=15.08",
+   "start": 277.467,
+   "dur": 15.078,
+   "t0": 0,
+   "kb": null,
+   "xf": 0,
+   "frames": 362
+  },
+  {
+   "id": "s29",
+   "sec": "twist",
+   "q": "style=today&say=We%20may%20be%20much%20richer%20than%20the%20statistics%20say.|The%20things%20that%20got%20cheapest%20are%20the%20things%20we%20no%20longer%20think%20about.&sin=0.50&sin2=5.37&T=11.95",
+   "start": 291.945,
+   "dur": 11.951,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.6,
+   "frames": 287
+  },
+  {
+   "id": "s30",
+   "sec": "myth",
+   "q": "style=woodcut&plate=sleep&carve=2.2&stamp=999&T=6.61",
+   "start": 303.396,
+   "dur": 6.609,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.5,
+   "frames": 159
+  },
+  {
+   "id": "s31",
+   "sec": "myth",
+   "q": "style=card&kind=ekirch&k1=8.31&T=11.09",
+   "start": 309.605,
+   "dur": 11.092,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.4,
+   "frames": 266
+  },
+  {
+   "id": "s32",
+   "sec": "myth",
+   "q": "style=woodcut&plate=sleep&stamp=999&hl=1@0,2@1.80,3@5.60&T=6.93",
+   "start": 320.297,
+   "dur": 6.926,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.4,
+   "frames": 166
+  },
+  {
+   "id": "s33",
+   "sec": "myth",
+   "q": "style=engraving&T=7.20",
+   "start": 326.723,
+   "dur": 7.204,
+   "t0": 10,
+   "kb": [
+    [
+     960,
+     540,
+     1.0
+    ],
+    [
+     960,
+     560,
+     1.07
+    ]
+   ],
+   "xf": 0.5,
+   "frames": 173
+  },
+  {
+   "id": "s34",
+   "sec": "myth",
+   "q": "style=card&kind=caveat&k1=4.44&k2=7.60&T=10.86",
+   "start": 333.527,
+   "dur": 10.856,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.4,
+   "frames": 261
+  },
+  {
+   "id": "s35",
+   "sec": "myth",
+   "q": "style=woodcut&plate=sleep&stamp=0.91&T=8.55",
+   "start": 343.983,
+   "dur": 8.549,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.4,
+   "frames": 205
+  },
+  {
+   "id": "s36",
+   "sec": "end",
+   "q": "style=today&on=1.49&tags=today@8.13&tagpos=96,760,1&now=0&T=9.96",
+   "start": 351.732,
+   "dur": 9.959,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.8,
+   "frames": 239
+  },
+  {
+   "id": "s37",
+   "sec": "end",
+   "q": "style=house&grow=1&g0=.1&g1=.9&g2=1.4&g3=1.8&say=\u2248%20100%2C000\u00d7%20cheaper%20than%20in%201800|\u2248%20700%2C000\u00d7%20cheaper%20than%20in%20Babylon&sin=0.69&sin2=4.43&T=8.53",
+   "start": 361.191,
+   "dur": 8.525,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.5,
+   "frames": 205
+  },
+  {
+   "id": "s38",
+   "sec": "end",
+   "q": "style=engraving&plate=next&T=12.97",
+   "start": 369.116,
+   "dur": 12.971,
+   "t0": 0,
+   "kb": null,
+   "xf": 0.6,
+   "frames": 311
+  }
+ ],
+ "voice": [
+  [
+   "h1",
+   1.0
+  ],
+  [
+   "h2",
+   5.615
+  ],
+  [
+   "h3",
+   10.157
+  ],
+  [
+   "h4",
+   13.553
+  ],
+  [
+   "h5",
+   23.421
+  ],
+  [
+   "u1",
+   32.453
+  ],
+  [
+   "u2",
+   43.097
+  ],
+  [
+   "u3",
+   51.154
+  ],
+  [
+   "a1",
+   58.292
+  ],
+  [
+   "a2",
+   62.749
+  ],
+  [
+   "a3",
+   73.78
+  ],
+  [
+   "a4",
+   77.946
+  ],
+  [
+   "a5",
+   87.345
+  ],
+  [
+   "a6",
+   96.178
+  ],
+  [
+   "a7",
+   100.816
+  ],
+  [
+   "b1",
+   107.62
+  ],
+  [
+   "b2",
+   116.758
+  ],
+  [
+   "b3",
+   123.011
+  ],
+  [
+   "b4",
+   130.035
+  ],
+  [
+   "b5",
+   134.701
+  ],
+  [
+   "b6",
+   142.507
+  ],
+  [
+   "b7",
+   155.679
+  ],
+  [
+   "b8",
+   159.755
+  ],
+  [
+   "b9",
+   168.67
+  ],
+  [
+   "e1",
+   180.465
+  ],
+  [
+   "e2",
+   193.512
+  ],
+  [
+   "e3",
+   200.842
+  ],
+  [
+   "e4",
+   212.141
+  ],
+  [
+   "e5",
+   217.537
+  ],
+  [
+   "e6",
+   227.519
+  ],
+  [
+   "e7",
+   237.107
+  ],
+  [
+   "t1",
+   244.221
+  ],
+  [
+   "t2",
+   246.111
+  ],
+  [
+   "t3",
+   255.491
+  ],
+  [
+   "t4",
+   267.006
+  ],
+  [
+   "t5",
+   277.767
+  ],
+  [
+   "t6",
+   292.245
+  ],
+  [
+   "m1",
+   305.796
+  ],
+  [
+   "m2",
+   309.905
+  ],
+  [
+   "m3",
+   320.597
+  ],
+  [
+   "m4",
+   327.023
+  ],
+  [
+   "m5",
+   333.827
+  ],
+  [
+   "m6",
+   344.283
+  ],
+  [
+   "z1",
+   352.132
+  ],
+  [
+   "z2",
+   361.491
+  ],
+  [
+   "z3",
+   369.516
+  ]
+ ],
+ "sfx": [
+  [
+   "click",
+   0.55
+  ],
+  [
+   "hit",
+   5.465
+  ],
+  [
+   "hit",
+   10.007
+  ],
+  [
+   "hit",
+   13.253
+  ],
+  [
+   "carve",
+   55.692
+  ],
+  [
+   "fire",
+   57.692
+  ],
+  [
+   "carve",
+   77.346
+  ],
+  [
+   "engrave",
+   105.42
+  ],
+  [
+   "engrave",
+   142.107
+  ],
+  [
+   "engrave",
+   168.27
+  ],
+  [
+   "projector",
+   177.315
+  ],
+  [
+   "click",
+   237.307
+  ],
+  [
+   "hit",
+   244.221
+  ],
+  [
+   "hit",
+   274.956
+  ],
+  [
+   "carve",
+   303.396
+  ],
+  [
+   "hit",
+   305.796
+  ],
+  [
+   "stamp",
+   344.893
+  ],
+  [
+   "click",
+   353.222
+  ],
+  [
+   "engrave",
+   369.116
+  ]
+ ],
+ "sections": {
+  "hook": [
+   0.0,
+   32.353
+  ],
+  "unit": [
+   31.953,
+   56.19199999999999
+  ],
+  "ch1": [
+   55.692,
+   106.02000000000001
+  ],
+  "ch2": [
+   105.42,
+   177.91500000000002
+  ],
+  "ch3": [
+   177.315,
+   243.821
+  ],
+  "twist": [
+   243.421,
+   303.896
+  ],
+  "myth": [
+   303.396,
+   352.532
+  ],
+  "end": [
+   351.732,
+   382.087
+  ]
+ }
+}

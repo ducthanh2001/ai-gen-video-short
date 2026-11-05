@@ -1,0 +1,10 @@
+@font-face { font-family: 'IM Fell English'; src: url(IMFellEnglish.ttf) format('truetype'); font-display: block; }
+@font-face { font-family: 'Bodoni Moda'; src: url(BodoniModa.ttf) format('truetype'); font-weight: 400 900; font-style: normal; font-display: block; }
+@font-face { font-family: 'Bodoni Moda'; src: url(BodoniModa-Italic.ttf) format('truetype'); font-weight: 400 900; font-style: italic; font-display: block; }
+@font-face { font-family: 'Old Standard TT'; src: url(OldStandard-Regular.ttf) format('truetype'); font-weight: 400; font-display: block; }
+@font-face { font-family: 'Old Standard TT'; src: url(OldStandard-Italic.ttf) format('truetype'); font-weight: 400; font-style: italic; font-display: block; }
+@font-face { font-family: 'Old Standard TT'; src: url(OldStandard-Bold.ttf) format('truetype'); font-weight: 700; font-display: block; }
+@font-face { font-family: 'Playfair Display'; src: url(PlayfairDisplay.ttf) format('truetype'); font-weight: 400 900; font-display: block; }
+@font-face { font-family: 'Playfair Display SC'; src: url(PlayfairDisplaySC-Black.ttf) format('truetype'); font-weight: 900; font-display: block; }
+@font-face { font-family: 'Inter'; src: url(Inter.ttf) format('truetype'); font-weight: 100 900; font-display: block; }
+@font-face { font-family: 'JBMono'; src: url(JetBrainsMono.ttf) format('truetype'); font-weight: 100 800; font-display: block; }
