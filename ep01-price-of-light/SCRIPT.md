@@ -1,23 +1,29 @@
-# Ep 01 — "The Price of Light" — kịch bản v1 (để duyệt)
+# Ep 01 — "The Price of Light" — kịch bản bản cuối (đã thu âm, đã dựng)
 
-**Độ dài:** ~970 từ tiếng Anh ≈ 6,5 phút lời đọc + khoảng dừng cho hình và nhạc ≈ **7 phút**.
-**Giọng:** một người dẫn chuyện (Kokoro tiếng Anh), giọng ấm, hơi tò mò, không "giật tít".
+**Độ dài thành phẩm:** **6:22**. Khoảng 986 từ tiếng Anh, 340 giây lời đọc, cộng khoảng thở cho hình và nhạc.
+**Giọng:** Kokoro `af_heart` (nữ, Mỹ), tốc độ 0.95. Chọn sau khi nghe thử 8 giọng. Whisper nghe lại bản trộn cuối: khớp 99,3%.
 **Mọi con số** đều có nguồn trong `FACTS.md`. Cột phải là bản dịch tiếng Việt để bạn duyệt nội dung.
+**Lời đọc thực tế từng câu:** `narration.json`, 46 câu, năm và số viết bằng chữ cho giọng đọc. Bảng dưới là bản dễ đọc.
+**Thay đổi so với bản đã duyệt (v1):** (1) câu cá voi sửa cho đúng (xem Chương 2); (2) phần giới thiệu tập sau đã kiểm chứng (FACTS.md §E); (3) mốc thời gian và mô tả hình cập nhật theo bản dựng thật.
+
 Ký hiệu giữ chân người xem: **[HOOK]** mở đầu · **[LOOP]** mở một câu hỏi, trả lời sau · **[BREAK]** đổi nhịp, đổi hình để người xem không lướt đi · **[TWIST]** bước ngoặt · **[PAYOFF]** trả lời câu hỏi đã mở · **[NEXT]** móc sang tập sau.
 
 ---
 
-## Tiêu đề & ảnh bìa (chọn 1, sẽ thử A/B)
-- **"Light Used to Cost a Week of Work. Now It Costs 0.2 Seconds."**
-- "The Biggest Price Collapse Nobody Noticed"
-- "Why Economists Got the Price of Light Wrong by 1,000×"
-
-Ảnh bìa: bên trái một ngọn nến (khắc gỗ đen trắng) với chữ **"41 HOURS"**; bên phải một bóng LED sáng rực với chữ **"0.2 SEC"**.
+## Tiêu đề & thumbnail (gói đăng: YOUTUBE.md)
+- **Đề xuất: "The 700,000× Price Drop Nobody Noticed"**, kèm thumbnail **D**: bóng đèn đeo thẻ giá "A WEEK OF WORK", góc trên ghi "TODAY: 0.2 SEC" (`film/thumb_D.jpg`).
+- Phương án thử A/B: "Light Used to Cost a Week of Work. Now: 0.2 Seconds" · "Economists Got the Price of Light Wrong by 1,000×".
+- Các thumbnail khác:
+  - A (`film/thumbnail.jpg`): 41½ HOURS so với 0.2 SEC.
+  - B (`film/thumb_B.jpg`): người bên lửa, "A WEEK" so với đèn bàn, "0.2 SEC".
+  - C (`film/thumb_C.jpg`): thẻ giá treo trên đống lửa.
+  - E (`film/thumb_E.jpg`): biểu đồ rơi tự do.
+- "A WEEK" đúng với số liệu: lửa trại khoảng 58 giờ, Babylon khoảng 41½ giờ, đều hơn một tuần làm việc 40 giờ.
 
 ---
 
-## 0:00–0:35 · Mở đầu **[HOOK] [LOOP]**
-*Hình: ngón tay bấm công tắc (phong cách nhà). Một đồng hồ cát khổng lồ chảy cạn trong 0,2 giây. Cắt nhanh sang ngọn đèn dầu Babylon khắc gỗ, đồng hồ cát chồng thành núi.*
+## 0:00–0:31 · Mở đầu **[HOOK] [LOOP]**
+*Hình (đã dựng): bàn làm việc 3D tối, có tiếng "tách" và đèn LED bật sáng, thẻ giá "0.2 seconds". Cắt sang bản khắc đồng ba cây đèn với thẻ 1800 "5.4 hours", rồi đèn dầu Babylon khắc gỗ với thẻ "41½ hours". Sau đó các chồng đĩa 3D mọc lên (1 đĩa = 1 giờ lao động), rồi đẩy máy vào ô giữa tranh "ngủ hai giấc" (người ngồi bên lửa lúc nửa đêm).*
 
 | English | Tiếng Việt |
 |---|---|
@@ -27,8 +33,8 @@ Ký hiệu giữ chân người xem: **[HOOK]** mở đầu · **[LOOP]** mở m
 | This is one of the biggest price collapses in human history. And for almost two hundred years, the people whose job was to measure prices… mostly missed it. | Đây là một trong những lần sụt giá lớn nhất lịch sử loài người. Và suốt gần hai trăm năm, chính những người có nghề đo giá cả… phần lớn đã bỏ lỡ nó. |
 | By the end of this video, you'll see why — and why your great-great-grandparents may have woken up in the middle of every night, on purpose. | Cuối video, bạn sẽ hiểu vì sao, và vì sao ông bà tổ tiên ta có thể đã thức dậy giữa đêm, mỗi đêm, một cách có chủ ý. |
 
-## 0:35–1:05 · Thước đo của kênh
-*Hình: 1 bóng đèn = 60 ngọn nến xếp thành hàng; đồng hồ cát với nhãn "hours of work".*
+## 0:31–0:55 · Thước đo của kênh
+*Hình (đã dựng): thẻ thông tin. Chữ "MONEY?" bị gạch, thay bằng đồng hồ quay và "HOURS OF WORK". Tiếp theo là bóng đèn "1,000 lumen-hours" bằng lưới 60 ngọn nến.*
 
 | English | Tiếng Việt |
 |---|---|
@@ -36,8 +42,8 @@ Ký hiệu giữ chân người xem: **[HOOK]** mở đầu · **[LOOP]** mở m
 | Our unit tonight: a thousand lumen-hours. That's roughly one ordinary household bulb, burning for an hour and a quarter. | Đơn vị hôm nay: một nghìn lumen-giờ, đại khái là một bóng đèn gia đình bình thường sáng trong một tiếng mười lăm phút. |
 | To match that one bulb with candles, you'd need about sixty of them. | Muốn sáng bằng một bóng đèn ấy bằng nến, bạn cần khoảng sáu mươi ngọn. |
 
-## 1:05–2:05 · Chương 1: Lửa và dầu **[BREAK]**
-*Hình: phong cách khắc gỗ (Woodcut). Hang đá; đống củi; ngọn đèn đá mỡ động vật; chợ dầu vừng Babylon.*
+## 0:55–1:45 · Chương 1: Lửa và dầu **[BREAK]**
+*Hình (đã dựng): khắc gỗ, nét khắc hiện dần như đang khắc trực tiếp. Đêm lửa trại: một người ngồi bên lửa, một người vác củi (thẻ 58 giờ, rồi đèn đá 50 giờ). Đèn dầu Babylon (thẻ 41½ giờ). Phòng ngủ lúc đêm. Bộ đếm năm từ 1750 BC đến AD 1300.*
 
 | English | Tiếng Việt |
 |---|---|
@@ -48,8 +54,8 @@ Ký hiệu giữ chân người xem: **[HOOK]** mở đầu · **[LOOP]** mở m
 | Think about that. For the light of one modern bulb, burning for about an hour, a Babylonian worker would have worked longer than you do in a whole week. So mostly… people went without. When the sun went down, the day was over. | Hãy nghĩ thử: để có lượng ánh sáng bằng một bóng đèn hiện đại sáng chừng một giờ, một người Babylon phải làm việc lâu hơn bạn làm cả tuần. Vậy nên phần lớn… người ta chịu tối. Mặt trời lặn là ngày kết thúc. |
 | And then, for thousands of years… almost nothing changed. | Rồi suốt hàng nghìn năm sau… gần như chẳng có gì thay đổi. **[LOOP]** |
 
-## 2:05–3:20 · Chương 2: Thời của nến, cá voi và dầu hoả
-*Hình: phong cách khắc đồng (Copperplate Engraving). Xưởng làm nến; con tàu săn cá voi; phòng thí nghiệm năm 1855; ngọn đèn dầu hoả.*
+## 1:45–2:57 · Chương 2: Thời của nến, cá voi và dầu hoả
+*Hình (đã dựng): khắc đồng. Ba cây đèn (nến mỡ, đèn dầu cá voi, đèn dầu đá) với thẻ 1800 "5.4 hours". Bàn thí nghiệm New Haven 1855 với bốn ngọn đèn, ngọn cuối là ROCK OIL. Đèn dầu hoả với thẻ 1870 "20 minutes". Câu trích của Stotz (1938) kèm hình cá nhà táng.*
 
 | English | Tiếng Việt |
 |---|---|
@@ -57,13 +63,13 @@ Ký hiệu giữ chân người xem: **[HOOK]** mở đầu · **[LOOP]** mở m
 | Most candles were tallow — rendered animal fat. They smoked, they dripped, and they were still expensive. | Phần lớn là nến mỡ động vật. Chúng bốc khói, chảy nhỏ giọt, và vẫn đắt. |
 | In 1800, our thousand lumen-hours of tallow candlelight cost about five and a half hours of work. | Năm 1800, một nghìn lumen-giờ ánh nến mỡ tốn khoảng năm tiếng rưỡi lao động. |
 | Better than Babylon — but imagine working your whole morning for one evening of light. **[BREAK]** | Hơn Babylon, nhưng hãy tưởng tượng bạn làm cả buổi sáng chỉ để có một buổi tối có đèn. |
-| In the 1700s and 1800s, candles made from whale oil became the light of choice. Then, in 1855, a Yale chemist named Benjamin Silliman Jr. ran a careful experiment: he burned different fuels side by side and measured how much light each gave for the money. | Thế kỷ 18 và 19, nến làm từ dầu cá voi trở thành loại đèn được ưa chuộng. Rồi năm 1855, nhà hoá học Benjamin Silliman Jr. ở Yale làm một thí nghiệm cẩn thận: đốt các loại nhiên liệu cạnh nhau và đo xem mỗi đồng tiền mua được bao nhiêu ánh sáng. |
+| In the 1700s and 1800s, lamps burning whale oil, and candles made from whales, became the light of choice. Then, in 1855, a Yale chemist named Benjamin Silliman Jr. ran a careful experiment: he burned different fuels side by side and measured how much light each gave for the money. | Thế kỷ 18 và 19, đèn đốt dầu cá voi và nến làm từ cá voi trở thành loại đèn được ưa chuộng. *(Đã sửa khi thu âm: nến cá voi làm từ sáp trong đầu cá nhà táng, không phải từ dầu.)* Rồi năm 1855, nhà hoá học Benjamin Silliman Jr. ở Yale làm một thí nghiệm cẩn thận: đốt các loại nhiên liệu cạnh nhau và đo xem mỗi đồng tiền mua được bao nhiêu ánh sáng. |
 | One of the fuels on his bench was "rock oil" — what we'd call petroleum. | Một trong những nhiên liệu trên bàn ông là "dầu đá", thứ ta gọi là dầu mỏ. |
 | Within fifteen years, kerosene lamps changed everything. By 1870, the price of our light had fallen to about twenty minutes of work. | Chỉ mười lăm năm sau, đèn dầu hoả thay đổi mọi thứ. Đến năm 1870, giá ánh sáng của chúng ta rơi xuống còn khoảng hai mươi phút lao động. |
 | As one writer put it in 1938, petroleum "gave kerosene to the world, and life to the few remaining whales." | Như một tác giả viết năm 1938: dầu mỏ "mang dầu hoả đến cho thế giới, và trả lại sự sống cho những con cá voi cuối cùng." |
 
-## 3:20–4:30 · Chương 3: Bóng điện **[BREAK]**
-*Hình: phong cách phim tin tức thập niên 1920 (Newsreel). Thành phố bật sáng từng dãy phố; một khu nhà trọ chật chội có đèn dầu.*
+## 2:57–4:03 · Chương 3: Bóng điện **[BREAK]**
+*Hình (đã dựng): phim câm 1920s. Các thẻ chữ kiểu phim xưa (Chapter III; Swan & Edison 1879; "Gas fights back"; New York 1900). Phố lên đèn có cặp đôi đi bộ, thẻ giá đổi lần lượt 1900, 1920, 1950. Cuối chương chuyển sang đèn bàn hôm nay.*
 
 | English | Tiếng Việt |
 |---|---|
@@ -74,8 +80,8 @@ Ký hiệu giữ chân người xem: **[HOOK]** mở đầu · **[LOOP]** mở m
 | And it wasn't just cheaper. It was safer. In 1900, about one in three fires in New York's tenement buildings was caused by lamps or candles. | Không chỉ rẻ hơn mà còn an toàn hơn. Năm 1900, khoảng một phần ba các vụ cháy ở khu nhà trọ New York là do đèn dầu hoặc nến. |
 | Light stopped being something you rationed… and became something you didn't even think about. | Ánh sáng thôi là thứ phải dè sẻn… và trở thành thứ ta chẳng buồn nghĩ tới. |
 
-## 4:30–5:40 · Chương 4: Sai lầm của các nhà kinh tế **[TWIST]**
-*Hình: phong cách nhà. Hai đường biểu đồ tách nhau: "official price" đi lên, "true price" lao xuống; khoảng cách giữa hai đường tô đỏ.*
+## 4:03–5:03 · Chương 4: Sai lầm của các nhà kinh tế **[TWIST]**
+*Hình (đã dựng): thẻ "what official statistics track" (nến, dầu đèn, khí đốt, điện; ô LIGHT ghi "not measured"). Biểu đồ minh hoạ: giá nhiên liệu tăng trong khi giá ánh sáng rơi xuyên sàn. Biểu đồ log của Nordhaus: khoảng chênh 900–1,600×; đường "traditional" chỉ là minh hoạ, ghi rõ trên hình. Cột lương thực tế ×13, ×40, ×190?. Kết bằng câu "We may be much richer…" trên nền bàn làm việc hôm nay.*
 
 | English | Tiếng Việt |
 |---|---|
@@ -86,8 +92,8 @@ Ký hiệu giữ chân người xem: **[HOOK]** mở đầu · **[LOOP]** mở m
 | And if prices are measured wrong, so is wealth. Official numbers say real wages grew about thirteen times from 1800 to 1992. Nordhaus estimated the true figure might be forty times — maybe far more. | Mà nếu đo giá sai, thì đo độ giàu cũng sai. Số liệu chính thức nói lương thực tế tăng khoảng 13 lần từ 1800 đến 1992. Nordhaus ước tính con số thật có thể là 40 lần, thậm chí hơn nhiều. |
 | In other words: we may be much richer than the statistics say. We just stopped noticing — because the things that got cheapest are the things we no longer think about. **[PAYOFF cho câu hỏi ở phần mở]** | Nói cách khác: có thể ta giàu hơn nhiều so với con số thống kê. Chỉ là ta không còn để ý, vì những thứ rẻ đi nhiều nhất lại là những thứ ta không còn nghĩ tới. |
 
-## 5:40–6:40 · Hộp "Chuyện đồn": Ngủ hai giấc **[PAYOFF] [BREAK]**
-*Hình: con dấu "MYTH CHECK"; căn phòng thời xưa lúc nửa đêm, người ngồi dậy bên bếp lửa (khắc gỗ); con dấu kết luận.*
+## 5:03–5:51 · Hộp "Chuyện đồn": Ngủ hai giấc **[PAYOFF] [BREAK]**
+*Hình (đã dựng): tranh khắc gỗ ba ô (giấc 1, thức bên lửa, giấc 2), từng ô sáng lên theo lời đọc. Thẻ Ekirch (hồ sơ toà án, sách y học, thư từ; 4 ngôn ngữ). Thẻ "BUT" (Nhật Bản; "suggestive, not definitive"). Con dấu "PARTLY TRUE" đóng xuống.*
 
 | English | Tiếng Việt |
 |---|---|
@@ -98,31 +104,35 @@ Ký hiệu giữ chân người xem: **[HOOK]** mở đầu · **[LOOP]** mở m
 | But other researchers point out that it doesn't appear everywhere — one sleep historian found no trace of it in Japan — and the evidence is suggestive, not definitive. | Nhưng các nhà nghiên cứu khác chỉ ra rằng nó không xuất hiện ở mọi nơi (một nhà nghiên cứu về giấc ngủ không tìm thấy dấu vết nào ở Nhật), và bằng chứng mới chỉ là gợi ý, chưa chắc chắn. |
 | Verdict: partly true. Common in many old records — but how universal it was is still debated. | Kết luận: **đúng một phần**. Phổ biến trong nhiều ghi chép xưa, nhưng phổ biến đến đâu thì vẫn còn tranh cãi. |
 
-## 6:40–7:15 · Quay về hôm nay **[PAYOFF] [NEXT]**
-*Hình: quay lại đúng khung hình mở đầu; ngón tay trên công tắc; đồng hồ cát; chuyển sang hình băng đá chở trên tàu (khắc đồng), màn hình đen.*
+## 5:51–6:22 · Quay về hôm nay **[PAYOFF] [NEXT]**
+*Hình (đã dựng): quay lại bàn làm việc ở cảnh mở đầu, đèn bật "tách", thẻ "0.2 seconds". Các chồng đĩa 3D với "≈ 100,000× cheaper than in 1800 / ≈ 700,000× cheaper than in Babylon". Thẻ khắc đồng "NEXT TIME · FROZEN WATER" có khối băng, kèm dòng "In 1833, a ship carried New England ice some 16,000 miles, to Calcutta." Mờ dần về đen.*
 
 | English | Tiếng Việt |
 |---|---|
 | So, back to that switch. For the electricity alone, today's thousand lumen-hours costs an average American worker about two-tenths of a second. | Quay lại cái công tắc. Chỉ tính tiền điện, một nghìn lumen-giờ hôm nay tốn của một người lao động Mỹ trung bình khoảng hai phần mười giây. |
 | That's roughly a hundred thousand times cheaper than in 1800 — and more than seven hundred thousand times cheaper than in Babylon. | Rẻ hơn năm 1800 khoảng một trăm nghìn lần, và rẻ hơn thời Babylon hơn bảy trăm nghìn lần. |
-| Every everyday thing has a price history like this. Next time: frozen water — and the strange business of shipping ice across oceans. | Mọi đồ vật thường ngày đều có một lịch sử giá như thế. Tập sau: nước đá, và nghề buôn kỳ lạ chở đá lạnh vượt đại dương. *(chi tiết tập sau sẽ kiểm chứng trước khi thu âm)* |
+| Every everyday thing has a price history like this. Next time: frozen water — and the strange business of shipping ice across oceans. | Mọi đồ vật thường ngày đều có một lịch sử giá như thế. Tập sau: nước đá, và nghề buôn kỳ lạ chở đá lạnh vượt đại dương. *(Đã kiểm chứng: Tudor, chuyến tàu Boston → Calcutta năm 1833; xem FACTS.md §E.)* |
 
 ---
 
 ## Vì sao kịch bản này giữ chân được người xem
 1. **Ba con số trong 10 giây đầu** (0,2 giây, 5 tiếng rưỡi, hơn một tuần): cú sốc nhìn thấy được ngay.
-2. **Hai câu hỏi mở ở phút đầu**: "vì sao các nhà kinh tế bỏ lỡ?" và "vì sao tổ tiên thức giữa đêm?". Người xem ở lại để nghe trả lời; câu thứ nhất được trả lời ở phút 5, câu thứ hai ở phút 6.
-3. **Đổi phong cách hình mỗi 60–75 giây** (khắc gỗ → khắc đồng → phim tin tức 1920s → biểu đồ): mỗi chương nhìn như một bộ phim khác, là cách đổi nhịp tự nhiên.
+2. **Hai câu hỏi mở ở phút đầu**: "vì sao các nhà kinh tế bỏ lỡ?" và "vì sao tổ tiên thức giữa đêm?". Người xem ở lại để nghe trả lời; câu thứ nhất được trả lời ở phút 4–5, câu thứ hai ở phút 5.
+3. **Đổi phong cách hình mỗi 60–75 giây** (khắc gỗ → khắc đồng → phim câm 1920s → biểu đồ): mỗi chương nhìn như một bộ phim khác, là cách đổi nhịp tự nhiên.
 4. **Mỗi chương một chuyện con người**: chợ dầu Babylon, 72 thợ nến Paris, thí nghiệm của Silliman, cá voi, cháy nhà trọ.
-5. **Bước ngoặt ở phút thứ 5** (các nhà kinh tế đo sai): ý tưởng "ta giàu hơn mình nghĩ" khiến người xem muốn chia sẻ.
+5. **Bước ngoặt ở phút thứ 4** (các nhà kinh tế đo sai): ý tưởng "ta giàu hơn mình nghĩ" khiến người xem muốn chia sẻ.
 6. **Kết thúc quay về khung hình mở đầu**, rồi móc sang tập sau.
 
-## 3 Shorts cắt ra (mỗi cái 30–45 giây)
-1. **"Light used to cost a week of work"**: phần mở đầu + 1800 + hôm nay.
-2. **"The chemist who tested rock oil"**: Silliman 1855 → dầu hoả → câu về cá voi.
-3. **"Did people sleep twice a night?"**: nguyên hộp chuyện đồn.
+## 3 Shorts đã cắt (thư mục `shorts/`, 9:16, có phụ đề chữ to)
+1. **"Light Used to Cost a WEEK of Work 🕯️"** (`short1-light-cost-a-week.mp4`, 41 giây): phần mở đầu cộng đoạn kết "100,000× cheaper". Ảnh bìa: `short1-cover.jpg`.
+2. **"The Chemist Who Tested "Rock Oil" in 1855"** (`short2-rock-oil.mp4`, 35 giây): Silliman 1855, dầu hoả, câu về cá voi.
+3. **"Did People Really Sleep Twice a Night?"** (`short3-sleep-twice.mp4`, 48 giây): nguyên hộp chuyện đồn.
 
-## Cần bạn duyệt
-- Nội dung và giọng văn (bản tiếng Việt bên phải).
-- Tiêu đề và ảnh bìa (chọn 1 trong 3).
-- Phong cách: khắc gỗ, khắc đồng, phim tin tức 1920s, cộng phong cách nhà (biểu đồ, đồng hồ cát).
+## Trạng thái
+- Đã sản xuất xong:
+  - video chính `the-price-of-light.mp4` (1920×1080, 6:22, −14 LUFS);
+  - phụ đề `the-price-of-light.srt`;
+  - 3 Shorts;
+  - thumbnail A–E.
+- Kênh: **Ink & Ages**. Thể loại YouTube: Education.
+- Tập sau: **nước đá** (Frederic Tudor và nghề buôn băng xuyên đại dương). Phần giới thiệu tập sau đã đặt sẵn ở cuối tập này.
