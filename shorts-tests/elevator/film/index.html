@@ -1,0 +1,814 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Elevator</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh}</style>
+</head><body><canvas id="c"></canvas>
+<script>
+// "ELEVATOR" v2 (9:16). A stick figure fights his way up a building, one floor at a time.
+// Two kinds of shot: SIDE (a floor seen from the side; the lift doors are in the back wall; fights happen out on the floor)
+// and POV (inside the car, over his shoulder, looking out through the doors at whoever waits on the next floor).
+// Story time tau comes from tl.json (slow-motion windows stretch real time). render(x): seconds, or a frame index with ?rate=.
+const q = new URLSearchParams(location.search), RATE = +q.get('rate') || 0;
+const W = innerWidth, H = innerHeight, S = W / 1080;
+const out = document.getElementById('c'); out.width = W; out.height = H; const X = out.getContext('2d');
+const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const BL = mk(W >> 2, H >> 2), BX = BL.getContext('2d');
+const D2R = Math.PI / 180, clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), lerp = (a, b, k) => a + (b - a) * k;
+const smooth = k => (k = clamp(k), k * k * (3 - 2 * k));
+const EASE = { l: k => clamp(k), io: k => (k = clamp(k), k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2),
+  o: k => 1 - Math.pow(1 - clamp(k), 3), i: k => Math.pow(clamp(k), 3), o2: k => 1 - Math.pow(1 - clamp(k), 2), i2: k => clamp(k) ** 2 };
+function rnd(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+const mixc = (a, b, k) => a.map((v, i) => lerp(v, b[i], k));
+const rgba = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+
+// ---------------------------------------------------------------- time
+let TL; const TAB = [], DT = 1 / 2000;
+function slowOnly(tau) { let s = 1; for (const [a, b, m] of TL.slow) { const r = TL.ramp, w = smooth((tau - (a - r)) / r) * (1 - smooth((tau - b) / r)); s = Math.min(s, 1 - (1 - m) * w); } return s; }
+function speed(tau) { let s = 1; for (const m of TL.impacts) { if (m.nospark) continue; const hs = .006 + .004 * m.size; if (tau >= m.tau && tau < m.tau + hs) s = .15; } for (const [a, b, m] of TL.slow) { const r = TL.ramp, w = smooth((tau - (a - r)) / r) * (1 - smooth((tau - b) / r)); s = Math.min(s, 1 - (1 - m) * w); } return s; }
+function buildMap() { let t = 0; const n = Math.ceil((TL.dur + 2) / DT); for (let i = 0; i <= n; i++) { TAB.push(t); t += DT / speed((i + .5) * DT); } }
+function realOf(tau) { const f = tau / DT, i = Math.floor(f); if (i < 0) return tau; if (i >= TAB.length - 1) return TAB[TAB.length - 1]; return lerp(TAB[i], TAB[i + 1], f - i); }
+function tauOf(t) { if (t <= 0) return t; let lo = 0, hi = TAB.length - 1; if (t >= TAB[hi]) return hi * DT; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (TAB[m] <= t) lo = m; else hi = m; } return (lo + (t - TAB[lo]) / (TAB[hi] - TAB[lo])) * DT; }
+function track1(K, tau) {
+  if (tau <= K[0][0]) return K[0][1]; for (let i = 1; i < K.length; i++) if (tau < K[i][0]) { const a = K[i - 1], b = K[i]; return lerp(a[1], b[1], EASE[b[2] || 'io']((tau - a[0]) / (b[0] - a[0]))); }
+  return K[K.length - 1][1];
+}
+function shotAt(tau) { let s = TL.shots[0]; for (const x of TL.shots) if (tau >= x.t) s = x; return s; }
+
+// ---------------------------------------------------------------- side-view poses (facing right; absolute limb angles, 0 = down, + = forward)
+const PK = ['t', 'h', 'aF', 'eF', 'aB', 'eB', 'lF', 'kF', 'lB', 'kB'];
+const P = {
+  stand: { t: 3, h: 0, aF: 8, eF: 10, aB: -8, eB: 12, lF: 6, kF: -2, lB: -6, kB: -2 },
+  lookUp: { t: -2, h: -30, aF: 8, eF: 10, aB: -8, eB: 12, lF: 6, kF: -2, lB: -6, kB: -2 },
+  press: { t: 4, h: 4, aF: 82, eF: 6, aB: -8, eB: 12, lF: 10, kF: -4, lB: -8, kB: -2 },
+  guard: { t: 12, h: -2, aF: 50, eF: 105, aB: 28, eB: 122, lF: 24, kF: -24, lB: -26, kB: -14 },
+  tilt: { t: 10, h: -16, aF: 50, eF: 105, aB: 28, eB: 122, lF: 24, kF: -24, lB: -26, kB: -14 },
+  block: { t: 6, h: 6, aF: 60, eF: 140, aB: 45, eB: 145, lF: 20, kF: -20, lB: -24, kB: -12 },
+  jab: { t: 16, h: -4, aF: 88, eF: 4, aB: 30, eB: 125, lF: 26, kF: -20, lB: -28, kB: -8 },
+  cross: { t: 30, h: -8, aF: 96, eF: 0, aB: 8, eB: 132, lF: 42, kF: -32, lB: -42, kB: -2 },
+  punch: { t: 20, h: -6, aF: 92, eF: 2, aB: 22, eB: 128, lF: 32, kF: -22, lB: -32, kB: -4 },
+  windup: { t: 2, h: -2, aF: -15, eF: 115, aB: 45, eB: 95, lF: 20, kF: -24, lB: -22, kB: -16 },
+  hook: { t: 24, h: -6, aF: 70, eF: 5, aB: 22, eB: 128, lF: 34, kF: -24, lB: -34, kB: -4 },
+  bodyHook: { t: 30, h: -4, aF: 62, eF: 55, aB: 25, eB: 125, lF: 36, kF: -32, lB: -34, kB: -6 },
+  uppercutLoad: { t: 32, h: -10, aF: 8, eF: 95, aB: 40, eB: 110, lF: 52, kF: -92, lB: -30, kB: -40 },
+  uppercut: { t: -16, h: -12, aF: 168, eF: 12, aB: 25, eB: 115, lF: 16, kF: -8, lB: -36, kB: -6 },
+  knee: { t: -4, h: 0, aF: 60, eF: 120, aB: 30, eB: 125, lF: 105, kF: -150, lB: -6, kB: -4 },
+  elbow: { t: 26, h: -4, aF: 95, eF: 150, aB: 20, eB: 120, lF: 32, kF: -22, lB: -32, kB: -4 },
+  grab: { t: 12, h: -4, aF: 85, eF: 15, aB: 62, eB: 40, lF: 26, kF: -24, lB: -28, kB: -10 },
+  hipThrow: { t: 58, h: -10, aF: 50, eF: 70, aB: 30, eB: 90, lF: 35, kF: -45, lB: -25, kB: -35 },
+  duck: { t: 52, h: 22, aF: 62, eF: 118, aB: 40, eB: 125, lF: 72, kF: -122, lB: -22, kB: -108 },
+  kickChamber: { t: -12, h: 2, aF: 48, eF: 100, aB: 20, eB: 115, lF: 88, kF: -115, lB: -6, kB: -8 },
+  sideKick: { t: -32, h: 6, aF: 35, eF: 95, aB: -35, eB: 70, lF: 94, kF: -2, lB: -10, kB: -4 },
+  backChamber: { t: 42, h: -22, aF: 45, eF: 95, aB: 25, eB: 110, lF: 8, kF: -12, lB: -48, kB: -110 },
+  backKick: { t: 58, h: -35, aF: 70, eF: 70, aB: 30, eB: 90, lF: 10, kF: -10, lB: -100, kB: 5 },
+  soccer: { t: -18, h: 18, aF: -30, eF: 30, aB: 40, eB: 40, lF: 72, kF: -10, lB: -10, kB: -6 },
+  crouchJump: { t: 30, h: -10, aF: -35, eF: 30, aB: -50, eB: 25, lF: 62, kF: -110, lB: -12, kB: -100 },
+  tuck: { t: 25, h: 10, aF: 40, eF: 120, aB: 30, eB: 130, lF: 95, kF: -140, lB: 70, kB: -140 },
+  jumpKick: { t: -16, h: 4, aF: 55, eF: 85, aB: -50, eB: 60, lF: 95, kF: 0, lB: -40, kB: -100 },
+  crouchLand: { t: 34, h: -20, aF: 22, eF: 8, aB: -55, eB: 25, lF: 68, kF: -112, lB: 12, kB: -108 },
+  roll: { t: 62, h: 22, aF: 30, eF: 120, aB: 20, eB: 130, lF: 100, kF: -150, lB: 88, kB: -150 },
+  hitRecoil: { t: -34, h: -26, aF: 72, eF: 25, aB: 52, eB: 35, lF: 34, kF: -26, lB: -8, kB: -28 },
+  hitBack: { t: 48, h: -30, aF: -50, eF: 25, aB: -65, eB: 20, lF: -10, kF: -35, lB: -45, kB: -30 },
+  doubled: { t: 68, h: 22, aF: 25, eF: 60, aB: 10, eB: 70, lF: 28, kF: -40, lB: -25, kB: -20 },
+  stagger: { t: -14, h: -16, aF: 40, eF: 40, aB: 22, eB: 50, lF: 22, kF: -25, lB: -30, kB: -14 },
+  flyBack: { t: -52, h: -30, aF: 120, eF: 20, aB: 92, eB: 40, lF: 52, kF: -40, lB: 22, kB: -60 },
+  launched: { t: -12, h: 30, aF: -25, eF: 12, aB: 12, eB: 10, lF: 12, kF: -20, lB: -10, kB: -12 },
+  ko: { t: 0, h: 12, aF: 75, eF: 14, aB: -50, eB: 20, lF: 16, kF: -10, lB: -14, kB: -26 },
+  sit: { t: -18, h: 42, aF: 8, eF: 8, aB: -6, eB: 8, lF: 82, kF: -8, lB: 76, kB: -18 },
+  handsKnees: { t: 62, h: -24, aF: 36, eF: 5, aB: 30, eB: 5, lF: 20, kF: -30, lB: -15, kB: -25 },
+  staffReady: { t: 10, h: -2, aF: 55, eF: 70, aB: 40, eB: 80, lF: 24, kF: -24, lB: -26, kB: -14 },
+  staffSpin: { t: 6, h: 0, aF: 80, eF: 40, aB: 30, eB: 90, lF: 22, kF: -20, lB: -22, kB: -12 },
+  staffStrike: { t: 22, h: -6, aF: 92, eF: 2, aB: 75, eB: 30, lF: 34, kF: -24, lB: -34, kB: -4 },
+  swingLow: { t: 38, h: 4, aF: 60, eF: 15, aB: 45, eB: 25, lF: 45, kF: -60, lB: -32, kB: -20 },
+  swingHigh: { t: 4, h: -4, aF: 100, eF: 5, aB: 85, eB: 15, lF: 28, kF: -22, lB: -28, kB: -8 },
+  overheadLoad: { t: -10, h: -6, aF: 160, eF: 10, aB: 150, eB: 20, lF: 28, kF: -24, lB: -28, kB: -10 },
+  overhead: { t: 38, h: 4, aF: 100, eF: 10, aB: 90, eB: 20, lF: 42, kF: -55, lB: -30, kB: -15 },
+  catchStaff: { t: 0, h: -14, aF: 150, eF: 10, aB: 135, eB: 20, lF: 20, kF: -16, lB: -22, kB: -8 },
+  slash: { t: 18, h: -6, aF: 98, eF: 0, aB: -30, eB: 60, lF: 36, kF: -26, lB: -34, kB: -4 },
+  valve: { t: 4, h: -10, aF: 140, eF: 50, aB: 120, eB: 70, lF: 18, kF: -14, lB: -20, kB: -8 },
+  valve2: { t: 8, h: -10, aF: 118, eF: 72, aB: 150, eB: 30, lF: 18, kF: -14, lB: -20, kB: -8 },
+  blinded: { t: -20, h: -20, aF: 150, eF: 160, aB: 140, eB: 165, lF: 20, kF: -20, lB: -30, kB: -15 },
+  hammerLoad: { t: -12, h: -8, aF: 175, eF: 5, aB: 170, eB: 10, lF: 28, kF: -22, lB: -28, kB: -10 },
+  hammer: { t: 45, h: 10, aF: 70, eF: 5, aB: 65, eB: 8, lF: 45, kF: -60, lB: -30, kB: -20 },
+  breathe: { t: 22, h: 14, aF: 14, eF: 24, aB: -2, eB: 22, lF: 16, kF: -16, lB: -16, kB: -12 },
+};
+function gait(ph, amp, lean) {
+  const s = Math.sin(ph), c = Math.cos(ph);
+  return { t: lean, h: -2, lF: 6 + 40 * amp * s, kF: -12 - 75 * amp * Math.max(0, c), lB: 6 - 40 * amp * s, kB: -12 - 75 * amp * Math.max(0, -c),
+    aF: 12 - 50 * amp * s, eF: 70, aB: 12 + 50 * amp * s, eB: 70 };
+}
+function resolve(p, tau) {
+  if (p === 'run') return gait(tau * 2 * Math.PI * 2.6, 1, 24);
+  if (p === 'walk') return gait(tau * 2 * Math.PI * 1.6, .5, 6);
+  if (p === 'breathe') { const b = (Math.sin(tau * 2 * Math.PI * 1.2) + 1) / 2, o = { ...P.breathe }; o.t += 6 * b; o.h += 4 * b; return o; }
+  if (p === 'handsKnees') { const b = (Math.sin(tau * 2 * Math.PI * 1.6) + 1) / 2, o = { ...P.handsKnees }; o.t += 5 * b; return o; }
+  return P[p];
+}
+
+// ---------------------------------------------------------------- choreography. Keys: [tau, pose, {x, air, sx, spin, d, sc, pa, prop, eye, hide, e, ex, ea}], fields carry forward
+function track(keys) {
+  const o2 = []; let prev = { x: 0, air: 0, sx: 1, spin: 0, d: 0, sc: 1, pa: 0, prop: 0, eye: 1, hide: 0 };
+  for (const [t, p, o = {}] of keys) { const k = { t, p, ...prev, ...o }; k.e = o.e || 'io'; k.ex = o.ex || k.e; k.ea = o.ea || k.e;
+    prev = { x: k.x, air: k.air, sx: k.sx, spin: k.spin, d: k.d, sc: k.sc, pa: k.pa, prop: k.prop, eye: k.eye, hide: k.hide }; o2.push(k); }
+  return o2;
+}
+const RED = [255, 40, 58], ORANGE = [255, 140, 30], PURPLE = [170, 80, 255], GREEN = [60, 255, 140], TEAL = [40, 220, 220], PINK = [255, 70, 170], VIOLET = [130, 110, 255];
+const FIG = {
+  H: { kind: 'hero', keys: [
+    // LOBBY
+    [0, 'walk', { x: -720, sx: 1 }], [1.25, 'walk', { x: -275, e: 'l' }], [1.38, 'press', { x: -268 }], [1.62, 'stand', { x: -268 }], [1.95, 'lookUp'], [2.55, 'lookUp'], [2.85, 'stand'],
+    [3.3, 'guard', { x: -270 }], [3.62, 'guard'], [3.75, 'block', { x: -276, e: 'o' }], [3.9, 'guard', { x: -270 }], [4.12, 'duck', { x: -262, e: 'o' }], [4.2, 'duck'],
+    [4.3, 'bodyHook', { x: -225, e: 'o' }], [4.42, 'uppercutLoad', { x: -180 }], [4.52, 'uppercut', { x: -160, air: 15, e: 'o' }], [4.66, 'windup', { x: -190, air: 0 }],
+    [4.82, 'cross', { x: -212, e: 'o' }], [5.05, 'cross'], [5.5, 'guard', { x: -190, sx: 1 }], [5.9, 'stand', { x: -180 }], [6.0, 'walk', { x: -175 }], [6.45, 'walk', { x: 0, e: 'l' }],
+    [6.85, 'walk', { x: 0, d: 1.15, e: 'l' }], [6.9, 'stand', { d: 1.15 }], [7.39, 'stand', { hide: 1 }],
+    // OFFICE (8): knife + brawler
+    [9.59, 'stand', { x: 0, d: 1.15, sx: 1, hide: 0 }], [9.7, 'walk', { x: 0, d: 1.15 }], [10.05, 'walk', { x: 0, d: 0, e: 'l' }], [10.15, 'guard', { x: 0 }], [10.3, 'guard', { x: 5 }],
+    [10.42, 'grab', { x: 20, e: 'o' }], [10.55, 'knee', { x: 40, e: 'o' }], [10.65, 'grab', { x: 30 }], [10.75, 'hipThrow', { x: 20, sx: -1, e: 'o' }], [10.95, 'hipThrow'],
+    [11.2, 'guard', { x: 0 }], [11.6, 'block', { x: 6, e: 'o' }], [11.7, 'guard', { x: 0 }], [11.76, 'duck', { x: 5, e: 'o' }], [11.85, 'bodyHook', { x: -30, e: 'o' }],
+    [11.92, 'uppercutLoad', { x: -50 }], [11.98, 'uppercut', { x: -65, air: 15, e: 'o' }], [12.07, 'grab', { x: -75, air: 0 }], [12.15, 'hipThrow', { x: -85, e: 'o' }],
+    [12.35, 'hipThrow'], [12.55, 'guard', { x: -60 }], [12.85, 'guard', { x: -50 }], [13.0, 'hitRecoil', { x: 20, air: 30, e: 'o', ea: 'o' }], [13.15, 'flyBack', { x: 330, air: 60, e: 'o' }],
+    [13.27, 'sit', { x: 440, air: 0, ea: 'i' }], [13.5, 'sit'], [13.7, 'crouchLand', { x: 420 }], [13.85, 'guard', { x: 400 }], [13.95, 'duck', { x: 395, e: 'o' }],
+    [14.05, 'punch', { x: 380, e: 'o' }], [14.15, 'guard', { x: 370 }], [14.2, 'grab', { x: 365 }], [14.3, 'hipThrow', { x: 355, e: 'o' }], [14.5, 'hipThrow'],
+    [14.75, 'stand', { x: 340, sx: -1 }], [14.9, 'walk', { x: 330 }], [15.35, 'walk', { x: 0, e: 'l' }], [15.55, 'walk', { x: 0, d: 1.15, e: 'l' }], [15.6, 'stand', { d: 1.15 }], [15.89, 'stand', { hide: 1 }],
+    // DOJO (17): staff + two fighters
+    [17.99, 'stand', { x: 0, d: 1.15, sx: 1, hide: 0 }], [18.05, 'walk', { x: 0, d: 1.15 }], [18.4, 'walk', { x: 0, d: 0, e: 'l' }], [18.45, 'guard', { x: 0 }], [18.62, 'guard', { x: 0, sx: -1 }],
+    [18.72, 'duck', { x: 10, e: 'o' }], [18.88, 'duck'], [18.95, 'guard', { x: 0, sx: 1 }], [19.0, 'crouchJump', { x: 10 }], [19.08, 'tuck', { x: 40, air: 110, ea: 'o', e: 'o' }],
+    [19.15, 'jumpKick', { x: 60, air: 115, e: 'o' }], [19.3, 'crouchLand', { x: 50, air: 0, ea: 'i' }], [19.42, 'guard', { x: 50, sx: -1 }], [19.55, 'block', { x: 56, e: 'o' }],
+    [19.62, 'guard', { x: 50 }], [19.7, 'hitBack', { x: 20, e: 'o' }], [19.85, 'crouchLand', { x: 0 }], [20.08, 'crouchLand'], [20.15, 'grab', { x: 0, e: 'o' }], [20.3, 'soccer', { x: -10, e: 'o' }],
+    [20.4, 'guard', { x: 0, sx: 1 }], [20.6, 'catchStaff', { x: 10, e: 'o' }], [20.75, 'catchStaff'], [20.8, 'sideKick', { x: 20, e: 'o' }], [20.9, 'staffReady', { x: 0, prop: 1, pa: 300 }],
+    [21.1, 'staffReady', { x: 0 }], [21.2, 'staffStrike', { x: 20, pa: 355, e: 'o' }], [21.28, 'staffReady', { x: 15, pa: 300 }], [21.35, 'swingLow', { x: 25, pa: 370, e: 'o' }],
+    [21.45, 'overheadLoad', { x: 20, pa: 240 }], [21.55, 'overhead', { x: 35, pa: 410, e: 'o' }], [21.65, 'overhead'], [21.75, 'staffReady', { x: 20, sx: -1, pa: 300 }],
+    [21.9, 'staffSpin', { x: 10, pa: 640, e: 'o' }], [22.0, 'staffReady', { x: 5, pa: 660 }], [22.1, 'staffStrike', { x: -20, pa: 715, e: 'o' }], [22.3, 'staffReady', { x: -10, pa: 660 }],
+    [22.45, 'staffReady', { x: 0, sx: 1, pa: 660 }], [22.65, 'staffSpin', { x: 10, pa: 980, e: 'o' }], [22.8, 'swingHigh', { x: 15, pa: 1080, e: 'o' }], [22.9, 'staffReady', { x: 10, pa: 1020 }],
+    [23.0, 'staffStrike', { x: 35, pa: 1075, e: 'o' }], [23.2, 'staffStrike'], [23.4, 'staffSpin', { x: 20, pa: 1380 }], [23.55, 'staffReady', { x: 10, pa: 1380 }],
+    [23.6, 'walk', { x: 0 }], [23.85, 'walk', { x: 0, d: 1.15, e: 'l' }], [23.9, 'staffReady', { d: 1.15 }], [24.49, 'staffReady', { hide: 1 }],
+    // BOILER ROOM (26): the brute
+    [26.59, 'staffReady', { x: 0, d: 1.15, sx: 1, prop: 1, pa: 300, hide: 0 }], [26.65, 'walk', { x: 0, d: 1.15 }], [26.95, 'walk', { x: 0, d: 0, e: 'l' }], [27.0, 'run', { x: 20 }],
+    [27.1, 'run', { x: 110, e: 'l' }], [27.15, 'staffStrike', { x: 120, pa: 355, e: 'o' }], [27.17, 'staffStrike', { prop: 0 }], [27.35, 'guard', { x: 100 }],
+    [27.5, 'hitRecoil', { x: 80, air: 40, e: 'o', ea: 'o' }], [27.68, 'flyBack', { x: -380, air: 120, e: 'l', ea: 'o' }], [27.8, 'flyBack', { x: -520, air: 60, e: 'l', ea: 'i' }],
+    [28.0, 'sit', { x: -500, air: 0, ea: 'i' }], [28.75, 'sit'], [28.88, 'crouchLand', { x: -480 }], [28.96, 'roll', { x: -440, spin: 0 }], [29.22, 'roll', { x: -220, spin: 360, e: 'l' }],
+    [29.32, 'crouchLand', { x: -190, spin: 360 }], [29.4, 'valve', { x: -150 }], [29.5, 'valve2'], [29.6, 'valve'], [29.7, 'valve2'], [29.85, 'guard', { x: -160 }],
+    [30.0, 'run', { x: -170, sx: -1 }], [30.2, 'run', { x: -250, e: 'l' }], [30.25, 'crouchJump', { x: -260 }], [30.36, 'tuck', { x: -280, air: 250, ea: 'o', e: 'o' }],
+    [30.45, 'jumpKick', { x: -295, air: 330, e: 'o' }], [30.6, 'jumpKick', { x: -300, air: 280 }], [30.75, 'crouchLand', { x: -300, air: 0, ea: 'i' }], [30.85, 'knee', { x: -310, e: 'o' }],
+    [30.93, 'guard', { x: -305 }], [31.0, 'elbow', { x: -315, e: 'o' }], [31.1, 'crouchJump', { x: -310 }], [31.22, 'tuck', { x: -330, air: 240, spin: 80, e: 'o', ea: 'o' }], [31.45, 'tuck', { x: -370, air: 430, spin: 300, e: 'l', ea: 'o' }],
+    [31.62, 'jumpKick', { x: -405, air: 330, spin: 395, e: 'o', ea: 'i' }], [31.75, 'jumpKick', { x: -430, air: 210, spin: 400, ea: 'i' }],
+    [31.95, 'crouchLand', { x: -390, air: 0, spin: 360, ea: 'i' }], [32.45, 'crouchLand'], [32.6, 'handsKnees', { x: -330, sx: 1 }], [33.0, 'handsKnees'], [33.05, 'walk', { x: -320 }], [33.45, 'walk', { x: 0, e: 'l' }],
+    [33.6, 'walk', { x: 0, d: 1.15, e: 'l' }], [33.65, 'stand', { d: 1.15 }], [34.09, 'stand', { hide: 1 }]] },
+  TA: { kind: 'enemy', col: RED, set: 'lobby', keys: [
+    [0, 'guard', { x: 0, d: 1.15, sx: -1, hide: 1 }], [2.69, 'guard', { hide: 0 }], [3.2, 'guard'], [3.3, 'walk', { x: 0, d: 1.15 }], [3.55, 'walk', { x: -90, d: 0, e: 'l' }],
+    [3.62, 'guard', { x: -100 }], [3.75, 'jab', { x: -130, e: 'o' }], [3.9, 'guard', { x: -120 }], [4.02, 'windup', { x: -120 }], [4.12, 'punch', { x: -140, e: 'o' }],
+    [4.22, 'guard', { x: -130 }], [4.3, 'doubled', { x: -125, e: 'o' }], [4.42, 'doubled'], [4.52, 'hitRecoil', { x: -115, air: 25, e: 'o' }], [4.66, 'stagger', { x: -100, air: 0 }],
+    [4.82, 'hitRecoil', { x: -90, e: 'o' }], [5.1, 'flyBack', { x: 300, air: 200, spin: -110, e: 'o', ea: 'o' }], [5.38, 'flyBack', { x: 560, air: 175, spin: -240, e: 'l', ea: 'l' }],
+    [5.6, 'ko', { x: 730, air: 0, spin: -270, ea: 'i', eye: .15 }], [7.39, 'ko', { hide: 1 }]] },
+  K: { kind: 'enemy', col: GREEN, knife: 1, set: 'office', keys: [
+    [0, 'guard', { x: 300, sx: -1, prop: 1, hide: 1 }], [9.59, 'guard', { hide: 0 }], [10.15, 'walk', { x: 200, e: 'l' }], [10.28, 'windup', { x: 170 }], [10.4, 'slash', { x: 130, e: 'o' }],
+    [10.44, 'slash'], [10.55, 'doubled', { x: 120, e: 'o', prop: 0 }], [10.65, 'stagger', { x: 90 }], [10.75, 'launched', { x: 0, air: 150, spin: 150, e: 'o', ea: 'o' }],
+    [10.88, 'ko', { x: -170, air: 0, spin: 270, ea: 'i', eye: .5 }], [12.5, 'ko'], [12.62, 'crouchLand', { x: -200, spin: 360, sx: 1 }], [12.7, 'run', { x: -190 }],
+    [12.85, 'tuck', { x: -175, air: 90, ea: 'o' }], [13.0, 'jumpKick', { x: -165, air: 100, e: 'o' }], [13.15, 'crouchLand', { x: -120, air: 0, ea: 'i' }], [13.4, 'guard', { x: -60, eye: 1 }],
+    [13.75, 'walk', { x: 270, e: 'l' }], [13.85, 'guard', { x: 280 }], [13.95, 'punch', { x: 300, e: 'o' }], [14.05, 'hitRecoil', { x: 290, e: 'o' }], [14.15, 'stagger', { x: 280 }],
+    [14.3, 'launched', { x: 230, air: 130, spin: -140, e: 'o', ea: 'o' }], [14.55, 'launched', { x: -60, air: 110, spin: -240, e: 'l' }], [14.8, 'ko', { x: -300, air: 0, spin: -270, ea: 'i', eye: .15 }], [15.89, 'ko', { hide: 1 }]] },
+  A: { kind: 'enemy', col: TEAL, set: 'office', keys: [
+    [0, 'guard', { x: -330, sx: 1, hide: 1 }], [9.59, 'guard', { hide: 0 }], [10.6, 'walk', { x: -230, e: 'l' }], [10.88, 'hitRecoil', { x: -235, e: 'o' }],
+    [11.05, 'ko', { x: -300, spin: -90, e: 'o', eye: .5 }], [11.25, 'ko'], [11.42, 'crouchLand', { x: -260, spin: 0, eye: 1 }], [11.5, 'guard', { x: -200 }], [11.6, 'jab', { x: -125, e: 'o' }],
+    [11.68, 'guard', { x: -130 }], [11.76, 'punch', { x: -120, e: 'o' }], [11.85, 'doubled', { x: -125, e: 'o' }], [11.92, 'doubled'], [11.98, 'hitRecoil', { x: -135, air: 25, e: 'o' }],
+    [12.07, 'stagger', { x: -150, air: 0 }], [12.15, 'launched', { x: -170, air: 130, spin: -120, e: 'o', ea: 'o' }], [12.3, 'launched', { x: -520, air: 150, spin: -220, e: 'l' }],
+    [12.4, 'flyBack', { x: -660, air: 60, spin: -250 }], [12.6, 'ko', { x: -700, air: 0, spin: -270, ea: 'i', eye: .15 }], [15.89, 'ko', { hide: 1 }]] },
+  P1: { kind: 'enemy', col: PINK, set: 'dojo', keys: [
+    [0, 'guard', { x: -560, sx: 1, hide: 1 }], [17.99, 'guard', { hide: 0 }], [18.45, 'run', { x: -520 }], [18.62, 'run', { x: -260, e: 'l' }], [18.72, 'jumpKick', { x: -90, air: 150, ea: 'o', e: 'o' }],
+    [18.85, 'jumpKick', { x: 90, air: 120, e: 'l' }], [18.98, 'crouchLand', { x: 170, air: 0, ea: 'i' }], [19.08, 'guard', { x: 165, sx: -1 }], [19.15, 'hitRecoil', { x: 178, e: 'o' }],
+    [19.35, 'ko', { x: 230, spin: -90, e: 'o', eye: .5 }], [20.95, 'ko'], [21.08, 'crouchLand', { x: 200, spin: 0, eye: 1 }], [21.15, 'guard', { x: 170 }], [21.2, 'hitRecoil', { x: 182, e: 'o' }],
+    [21.3, 'stagger', { x: 175 }], [21.35, 'ko', { x: 170, air: 30, spin: -90, e: 'o', ea: 'o' }], [21.45, 'ko', { air: 0, ea: 'i' }], [21.55, 'ko', { eye: .15 }], [24.49, 'ko', { hide: 1 }]] },
+  P2: { kind: 'enemy', col: VIOLET, set: 'dojo', keys: [
+    [0, 'guard', { x: -420, sx: 1, hide: 1 }], [17.99, 'guard', { hide: 0 }], [19.3, 'guard', { x: -400 }], [19.35, 'run', { x: -380 }], [19.5, 'run', { x: -130, e: 'l' }],
+    [19.55, 'punch', { x: -80, e: 'o' }], [19.65, 'guard', { x: -100 }], [20.0, 'guard', { x: -120 }], [20.08, 'kickChamber', { x: -115 }], [20.15, 'sideKick', { x: -110, e: 'o' }],
+    [20.25, 'sideKick'], [20.3, 'ko', { x: -150, air: 20, spin: -90, e: 'o', ea: 'o' }], [20.4, 'ko', { air: 0, ea: 'i', eye: .5 }], [21.65, 'ko'], [21.8, 'crouchLand', { x: -130, spin: 0, eye: 1 }],
+    [21.85, 'guard', { x: -110 }], [21.9, 'hitRecoil', { x: -120, e: 'o' }], [22.0, 'stagger', { x: -130 }], [22.1, 'hitRecoil', { x: -150, e: 'o' }],
+    [22.3, 'flyBack', { x: -620, air: 110, spin: -50, e: 'o', ea: 'o' }], [22.5, 'ko', { x: -880, air: 0, spin: -90, ea: 'i', eye: .15 }], [24.49, 'ko', { hide: 1 }]] },
+  ST: { kind: 'enemy', col: ORANGE, set: 'dojo', keys: [
+    [0, 'staffSpin', { x: 330, sx: -1, prop: 1, pa: 0, hide: 1 }], [17.99, 'staffSpin', { hide: 0 }], [18.6, 'staffSpin', { pa: 720, e: 'l' }], [18.9, 'staffReady', { x: 260, pa: 1020 }],
+    [19.05, 'swingLow', { x: 220, pa: 1090, e: 'o' }], [19.25, 'staffReady', { x: 230, pa: 1020 }], [19.55, 'windup', { x: 200, pa: 930 }], [19.7, 'swingHigh', { x: 170, pa: 1075, e: 'o' }],
+    [19.9, 'staffReady', { x: 180, pa: 1020 }], [20.35, 'overheadLoad', { x: 170, pa: 960 }], [20.48, 'overhead', { x: 150, pa: 1130, e: 'o' }], [20.6, 'overhead'],
+    [20.8, 'doubled', { x: 160, e: 'o' }], [20.9, 'doubled', { x: 170, prop: 0 }], [21.1, 'guard', { x: 260 }], [22.4, 'guard', { x: 260 }], [22.5, 'run', { x: 250 }],
+    [22.62, 'run', { x: 150, e: 'l' }], [22.65, 'hitRecoil', { x: 150, e: 'o' }], [22.75, 'stagger', { x: 160 }], [22.8, 'hitRecoil', { x: 170, e: 'o' }], [22.92, 'stagger', { x: 170 }],
+    [23.0, 'hitRecoil', { x: 190, e: 'o' }], [23.25, 'flyBack', { x: 640, air: 80, spin: -40, e: 'o', ea: 'o' }], [23.45, 'ko', { x: 720, air: 0, spin: -90, ea: 'i', eye: .15 }], [24.49, 'ko', { hide: 1 }]] },
+  BR: { kind: 'enemy', col: PURPLE, set: 'boiler', keys: [
+    [0, 'guard', { x: 330, sx: -1, sc: 1.6, hide: 1 }], [26.59, 'guard', { hide: 0 }], [27.15, 'guard', { x: 330 }], [27.3, 'windup', { x: 320 }], [27.5, 'hook', { x: 300, e: 'o' }],
+    [27.75, 'hook'], [27.95, 'guard', { x: 300 }], [28.1, 'walk', { x: 300 }], [28.85, 'walk', { x: -300, e: 'l' }], [28.95, 'hammerLoad', { x: -330 }], [29.1, 'hammer', { x: -345, e: 'o' }],
+    [29.4, 'hammer'], [29.52, 'guard', { x: -330, sx: 1 }], [29.62, 'guard', { x: -320 }], [29.68, 'blinded', { x: -330, e: 'o' }], [30.3, 'blinded', { x: -430 }],
+    [30.45, 'hitRecoil', { x: -440, e: 'o' }], [30.7, 'stagger', { x: -430 }], [30.85, 'doubled', { x: -430, e: 'o' }], [30.95, 'doubled'], [31.0, 'hitRecoil', { x: -440, e: 'o' }],
+    [31.1, 'stagger', { x: -455 }], [31.4, 'stagger', { x: -485 }], [31.62, 'doubled', { x: -505 }], [31.75, 'hitRecoil', { x: -508, e: 'o' }],
+    [31.85, 'doubled', { x: -510, air: -60, ea: 'i' }], [32.15, 'doubled', { x: -515, air: -760, ea: 'i' }], [32.16, 'doubled', { hide: 1 }]] },
+};
+for (const id in FIG) FIG[id].keys = track(FIG[id].keys);
+function figState(F, tau) {
+  const K = F.keys; let i = 0; while (i < K.length - 1 && K[i + 1].t <= tau) i++;
+  const a = K[i], b = K[Math.min(i + 1, K.length - 1)];
+  const base = k => ({ x: k.x, air: k.air, sx: k.sx, spin: k.spin, d: k.d, sc: k.sc, pa: k.pa, prop: k.prop, eye: k.eye, hide: k.hide });
+  if (b === a || tau <= a.t) return { pose: resolve(a.p, tau), ...base(a) };
+  const u = (tau - a.t) / (b.t - a.t), w = EASE[b.e](u), wx = EASE[b.ex](u), wa = EASE[b.ea](u);
+  const pa = resolve(a.p, tau), pb = resolve(b.p, tau), pose = {}; for (const k of PK) pose[k] = lerp(pa[k], pb[k], w);
+  return { pose, x: lerp(a.x, b.x, wx), air: lerp(a.air, b.air, wa), sx: lerp(a.sx, b.sx, w), spin: lerp(a.spin, b.spin, w), d: lerp(a.d, b.d, wx),
+    sc: lerp(a.sc, b.sc, w), pa: lerp(a.pa, b.pa, w), eye: lerp(a.eye, b.eye, w), prop: a.prop, hide: a.hide };
+}
+
+// ---------------------------------------------------------------- skeleton (side view)
+const LEN = { th: 60, sh: 62, ua: 46, fa: 46, tor: 84, neck: 12, hr: 21 };
+const dir = a => (a *= D2R, [Math.sin(a), Math.cos(a)]);
+function joints(st) {
+  const p = st.pose, sc = st.sc || 1, tr = p.t * D2R, up = [Math.sin(tr), -Math.cos(tr)], J = { hip: [0, 0] };
+  J.neck = [up[0] * LEN.tor, up[1] * LEN.tor];
+  const hr = (p.t + p.h) * D2R, hu = [Math.sin(hr), -Math.cos(hr)], hf = [Math.cos(hr), Math.sin(hr)], d = LEN.neck + LEN.hr;
+  J.head = [J.neck[0] + hu[0] * d, J.neck[1] + hu[1] * d];
+  J.eye = [J.head[0] + hf[0] * LEN.hr * .5 + hu[0] * 3, J.head[1] + hf[1] * LEN.hr * .5 + hu[1] * 3];
+  J.sh = [up[0] * (LEN.tor - 6), up[1] * (LEN.tor - 6)];
+  for (const s of ['F', 'B']) {
+    const d1 = dir(p['a' + s]), d2 = dir(p['a' + s] + p['e' + s]);
+    J['e' + s] = [J.sh[0] + d1[0] * LEN.ua, J.sh[1] + d1[1] * LEN.ua]; J['h' + s] = [J['e' + s][0] + d2[0] * LEN.fa, J['e' + s][1] + d2[1] * LEN.fa];
+    const l1 = dir(p['l' + s]), l2 = dir(p['l' + s] + p['k' + s]);
+    J['k' + s] = [l1[0] * LEN.th, l1[1] * LEN.th]; J['f' + s] = [J['k' + s][0] + l2[0] * LEN.sh, J['k' + s][1] + l2[1] * LEN.sh];
+  }
+  const r = st.spin * D2R, c = Math.cos(r), sn = Math.sin(r); let low = 0;
+  for (const k in J) { const [x, y] = J[k]; J[k] = [(x * c - y * sn) * st.sx * sc, (x * sn + y * c) * sc]; if (k !== 'eye') low = Math.max(low, J[k][1] + (k === 'head' ? LEN.hr * sc : 0)); }
+  const hy = -(low + 6) - st.air;
+  for (const k in J) J[k] = [J[k][0] + st.x, J[k][1] + hy];
+  J.sc = sc; J.f = st.sx >= 0 ? 1 : -1; J.eyeA = st.eye; J.pa = st.pa; return J;
+}
+function pathLimbs(ctx, J, s) { ctx.beginPath(); ctx.moveTo(...J.sh); ctx.lineTo(...J['e' + s]); ctx.lineTo(...J['h' + s]); ctx.moveTo(...J.hip); ctx.lineTo(...J['k' + s]); ctx.lineTo(...J['f' + s]); }
+function pathBody(ctx, J) { pathLimbs(ctx, J, 'F'); ctx.moveTo(...J.hip); ctx.lineTo(...J.neck); }
+function drawFig(ctx, J, kind, z, o = {}) {
+  const lw = (o.lw || 11) * J.sc, R = LEN.hr * J.sc;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = o.alpha ?? 1;
+  const head = (r = R) => { ctx.beginPath(); ctx.arc(J.head[0], J.head[1], r, 0, Math.PI * 2); };
+  if (kind === 'sil' || kind === 'ghost') {
+    ctx.strokeStyle = ctx.fillStyle = o.color; ctx.lineWidth = lw; pathLimbs(ctx, J, 'B'); ctx.stroke(); pathBody(ctx, J); ctx.stroke(); head(); ctx.fill();
+  } else if (kind === 'hero') {
+    ctx.shadowColor = 'rgba(110,225,255,.95)'; ctx.shadowBlur = 22 * S * z;
+    ctx.strokeStyle = '#9fb4cb'; ctx.lineWidth = lw; pathLimbs(ctx, J, 'B'); ctx.stroke();
+    ctx.strokeStyle = '#f4f9ff'; pathBody(ctx, J); ctx.stroke(); ctx.fillStyle = '#f4f9ff'; head(); ctx.fill();
+  } else {
+    const col = o.col;
+    for (const side of ['B', 'F']) {
+      const p = () => side === 'B' ? pathLimbs(ctx, J, 'B') : pathBody(ctx, J);
+      ctx.shadowColor = rgba(col, .9); ctx.shadowBlur = 14 * S * z; ctx.strokeStyle = rgba(side === 'B' ? col.map(v => v * .65) : col); ctx.lineWidth = lw + 5; p(); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.strokeStyle = side === 'B' ? '#08080b' : '#111217'; ctx.lineWidth = lw; p(); ctx.stroke();
+    }
+    ctx.shadowColor = rgba(col, .9); ctx.shadowBlur = 14 * S * z; ctx.fillStyle = rgba(col); head(); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#111217'; head(R - 3 * J.sc); ctx.fill();
+    if ((J.eyeA ?? 1) > .02) {
+      const an = Math.atan2(J.eye[1] - J.head[1], J.eye[0] - J.head[0]);
+      ctx.save(); ctx.globalAlpha *= J.eyeA ?? 1; ctx.translate(...J.eye); ctx.rotate(an + Math.PI / 2); ctx.shadowColor = rgba(col); ctx.shadowBlur = 16 * S * z;
+      ctx.fillStyle = rgba(mixc(col, [255, 255, 255], .7)); ctx.beginPath(); ctx.ellipse(0, 0, 7 * J.sc, 2.6 * J.sc, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+const STAFF = 300;
+function propDir(J, pa) { const a = pa * D2R; return [Math.cos(a) * J.f, Math.sin(a)]; }
+function staffTip(J) { const d = propDir(J, J.pa); return [J.hF[0] + d[0] * STAFF * .65, J.hF[1] + d[1] * STAFF * .65]; }
+function drawStaffAt(ctx, p, d, sil, len = STAFF) {
+  const a = [p[0] - d[0] * len * .35, p[1] - d[1] * len * .35], b = [p[0] + d[0] * len * .65, p[1] + d[1] * len * .65];
+  ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = sil || '#8a5a32'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
+  if (!sil) { ctx.strokeStyle = 'rgba(255,210,150,.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); } ctx.restore();
+}
+function drawKnife(ctx, J, sil) {
+  const d = [J.hF[0] - J.eF[0], J.hF[1] - J.eF[1]], n = Math.hypot(...d) || 1, u = [d[0] / n, d[1] / n];
+  ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = sil || '#e8f0ff'; ctx.shadowColor = '#d0fff0'; ctx.shadowBlur = sil ? 0 : 12 * S; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(...J.hF); ctx.lineTo(J.hF[0] + u[0] * 56, J.hF[1] + u[1] * 56); ctx.stroke(); ctx.restore();
+}
+
+// ---------------------------------------------------------------- the floors (side view). Lift doors in the back wall at x -150..150, top -430.
+const DOOR = { x0: -150, x1: 150, top: -430 }, VP = [0, -230];
+const FLOOR_K = [[0, 4], [2.6, 1], [7.6, 1], [9.0, 8], [16.1, 8], [17.4, 17], [24.7, 17], [26.0, 26], [34.4, 26], [36.3, 30]];
+const DOOR_K = [[0, 0], [2.7, 0], [3.2, 1], [3.8, 1], [4.25, 0], [5.95, 0], [6.4, 1], [6.9, 1], [7.4, 0],
+  [9.1, 0], [9.6, 1], [10.2, 1], [10.65, 0], [14.85, 0], [15.3, 1], [15.6, 1], [15.9, 0],
+  [17.5, 0], [18.0, 1], [18.5, 1], [18.95, 0], [23.15, 0], [23.6, 1], [24.0, 1], [24.5, 0],
+  [26.0, 0], [26.6, 1], [27.05, 1], [27.5, 0], [32.9, 0], [33.35, 1], [33.65, 1], [34.1, 0], [37.0, 0], [37.5, 1]];
+const floorAt = tau => track1(FLOOR_K, tau), doorAt = tau => track1(DOOR_K, tau);
+function indicator(tau) {
+  if (tau >= 36.45 && tau < 36.85) return ['30', '1', '--'][Math.floor(tau * 22) % 3];
+  if (tau >= 36.85) return '1';
+  return String(Math.round(floorAt(tau)));
+}
+const moving = tau => Math.abs(floorAt(tau + .03) - floorAt(tau - .03)) > .002;
+const SETS = {
+  lobby: { wall: [86, 60, 42], wall2: [60, 40, 28], floor: [64, 54, 48], light: [255, 214, 160], acc: [255, 190, 110] },
+  office: { wall: [128, 138, 148], wall2: [96, 104, 114], floor: [52, 58, 66], light: [230, 242, 255], acc: [120, 200, 255] },
+  dojo: { wall: [196, 170, 120], wall2: [110, 74, 40], floor: [118, 78, 44], light: [255, 214, 150], acc: [255, 140, 40] },
+  boiler: { wall: [52, 34, 34], wall2: [30, 20, 22], floor: [38, 38, 42], light: [255, 90, 50], acc: [255, 80, 40] },
+};
+function lightAt(tau, set) {
+  if (set === 'boiler' || (tau > 24.5 && tau < 26.6)) { const f = rnd(Math.floor(tau * 11) + 3); return f > .9 ? .45 : f > .8 ? .75 : 1; }
+  return 1;
+}
+// closed-form particles
+function ballistic(p, dt, g = 1700, floor = 0) {
+  const th = (-p.vy + Math.sqrt(Math.max(0, p.vy * p.vy - 2 * g * (p.py - floor)))) / g;
+  if (dt < th) return [p.px + p.vx * dt, p.py + p.vy * dt + .5 * g * dt * dt, false];
+  const u = dt - th, k = 6; return [p.px + p.vx * th + p.vx * .3 * (1 - Math.exp(-k * u)) / k, floor - 2, true];
+}
+function burst(ctx, tau, t0, x, y, n, o) {
+  const dt = tau - t0; if (dt < 0 || dt > (o.life || 3)) return; const fade = o.fade ? 1 - clamp(dt / o.life) : 1;
+  for (let i = 0; i < n; i++) {
+    const s = t0 * 991 + i * 7.3, a = lerp(o.a0 ?? 0, o.a1 ?? Math.PI * 2, rnd(s)), sp = lerp(o.v0 ?? 100, o.v1 ?? 500, rnd(s + 1));
+    const p = { px: x + (rnd(s + 2) - .5) * (o.spread || 20), py: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp };
+    const [px, py, rest] = ballistic(p, dt, o.g ?? 1500, o.floor ?? 0); if (rest && o.vanish) continue;
+    ctx.fillStyle = o.col; ctx.globalAlpha = fade * (o.alpha ?? 1);
+    const sz = (o.s0 ?? 4) + (o.s1 ?? 8) * rnd(s + 3);
+    if (o.shape === 'paper') { ctx.save(); ctx.translate(px, py); ctx.rotate(rest ? 0 : dt * 6 * (rnd(s + 4) - .5) * 4); ctx.fillRect(-sz, -sz * .7, sz * 2, rest ? 3 : sz * 1.4); ctx.restore(); }
+    else if (o.shape === 'rect') ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz); else { ctx.beginPath(); ctx.arc(px, py, sz / 2, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+}
+function steam(ctx, tau, t0, t1, x, y, ang, spd, rate, life, size, alpha = .5) {
+  if (tau < t0) return; const last = Math.min(tau, t1);
+  for (let k = Math.max(0, Math.floor((tau - life - t0) * rate)); k <= Math.floor((last - t0) * rate); k++) {
+    const tb = t0 + k / rate, age = tau - tb; if (age < 0 || age > life) continue;
+    const a = ang + (rnd(k * 3.1 + x) - .5) * .5, d = spd * age * (1 - .35 * age / life), px = x + Math.cos(a) * d, py = y + Math.sin(a) * d - 40 * age;
+    const r = size * (.3 + age / life * 1.4), al = alpha * Math.sin(Math.PI * Math.min(1, age / life));
+    const g = ctx.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, `rgba(235,235,240,${al})`); g.addColorStop(1, 'rgba(235,235,240,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawElevator(ctx, set, tau) {
+  const op = doorAt(tau), g = 150 * op;
+  if (op > .001) {   // the lit car behind the gap
+    ctx.save(); ctx.beginPath(); ctx.rect(-g, DOOR.top, 2 * g, -DOOR.top); ctx.clip();
+    const cg = ctx.createLinearGradient(0, DOOR.top, 0, 0); cg.addColorStop(0, '#9aa2aa'); cg.addColorStop(1, '#4a5158');
+    ctx.fillStyle = cg; ctx.fillRect(-150, DOOR.top, 300, -DOOR.top);
+    ctx.fillStyle = '#3a4047'; ctx.beginPath(); ctx.moveTo(-150, 0); ctx.lineTo(-95, -70); ctx.lineTo(95, -70); ctx.lineTo(150, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(-150, DOOR.top, 50, -DOOR.top); ctx.fillRect(100, DOOR.top, 50, -DOOR.top);
+    ctx.fillStyle = 'rgba(255,250,235,.95)'; ctx.fillRect(-70, DOOR.top + 4, 140, 6);
+    ctx.fillStyle = '#9aa4ad'; ctx.fillRect(-95, -170, 190, 5);
+    ctx.restore();
+  }
+  ctx.fillStyle = set === 'lobby' ? '#b08a4a' : '#20252b'; ctx.fillRect(-170, DOOR.top - 20, 340, 20); ctx.fillRect(-170, DOOR.top, 20, -DOOR.top); ctx.fillRect(150, DOOR.top, 20, -DOOR.top);
+  ctx.save(); ctx.beginPath(); ctx.rect(-150, DOOR.top, 300, -DOOR.top); ctx.clip();
+  const half = 150 * (1 - op);
+  for (const [x, w] of [[-150, half], [150 - half, half]]) {
+    const pg = ctx.createLinearGradient(x, 0, x + w, 0);
+    if (set === 'lobby') { pg.addColorStop(0, '#7a5e30'); pg.addColorStop(.5, '#d8b46a'); pg.addColorStop(1, '#6e5228'); } else { pg.addColorStop(0, '#5d6670'); pg.addColorStop(.5, '#9aa3ac'); pg.addColorStop(1, '#4f575f'); }
+    ctx.fillStyle = pg; ctx.fillRect(x, DOOR.top, w, -DOOR.top); ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 2; ctx.strokeRect(x, DOOR.top, w, -DOOR.top);
+  }
+  ctx.restore();
+  const ind = indicator(tau);
+  ctx.fillStyle = '#05070a'; ctx.fillRect(-70, -520, 140, 62); ctx.strokeStyle = '#3a4048'; ctx.lineWidth = 3; ctx.strokeRect(-70, -520, 140, 62);
+  ctx.save(); ctx.shadowColor = '#ffb040'; ctx.shadowBlur = 18 * S; ctx.fillStyle = '#ffc060'; ctx.font = '700 46px Bahnschrift, Consolas, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ind, 8, -488);
+  if (moving(tau)) { const dn = floorAt(tau + .03) < floorAt(tau - .03); ctx.beginPath(); if (dn) { ctx.moveTo(-58, -498); ctx.lineTo(-46, -478); ctx.lineTo(-34, -498); } else { ctx.moveTo(-58, -478); ctx.lineTo(-46, -498); ctx.lineTo(-34, -478); } ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  ctx.fillStyle = '#1a1e24'; ctx.fillRect(-206, -262, 26, 60); const lit = set === 'lobby' && tau > 1.38 && tau < 2.7;
+  ctx.fillStyle = lit ? '#ffc060' : '#6a737c'; ctx.beginPath(); ctx.arc(-193, -244, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#6a737c'; ctx.beginPath(); ctx.arc(-193, -222, 6, 0, Math.PI * 2); ctx.fill();
+}
+function drawSetBack(ctx, set, tau, light) {
+  const T = SETS[set], L = light;
+  const wg = ctx.createLinearGradient(0, -800, 0, 0); wg.addColorStop(0, rgba(T.wall2.map(v => v * L))); wg.addColorStop(1, rgba(T.wall.map(v => v * L)));
+  ctx.fillStyle = wg; ctx.fillRect(-2000, -1000, 4000, 1000);
+  const fg = ctx.createLinearGradient(0, 0, 0, 500); fg.addColorStop(0, rgba(T.floor.map(v => v * L))); fg.addColorStop(1, rgba(T.floor.map(v => v * .35 * L)));
+  ctx.fillStyle = fg; ctx.fillRect(-2000, 0, 4000, 1200);
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(-2000, -6, 4000, 6);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  if (set === 'lobby') {
+    for (let x = -1800; x < 1800; x += 200) { ctx.fillStyle = rgba(T.wall2.map(v => v * .8 * L)); ctx.fillRect(x, -760, 6, 760); }
+    ctx.fillStyle = rgba([40, 28, 20].map(v => v * L)); ctx.fillRect(-2000, -140, 4000, 140);
+    ctx.fillStyle = 'rgba(255,220,160,.12)'; ctx.fillRect(-2000, -142, 4000, 3);
+    for (const x of [-560, 560]) { const lg = ctx.createRadialGradient(x, -560, 4, x, -560, 260); lg.addColorStop(0, `rgba(255,214,160,${.35 * L})`); lg.addColorStop(1, 'rgba(255,214,160,0)'); ctx.fillStyle = lg; ctx.fillRect(x - 260, -820, 520, 520);
+      ctx.fillStyle = '#d8b46a'; ctx.fillRect(x - 10, -590, 20, 40); }
+    ctx.fillStyle = '#2a1e14'; ctx.fillRect(-640, -620, 220, 150); ctx.fillStyle = 'rgba(255,190,110,.18)'; ctx.fillRect(-630, -610, 200, 130);
+    ctx.fillStyle = rgba(T.acc); ctx.font = '600 44px Bahnschrift, sans-serif'; ctx.fillText('LOBBY', 0, -580);
+    ctx.fillStyle = '#3a2a1e'; ctx.fillRect(-880, -90, 90, 90); ctx.strokeStyle = '#2f5a32'; ctx.lineWidth = 6;
+    for (let i = 0; i < 9; i++) { const a = -Math.PI / 2 + (i - 4) * .22; ctx.beginPath(); ctx.moveTo(-835, -90); ctx.quadraticCurveTo(-835 + Math.cos(a) * 80, -150, -835 + Math.cos(a) * 140, -90 + Math.sin(a) * 200); ctx.stroke(); }
+    for (let i = 0; i < 6; i++) { ctx.fillStyle = 'rgba(255,230,200,.05)'; ctx.fillRect(-2000, 20 + i * 60, 4000, 2); }
+  } else if (set === 'office') {
+    for (let x = -1600; x < 1600; x += 420) { ctx.fillStyle = rgba([180, 200, 220].map(v => v * .5 * L)); ctx.fillRect(x, -620, 300, 200); ctx.fillStyle = 'rgba(255,255,255,.06)';
+      for (let k = 0; k < 10; k++) ctx.fillRect(x, -620 + k * 20, 300, 3); }
+    for (let x = -1500; x < 1500; x += 260) { if (Math.abs(x + 110) < 330) continue; ctx.fillStyle = rgba([70, 78, 88].map(v => v * L)); ctx.fillRect(x, -170, 220, 170); ctx.fillStyle = rgba([90, 100, 110].map(v => v * L)); ctx.fillRect(x, -176, 220, 8); }
+    for (let x = -1600; x < 1600; x += 360) { ctx.fillStyle = `rgba(240,248,255,${.9 * L})`; ctx.fillRect(x, -790, 160, 8); }
+    ctx.fillStyle = rgba(T.acc, .9); ctx.font = '700 60px Bahnschrift, sans-serif'; ctx.fillText('8', 260, -560);
+  } else if (set === 'dojo') {
+    for (let x = -1700; x < 1700; x += 180) { ctx.fillStyle = rgba([255, 236, 190].map(v => v * .55 * L)); ctx.fillRect(x + 8, -640, 164, 520);
+      ctx.strokeStyle = 'rgba(90,60,30,.6)'; ctx.lineWidth = 3; for (let k = 1; k < 6; k++) { ctx.beginPath(); ctx.moveTo(x + 8, -640 + k * 87); ctx.lineTo(x + 172, -640 + k * 87); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(x + 90, -640); ctx.lineTo(x + 90, -120); ctx.stroke(); }
+    ctx.fillStyle = '#4a2e18'; for (let x = -1800; x < 1800; x += 540) ctx.fillRect(x, -760, 30, 760); ctx.fillRect(-2000, -660, 4000, 22); ctx.fillRect(-2000, -120, 4000, 14);
+    ctx.fillStyle = '#efe6d2'; ctx.fillRect(330, -620, 90, 260); ctx.fillStyle = '#1a1210'; ctx.font = '700 40px serif'; ctx.fillText('道', 375, -530); ctx.fillText('場', 375, -470);
+    for (let i = 0; i < 12; i++) { ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(-2000, 14 + i * 40, 4000, 2); }
+    for (const x of [-420, 520]) { const lg = ctx.createRadialGradient(x, -700, 2, x, -700, 160); lg.addColorStop(0, `rgba(255,200,120,${.5 * L})`); lg.addColorStop(1, 'rgba(255,200,120,0)'); ctx.fillStyle = lg; ctx.fillRect(x - 160, -860, 320, 320);
+      ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.ellipse(x, -700, 26, 34, 0, 0, Math.PI * 2); ctx.fill(); }
+  } else if (set === 'boiler') {
+    ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 2; for (let y = -760; y < 0; y += 40) { ctx.beginPath(); ctx.moveTo(-2000, y); ctx.lineTo(2000, y); ctx.stroke(); }
+    for (const [y, r] of [[-640, 22], [-560, 14], [-200, 18]]) { const pg = ctx.createLinearGradient(0, y - r, 0, y + r); pg.addColorStop(0, '#3a3532'); pg.addColorStop(.5, '#7a6e64'); pg.addColorStop(1, '#2a2522'); ctx.fillStyle = pg; ctx.fillRect(-2000, y - r, 4000, 2 * r); }
+    for (let x = -1700; x < 1700; x += 420) { ctx.fillStyle = '#1a1414'; ctx.beginPath(); ctx.arc(x, -400, 34, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#8a7a6a'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.strokeStyle = '#ff5030'; ctx.beginPath(); ctx.moveTo(x, -400); ctx.lineTo(x + 20 * Math.cos(tau * 3 + x), -400 + 20 * Math.sin(tau * 3 + x)); ctx.stroke(); }
+    for (const x of [-900, 300, 1200]) { const lg = ctx.createRadialGradient(x, -720, 2, x, -720, 300); lg.addColorStop(0, `rgba(255,80,40,${.45 * L})`); lg.addColorStop(1, 'rgba(255,80,40,0)'); ctx.fillStyle = lg; ctx.fillRect(x - 300, -1000, 600, 600); }
+    ctx.fillStyle = rgba(T.acc, .8); ctx.font = '700 60px Bahnschrift, sans-serif'; ctx.fillText('B-26', 380, -440);
+    ctx.fillStyle = '#5a4a40'; ctx.fillRect(-600, -900, 40, 900); ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(-592, -900, 6, 900);
+    ctx.save(); ctx.translate(-140, -200); ctx.rotate(clamp((tau - 29.4) / .4) * 6); ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.stroke();
+    for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(k * Math.PI / 2) * 30, Math.sin(k * Math.PI / 2) * 30); ctx.stroke(); } ctx.restore();
+    const broken = tau >= 31.8;
+    ctx.fillStyle = broken ? '#000' : '#26262a'; ctx.fillRect(-640, 0, 260, 30); if (!broken) { ctx.strokeStyle = '#4a4a50'; ctx.lineWidth = 2; for (let x = -640; x < -380; x += 14) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 30); ctx.stroke(); } }
+  }
+  const lp = ctx.createRadialGradient(0, -760, 10, 0, -300, 900); lp.addColorStop(0, rgba(T.light, .18 * L)); lp.addColorStop(1, rgba(T.light, 0));
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = lp; ctx.fillRect(-1200, -900, 2400, 1000); ctx.restore();
+}
+function drawSetProps(ctx, set, tau, sil) {
+  ctx.textAlign = 'center';
+  if (set === 'lobby') {
+    ctx.fillStyle = sil || '#5a3a22'; ctx.fillRect(520, -112, 170, 112); ctx.fillStyle = sil || '#c9a060'; ctx.fillRect(510, -120, 190, 10);
+    if (!sil) { ctx.fillStyle = 'rgba(255,220,160,.6)'; ctx.font = '600 22px Bahnschrift, sans-serif'; ctx.fillText('RECEPTION', 605, -60); if (tau < 5.6) { ctx.fillStyle = '#d9d2c4'; ctx.fillRect(560, -140, 40, 22); } }
+    if (!sil) burst(ctx, tau, 5.6, 600, -125, 22, { a0: -2.6, a1: -.5, v0: 200, v1: 600, g: 500, life: 2.5, col: '#f2efe6', shape: 'paper', s0: 5, s1: 6, spread: 60 });
+  } else if (set === 'office') {
+    const br = tau >= 12.4, k = EASE.o((tau - 12.4) / .25);
+    ctx.save(); ctx.fillStyle = sil || '#6a5a4a';
+    if (!br) { ctx.fillRect(-780, -100, 200, 14); ctx.fillRect(-770, -86, 12, 86); ctx.fillRect(-602, -86, 12, 86); }
+    else { ctx.translate(-680, 0); for (const sgn of [-1, 1]) { ctx.save(); ctx.translate(sgn * 4, 0); ctx.rotate(sgn * k * .55); ctx.fillRect(sgn > 0 ? 0 : -100, -100 * (1 - k * .55), 100, 14); ctx.restore(); } }
+    ctx.restore();
+    if (!sil) {
+      if (!br) { ctx.fillStyle = '#15191e'; ctx.fillRect(-720, -175, 90, 64); ctx.fillStyle = 'rgba(120,200,255,.5)'; ctx.fillRect(-714, -169, 78, 50); ctx.fillStyle = '#15191e'; ctx.fillRect(-680, -112, 10, 12); }
+      else { const [mx, my, rest] = ballistic({ px: -675, py: -140, vx: -260, vy: -520 }, tau - 12.4, 1800); ctx.save(); ctx.translate(mx, my - (rest ? 30 : 0)); ctx.rotate(rest ? 1.57 : (tau - 12.4) * 9); ctx.fillStyle = '#15191e'; ctx.fillRect(-45, -32, 90, 64); ctx.restore(); }
+      burst(ctx, tau, 12.4, -680, -110, 26, { a0: -2.8, a1: -.3, v0: 200, v1: 650, g: 450, life: 2.8, col: '#f0f0ea', shape: 'paper', s0: 5, s1: 6, spread: 120 });
+      burst(ctx, tau, 10.88, -200, -60, 16, { a0: -2.8, a1: -.3, v0: 150, v1: 420, g: 450, life: 2.0, col: '#f0f0ea', shape: 'paper', s0: 4, s1: 5, spread: 80 });
+    }
+    const wb = tau >= 13.25;
+    ctx.fillStyle = sil || '#d8dde2'; ctx.fillRect(480, -112, 80, 112); if (!sil) { ctx.fillStyle = '#9aa3ac'; ctx.fillRect(510, -80, 20, 8); }
+    if (!wb) { ctx.fillStyle = sil || 'rgba(110,180,255,.55)'; ctx.beginPath(); ctx.roundRect(486, -262, 68, 150, 18); ctx.fill(); }
+    else if (!sil) {
+      burst(ctx, tau, 13.25, 520, -190, 70, { a0: -3.1, a1: 0, v0: 150, v1: 700, g: 1600, life: 1.6, col: 'rgba(140,200,255,.85)', s0: 3, s1: 6, spread: 60, vanish: true });
+      const pr = 40 + 220 * EASE.o((tau - 13.25) / 1.2); ctx.fillStyle = 'rgba(140,200,255,.22)'; ctx.beginPath(); ctx.ellipse(500, 4, pr, pr * .07, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (set === 'dojo') {
+    const torn = tau >= 22.35, x0 = -770, x1 = -640;
+    ctx.fillStyle = sil || '#3a2412'; ctx.fillRect(x0 - 8, -400, 8, 400); ctx.fillRect(x1, -400, 8, 400); ctx.fillRect(x0 - 8, -408, x1 - x0 + 16, 10);
+    if (!sil) {
+      ctx.save(); if (torn) { ctx.beginPath(); ctx.rect(x0, -400, x1 - x0, 400); ctx.moveTo(x0 + 20, -330); for (let i = 0; i <= 10; i++) ctx.lineTo(x0 + 10 + (x1 - x0 - 20) * (i % 2 ? .9 : .1) + (rnd(i) - .5) * 20, -330 + i * 26); ctx.closePath(); ctx.clip('evenodd'); }
+      ctx.fillStyle = 'rgba(250,236,200,.82)'; ctx.fillRect(x0, -400, x1 - x0, 400); ctx.strokeStyle = 'rgba(70,45,20,.8)'; ctx.lineWidth = 3;
+      for (let k = 1; k < 5; k++) { ctx.beginPath(); ctx.moveTo(x0, -400 + k * 80); ctx.lineTo(x1, -400 + k * 80); ctx.stroke(); } ctx.beginPath(); ctx.moveTo((x0 + x1) / 2, -400); ctx.lineTo((x0 + x1) / 2, 0); ctx.stroke(); ctx.restore();
+      burst(ctx, tau, 22.35, -705, -190, 30, { a0: -3.4, a1: -1.6, v0: 150, v1: 500, g: 300, life: 2.6, col: 'rgba(250,236,200,.95)', shape: 'paper', s0: 6, s1: 8, spread: 80 });
+    }
+    const fall = EASE.i2((tau - 23.25) / .35);
+    ctx.save(); ctx.translate(700, 0); if (tau > 23.25) ctx.rotate(fall * 1.35);
+    ctx.fillStyle = sil || '#4a2e18'; ctx.fillRect(-70, -320, 12, 320); ctx.fillRect(58, -320, 12, 320); ctx.fillRect(-70, -300, 140, 10); ctx.fillRect(-70, -150, 140, 10);
+    ctx.strokeStyle = sil || '#a07850'; ctx.lineWidth = 6; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-50 + k * 33, -10); ctx.lineTo(-40 + k * 33, -380); ctx.stroke(); }
+    ctx.restore();
+  } else if (set === 'boiler') {
+    if (sil) return;
+    steam(ctx, tau, 27.8, 99, -580, -240, -.4, 520, 26, 1.2, 70, .55);
+    steam(ctx, tau, 29.55, 30.6, -175, -200, Math.PI, 950, 34, .7, 60, .7);
+    if (tau > 29.1) { ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 3; const g = EASE.o((tau - 29.1) / .12); for (let b = 0; b < 6; b++) { let x = -480, y = 2; ctx.beginPath(); ctx.moveTo(x, y); for (let s = 0; s < 5 * g; s++) { x += (b % 2 ? 1 : -1) * (14 + 18 * rnd(b * 9 + s)); y += 3 + 5 * rnd(b * 3 + s); ctx.lineTo(x, y); } ctx.stroke(); } }
+    burst(ctx, tau, 29.1, -480, -8, 24, { a0: -2.9, a1: -.2, v0: 200, v1: 700, g: 2000, life: 1.6, col: '#3a3a40', shape: 'rect', s0: 3, s1: 7, spread: 60 });
+    burst(ctx, tau, 31.8, -510, -4, 40, { a0: -2.9, a1: -.2, v0: 200, v1: 800, g: 2000, life: 1.8, col: '#2a2a30', shape: 'rect', s0: 4, s1: 10, spread: 200 });
+    steam(ctx, tau, 31.8, 32.6, -510, 0, -Math.PI / 2, 300, 30, 1.4, 90, .5);
+  }
+}
+const HAND = {};
+function handAt(id, tau) { const k = id + tau; if (!HAND[k]) HAND[k] = joints(figState(FIG[id], tau)).hF; return HAND[k]; }
+function freeProps(ctx, tau, set, sil) {
+  if (set === 'office' && tau >= 10.55) {
+    const h = handAt('K', 10.55), [x, y, rest] = ballistic({ px: h[0], py: h[1], vx: 120, vy: -300 }, tau - 10.55, 1900);
+    ctx.save(); ctx.translate(x, rest ? -3 : y); ctx.rotate(rest ? 0 : (tau - 10.55) * 14); ctx.strokeStyle = sil || '#e8f0ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(26, 0); ctx.stroke(); ctx.restore();
+  }
+  if (set === 'boiler' && tau >= 27.15) {
+    const h = handAt('H', 27.15);
+    for (const [vx, vy, w, off] of [[-220, -650, 9, 0], [380, -420, -7, 120]]) {
+      const [x, y, rest] = ballistic({ px: h[0] + off, py: h[1], vx, vy }, tau - 27.15, 1800);
+      ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = sil || '#8a5a32'; ctx.lineWidth = 8; ctx.translate(x, rest ? -6 : y); ctx.rotate(rest ? 0 : w * (tau - 27.15));
+      ctx.beginPath(); ctx.moveTo(-70, 0); ctx.lineTo(70, 0); ctx.stroke(); ctx.restore();
+    }
+  }
+}
+
+// ---------------------------------------------------------------- effects
+const IMP = {};
+function impactPoint(m) {
+  if (IMP[m.tau]) return IMP[m.tau];
+  let p; if (m.pt) p = m.pt; else { const J = joints(figState(FIG[m.fig], m.tau)); p = m.j === 'tip' ? staffTip(J) : J[m.j]; }
+  if (m.off) p = [p[0] + m.off[0], p[1] + m.off[1]];
+  return (IMP[m.tau] = p);
+}
+function drawSparks(ctx, tau, set, sil) {
+  for (const m of TL.impacts) {
+    const sh = shotAt(m.tau); if (m.nospark || sh.set !== set || sh.type !== 'side') continue; const u = (tau - m.tau) / .36; if (u < 0 || u > 1) continue; const [px, py] = impactPoint(m), sz = m.size;
+    if (!sil) { const g = ctx.createRadialGradient(px, py, 0, px, py, 140 * sz); g.addColorStop(0, `rgba(255,255,255,${.9 * (1 - u)})`); g.addColorStop(.3, `rgba(255,220,160,${.3 * (1 - u)})`); g.addColorStop(1, 'rgba(255,220,160,0)');
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, 140 * sz, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    ctx.save(); ctx.lineCap = 'round';
+    for (let i = 0; i < 14; i++) { const s = m.tau * 1000 + i, a = rnd(s) * Math.PI * 2, d0 = (18 + 230 * EASE.o(u) * (.5 + rnd(s + 1))) * sz, L = 55 * (1 - u) * sz * (.5 + rnd(s + 2));
+      ctx.strokeStyle = sil || (i % 3 ? 'rgba(255,255,255,.95)' : 'rgba(255,190,90,.95)'); ctx.lineWidth = (sil ? 6 : 3.5) * (1 - u * .6);
+      ctx.beginPath(); ctx.moveTo(px + Math.cos(a) * d0, py + Math.sin(a) * d0); ctx.lineTo(px + Math.cos(a) * (d0 + L), py + Math.sin(a) * (d0 + L)); ctx.stroke(); }
+    ctx.restore();
+  }
+}
+
+// ---------------------------------------------------------------- side-view frame
+let CUR_DOOR = 1;
+function withDepth(ctx, d, fn) {
+  if (d <= .001) return fn(); const s = 1 / (1 + .22 * d);
+  ctx.save(); if (d > .5) { const g = 150 * CUR_DOOR; ctx.beginPath(); ctx.rect(-g, DOOR.top, 2 * g, -DOOR.top + 4); ctx.clip(); }
+  ctx.translate(...VP); ctx.scale(s, s); ctx.translate(-VP[0], -VP[1]); fn(); ctx.restore();
+}
+function drawFighter(ctx, g, tau, z, sil) {
+  withDepth(ctx, g.st.d, () => {
+    const under = g.st.air < -1;
+    if (under) { ctx.save(); ctx.beginPath(); ctx.rect(-3000, -3000, 6000, 3000); ctx.clip(); }
+    if (g.st.prop && !g.F.knife) drawStaffAt(ctx, g.J.hF, propDir(g.J, g.st.pa), sil);
+    drawFig(ctx, g.J, sil ? 'sil' : g.F.kind, z, { col: g.F.col, color: sil });
+    if (g.F.knife && g.st.prop) drawKnife(ctx, g.J, sil);
+    if (under) ctx.restore();
+  });
+}
+const TRAILS = { H: [[4.25, 4.9], [10.7, 10.95], [11.8, 12.2], [13.0, 13.25], [14.0, 14.35], [19.0, 19.2], [20.7, 20.85], [21.15, 21.6], [21.85, 22.15], [22.6, 23.05],
+  [27.0, 27.2], [27.5, 27.85], [28.95, 29.3], [30.2, 30.5], [30.8, 31.05], [31.15, 31.8]],
+  TA: [[4.82, 5.6]], K: [[10.4, 10.45], [10.72, 10.9], [12.85, 13.05], [14.3, 14.8]], A: [[11.6, 11.8], [12.15, 12.45]], P1: [[18.6, 18.98]], P2: [[19.4, 19.55], [22.1, 22.45]],
+  ST: [[19.0, 19.1], [19.62, 19.75], [22.95, 23.3]], BR: [[27.35, 27.55], [28.95, 29.12]] };
+function drawTrails(ctx, g, tau, z) {
+  for (const [a, b] of TRAILS[g.id] || []) if (tau > a && tau < b) for (let i = 4; i >= 1; i--) {
+    const st = figState(g.F, tau - i * .02); if (st.hide) continue; const J = joints(st);
+    withDepth(ctx, st.d, () => drawFig(ctx, J, 'ghost', z, { color: g.F.kind === 'hero' ? 'rgba(120,220,255,1)' : rgba(g.F.col), alpha: .2 * (1 - i / 5), lw: 9 }));
+  }
+}
+function figsAt(tau, set) {
+  const L = [];
+  for (const id in FIG) { const F = FIG[id]; if (F.set && F.set !== set) continue; const st = figState(F, tau); if (st.hide) continue; L.push({ id, F, st, J: joints(st) }); }
+  return L.sort((a, b) => b.st.d - a.st.d);
+}
+function drawShadows(ctx, figs) {
+  for (const g of figs) { if (g.st.d > .3 || g.st.air < -1) continue; const h = Math.max(0, g.st.air), a = .35 / (1 + h / 120), w = 70 * g.J.sc * (1 + h / 400);
+    ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.beginPath(); ctx.ellipse(g.J.hip[0], 4, w, 9, 0, 0, Math.PI * 2); ctx.fill(); }
+}
+function drawSide(tau, t, shot, M, cam) {
+  const set = shot.set, light = lightAt(tau, set);
+  X.setTransform(M);
+  drawSetBack(X, set, tau, light);
+  CUR_DOOR = doorAt(tau);
+  const figs = figsAt(tau, set);
+  drawElevator(X, set, tau);
+  for (const g of figs) if (g.st.d > .5) drawFighter(X, g, tau, cam.z);
+  drawSetProps(X, set, tau);
+  drawShadows(X, figs);
+  for (const g of figs) drawTrails(X, g, tau, cam.z);
+  for (const g of figs) if (g.st.d <= .5) drawFighter(X, g, tau, cam.z);
+  freeProps(X, tau, set);
+  drawSparks(X, tau, set);
+  if (light < 1) { X.setTransform(1, 0, 0, 1, 0, 0); X.fillStyle = `rgba(0,0,0,${(1 - light) * .6})`; X.fillRect(0, 0, W, H); }
+  for (const m of TL.impacts) if (m.flash && shotAt(m.tau).set === set && shotAt(m.tau).type === 'side') {
+    const d = t - realOf(m.tau); if (d < 0 || d >= 2 / 30) continue; const inv = d >= 1 / 30, c = inv ? '#fff' : '#000';
+    X.setTransform(1, 0, 0, 1, 0, 0); X.fillStyle = inv ? '#000' : '#fff'; X.fillRect(0, 0, W, H);
+    X.setTransform(M); for (const g of figs) drawFighter(X, g, tau, cam.z, c); drawSparks(X, tau, set, c);
+  }
+}
+
+// ---------------------------------------------------------------- POV: inside the car, over his shoulder, looking out
+// frontal stick figures: hip at (0,0); arm angle a from down, + = outward; forearm absolute = a + e
+const FP = {
+  fStand: { tl: 0, hd: 0, aL: 10, eL: 6, aR: 10, eR: 6, lL: 9, lR: 9 },
+  fGuard: { tl: 0, hd: 2, aL: 38, eL: 165, aR: 38, eR: 165, lL: 15, lR: 15 },
+  fSlump: { tl: 0, hd: 14, aL: 4, eL: 2, aR: 4, eR: 2, lL: 8, lR: 8 },
+  fBreathe: { tl: 0, hd: 8, aL: 8, eL: 4, aR: 8, eR: 4, lL: 10, lR: 10 },
+  fLook: { tl: 0, hd: -10, aL: 10, eL: 6, aR: 10, eR: 6, lL: 9, lR: 9 },
+  fPress: { tl: 4, hd: 0, aL: 10, eL: 6, aR: 80, eR: 8, lL: 9, lR: 9 },
+  fCrack: { tl: 0, hd: 0, aL: 30, eL: 135, aR: 30, eR: 135, lL: 15, lR: 15 },
+  fKnife: { tl: 0, hd: 0, aL: 38, eL: 165, aR: 48, eR: 40, lL: 16, lR: 16 },
+  fStaff: { tl: 0, hd: 0, aL: 30, eL: 105, aR: 30, eR: 105, lL: 16, lR: 16 },
+};
+const FPK = ['tl', 'hd', 'aL', 'eL', 'aR', 'eR', 'lL', 'lR'];
+function ftrack(K, tau) {
+  let i = 0; while (i < K.length - 1 && K[i + 1][0] <= tau) i++;
+  const a = K[i], b = K[Math.min(i + 1, K.length - 1)];
+  let p; if (b === a || tau <= a[0]) p = { ...FP[a[1]] }; else { const w = EASE[(b[2] || {}).e || 'io']((tau - a[0]) / (b[0] - a[0])); p = {}; for (const k of FPK) p[k] = lerp(FP[a[1]][k], FP[b[1]][k], w); }
+  if (a[1] === 'fBreathe' || a[1] === 'fSlump') p.hd += 3 * Math.sin(tau * 2 * Math.PI * 1.2);
+  return p;
+}
+function fjoints(p, x, y, s) {
+  const J = {}, tl = p.tl * D2R, up = [Math.sin(tl), -Math.cos(tl)];
+  J.hip = [x, y]; J.neck = [x + up[0] * 84 * s, y + up[1] * (84 - p.hd * .4) * s];
+  J.head = [J.neck[0] + up[0] * 33 * s, J.neck[1] - (33 - p.hd) * s];
+  for (const [side, sg] of [['L', -1], ['R', 1]]) {
+    const a = p['a' + side] * D2R, f = (p['a' + side] + p['e' + side]) * D2R, sh = [J.neck[0] + sg * 4 * s, J.neck[1] + 6 * s];
+    J['e' + side] = [sh[0] + sg * Math.sin(a) * 46 * s, sh[1] + Math.cos(a) * 46 * s]; J['h' + side] = [J['e' + side][0] + sg * Math.sin(f) * 46 * s, J['e' + side][1] + Math.cos(f) * 46 * s];
+    J['s' + side] = sh;
+    const l = p['l' + side] * D2R; J['k' + side] = [x + sg * Math.sin(l) * 60 * s, y + Math.cos(l) * 60 * s]; J['f' + side] = [J['k' + side][0] + sg * Math.sin(l * .6) * 62 * s, J['k' + side][1] + Math.cos(l * .6) * 62 * s];
+  }
+  J.s = s; return J;
+}
+function drawFrontal(ctx, J, hero, col, o = {}) {
+  const s = J.s, lw = 11 * s;
+  const path = () => { ctx.beginPath(); for (const sd of ['L', 'R']) { ctx.moveTo(...J['s' + sd]); ctx.lineTo(...J['e' + sd]); ctx.lineTo(...J['h' + sd]); ctx.moveTo(...J.hip); ctx.lineTo(...J['k' + sd]); ctx.lineTo(...J['f' + sd]); } ctx.moveTo(...J.hip); ctx.lineTo(...J.neck); };
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (o.prop === 'staff') { const a = J.hL, b = J.hR, ang = o.pa || 0, c = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], u = [Math.cos(ang), Math.sin(ang)];
+    ctx.strokeStyle = '#8a5a32'; ctx.lineWidth = 8 * s; ctx.beginPath(); ctx.moveTo(c[0] - u[0] * 150 * s, c[1] - u[1] * 150 * s); ctx.lineTo(c[0] + u[0] * 150 * s, c[1] + u[1] * 150 * s); ctx.stroke(); }
+  if (hero) { ctx.shadowColor = 'rgba(110,225,255,.95)'; ctx.shadowBlur = 26 * S * s; ctx.strokeStyle = '#eef6ff'; ctx.lineWidth = lw; path(); ctx.stroke(); ctx.fillStyle = '#eef6ff';
+    ctx.beginPath(); ctx.arc(...J.head, 21 * s, 0, Math.PI * 2); ctx.fill(); }
+  else {
+    ctx.shadowColor = rgba(col, .9); ctx.shadowBlur = 14 * S * s; ctx.strokeStyle = rgba(col); ctx.lineWidth = lw + 5 * s; path(); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.strokeStyle = '#111217'; ctx.lineWidth = lw; path(); ctx.stroke();
+    ctx.shadowColor = rgba(col, .9); ctx.shadowBlur = 14 * S * s; ctx.fillStyle = rgba(col); ctx.beginPath(); ctx.arc(...J.head, 21 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#111217'; ctx.beginPath(); ctx.arc(...J.head, 18 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowColor = rgba(col); ctx.shadowBlur = 14 * S * s; ctx.fillStyle = rgba(mixc(col, [255, 255, 255], .7));
+    for (const sg of [-1, 1]) { ctx.beginPath(); ctx.ellipse(J.head[0] + sg * 8 * s, J.head[1] + 1 * s, 5 * s, 2.2 * s, sg * .25, 0, Math.PI * 2); ctx.fill(); }
+  }
+  if (o.prop === 'knife') { const h = J.hR, a = o.pa || 0; ctx.shadowColor = '#d0fff0'; ctx.shadowBlur = 10 * S; ctx.strokeStyle = '#e8f0ff'; ctx.lineWidth = 4 * s;
+    ctx.beginPath(); ctx.moveTo(...h); ctx.lineTo(h[0] + Math.sin(a) * 50 * s, h[1] - Math.cos(a) * 50 * s); ctx.stroke(); }
+  ctx.restore();
+}
+// who waits on each floor, seen from the car: [id, colour, lateral x, depth z, pose track, scale, prop]
+const POVF = {
+  office: [['K', GREEN, -110, 3.4, [[7.4, 'fKnife']], 1, 'knife'], ['A', TEAL, 130, 4.3, [[7.4, 'fCrack'], [9.35, 'fGuard']], 1]],
+  dojo: [['P1', PINK, -150, 4.4, [[15.9, 'fGuard']], 1], ['ST', ORANGE, 0, 3.7, [[15.9, 'fStaff']], 1, 'staff'], ['P2', VIOLET, 160, 4.5, [[15.9, 'fGuard']], 1]],
+  boiler: [['BR', PURPLE, 0, 3.0, [[24.5, 'fCrack'], [26.25, 'fGuard']], 1.6]],
+  lobby: [['TA', RED, 0, 2.9, [], 1], ['ST', ORANGE, -270, 4.0, [], 1, 'staff'], ['K', GREEN, 260, 3.9, [], 1, 'knife'], ['A', TEAL, -150, 5.0, [], 1], ['P2', VIOLET, 170, 5.2, [], 1],
+    ['P1', PINK, -330, 5.6, [], 1], ['BR', PURPLE, 40, 7.0, [], 1.6], ['x1', [255, 200, 40], 330, 6.4, [], 1], ['x2', [120, 255, 80], -420, 7.2, [], 1], ['x3', [40, 180, 255], -60, 8.6, [], 1],
+    ['x4', [255, 110, 60], 470, 8.2, [], 1], ['x5', [255, 60, 200], 220, 9.4, [], 1], ['x6', [190, 90, 255], -300, 9.6, [], 1]],
+};
+const HF_K = [[7.4, 'fStand'], [8.9, 'fStand'], [9.35, 'fGuard', { e: 'o' }], [15.9, 'fBreathe'], [17.3, 'fBreathe'], [17.7, 'fGuard'], [24.5, 'fStaff'], [26.6, 'fStaff'],
+  [34.1, 'fSlump'], [34.5, 'fPress', { e: 'o' }], [34.85, 'fStand'], [36.45, 'fStand'], [36.6, 'fLook'], [36.95, 'fStand'], [37.6, 'fSlump'], [38.55, 'fSlump'], [38.72, 'fGuard', { e: 'o' }], [39.45, 'fGuard']];
+const POV = { FY: 640, VY: -80, K: 3.0 };
+const pS = z => 1 / (1 + .35 * z);
+function drawOutside(ctx, set, tau, light) {
+  const T = SETS[set], L = light, Pp = (x, y, z) => { const s = pS(z); return [x * s * POV.K, POV.VY + (POV.FY - POV.VY) * s + y * s * POV.K]; };
+  const quad = (pts, c) => { ctx.fillStyle = c; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p)); ctx.closePath(); ctx.fill(); };
+  const W2 = 520, Ht = -330, far = 22;
+  quad([Pp(-W2, 0, 0), Pp(W2, 0, 0), Pp(W2, 0, far), Pp(-W2, 0, far)], rgba(T.floor.map(v => v * L)));
+  quad([Pp(-W2, Ht, 0), Pp(W2, Ht, 0), Pp(W2, Ht, far), Pp(-W2, Ht, far)], rgba(T.wall2.map(v => v * .6 * L)));
+  quad([Pp(-W2, 0, 0), Pp(-W2, Ht, 0), Pp(-W2, Ht, far), Pp(-W2, 0, far)], rgba(T.wall.map(v => v * .75 * L)));
+  quad([Pp(W2, 0, 0), Pp(W2, Ht, 0), Pp(W2, Ht, far), Pp(W2, 0, far)], rgba(T.wall.map(v => v * .65 * L)));
+  quad([Pp(-W2, Ht, far), Pp(W2, Ht, far), Pp(W2, 0, far), Pp(-W2, 0, far)], rgba(T.wall.map(v => v * .5 * L)));
+  for (let z = 1; z < far; z += 2.2) { const a = Pp(-80, Ht + 2, z), b = Pp(80, Ht + 2, z); ctx.fillStyle = rgba(T.light, .85 * L); ctx.fillRect(a[0], a[1], b[0] - a[0], Math.max(2, 14 * pS(z))); }
+  ctx.strokeStyle = rgba(T.light, .1 * L); ctx.lineWidth = 2; for (let z = 0; z < far; z += 1) { const a = Pp(-W2, 0, z), b = Pp(W2, 0, z); ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); }
+  if (set === 'office') for (const sx of [-1, 1]) for (let z = 2; z < 14; z += 3) quad([Pp(sx * 330, 0, z), Pp(sx * 500, 0, z), Pp(sx * 500, -110, z), Pp(sx * 330, -110, z)], rgba([70, 78, 88].map(v => v * L)));
+  if (set === 'dojo') for (const sx of [-1, 1]) for (let z = 0; z < far; z += 1.6) { const a = Pp(sx * W2, -300, z), b = Pp(sx * W2, -20, z + 1.4); ctx.fillStyle = `rgba(255,236,190,${.25 * L})`; ctx.fillRect(Math.min(a[0], b[0]), a[1], Math.abs(b[0] - a[0]) + 1, b[1] - a[1]); }
+  if (set === 'boiler') { for (const y of [-280, -230]) { const a = Pp(-W2, y, 0), b = Pp(-W2, y, far); ctx.strokeStyle = '#6a5a50'; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); }
+    const g = ctx.createRadialGradient(0, -100, 10, 0, -100, 500); g.addColorStop(0, `rgba(255,70,40,${.35 * L})`); g.addColorStop(1, 'rgba(255,70,40,0)'); ctx.fillStyle = g; ctx.fillRect(-540, -600, 1080, 1000);
+    steam(ctx, tau, 24.5, 26.6, 150, 0, -1.9, 120, 6, 2.2, 160, .35); }
+  if (set === 'lobby') { quad([Pp(-480, 0, 6), Pp(-260, 0, 6), Pp(-260, -110, 6), Pp(-480, -110, 6)], rgba([90, 58, 34].map(v => v * L)));
+    const g = ctx.createRadialGradient(0, -150, 10, 0, -150, 450); g.addColorStop(0, `rgba(255,214,160,${.3 * L})`); g.addColorStop(1, 'rgba(255,214,160,0)'); ctx.fillStyle = g; ctx.fillRect(-540, -600, 1080, 1000); }
+  const list = (POVF[set] || []).map((e, i) => [e[0], e[1], e[2], e[3], e[4], e[5] || 1, e[6] || null, i]).sort((a, b) => b[3] - a[3]);
+  for (const [id, col, x, z, tr, sc, prop, i] of list) {
+    let p;
+    if (set === 'lobby') { const up = 38.75 + .03 * i, w = EASE.o((tau - up) / .12); p = {}; for (const k of FPK) p[k] = lerp(FP.fStand[k], FP.fGuard[k], w); }
+    else p = ftrack(tr, tau);
+    const s = pS(z) * POV.K * sc, base = Pp(x, 0, z), J = fjoints(p, base[0], base[1] - 128 * s, s);
+    let pa = 0; if (prop === 'staff') pa = set === 'dojo' ? tau * 9 : 0; if (prop === 'knife') pa = Math.sin(tau * 7) * .9;
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(base[0], base[1], 60 * s, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
+    drawFrontal(ctx, J, false, col, { prop, pa });
+  }
+}
+function drawPOV(tau, t, shot) {
+  const set = shot.set, light = lightAt(tau, set), t0 = shot.t, op = doorAt(tau);
+  const nx = TL.shots.find(s => s.t > t0), t1 = nx ? nx.t : TL.dur, k = (tau - t0) / (t1 - t0);
+  const z = POVZ || (1.3 + .07 * k + (set === 'lobby' ? .1 * smooth((tau - 37.2) / 1.2) : 0)), m = new DOMMatrix();
+  const sh = shakeAt(t); m.translateSelf(W / 2 + sh[0] + 6 * Math.sin(t * .8) * S, H / 2 + sh[1] + 4 * Math.sin(t * 1.3) * S); m.scaleSelf(S * z, S * z); m.translateSelf(0, POVZ ? 30 : -60);
+  if (moving(tau)) m.translateSelf(0, 1.4 * Math.sin(t * 57));
+  X.setTransform(m);
+  X.fillStyle = '#000'; X.fillRect(-700, -1100, 1400, 2200);
+  X.save(); X.beginPath(); X.rect(-210 * op, -420, 420 * op, 1060); X.clip(); drawOutside(X, set, tau, light); X.restore();
+  const steel = X.createLinearGradient(-560, 0, 560, 0); steel.addColorStop(0, '#2a3038'); steel.addColorStop(.5, '#4b545e'); steel.addColorStop(1, '#2a3038');
+  X.fillStyle = steel; X.beginPath(); X.rect(-560, -1100, 1120, 2200); X.rect(-210, -420, 420, 1060); X.fill('evenodd');
+  X.fillStyle = '#1a1e24'; X.beginPath(); X.moveTo(-560, -1100); X.lineTo(560, -1100); X.lineTo(440, -820); X.lineTo(-440, -820); X.fill();
+  X.fillStyle = `rgba(255,248,230,${.95 * light})`; X.fillRect(-220, -980, 440, 20);
+  X.fillStyle = '#20252b'; X.beginPath(); X.moveTo(-560, -820); X.lineTo(-440, -820); X.lineTo(-440, 760); X.lineTo(-560, 1100); X.fill(); X.beginPath(); X.moveTo(560, -820); X.lineTo(440, -820); X.lineTo(440, 760); X.lineTo(560, 1100); X.fill();
+  X.fillStyle = '#9aa4ad'; X.fillRect(-560, 240, 120, 10); X.fillRect(440, 240, 120, 10);
+  X.fillStyle = '#2c2f33'; X.beginPath(); X.moveTo(-440, 760); X.lineTo(440, 760); X.lineTo(560, 1100); X.lineTo(-560, 1100); X.fill();
+  X.fillStyle = 'rgba(255,200,60,.5)'; X.fillRect(-210, 636, 420, 8);
+  const half = 210 * (1 - op);
+  for (const [x, w] of [[-210, half], [210 - half, half]]) { const pg = X.createLinearGradient(x, 0, x + w, 0); pg.addColorStop(0, '#5d6670'); pg.addColorStop(.5, '#9aa3ac'); pg.addColorStop(1, '#4f575f');
+    X.fillStyle = pg; X.fillRect(x, -420, w, 1060); X.strokeStyle = 'rgba(0,0,0,.45)'; X.lineWidth = 3; X.strokeRect(x, -420, w, 1060); }
+  X.fillStyle = '#15191e'; X.fillRect(-226, -436, 452, 16); X.fillRect(-226, -420, 16, 1060); X.fillRect(210, -420, 16, 1060);
+  const ind = indicator(tau), glitch = INDRED || (tau >= 36.45 && tau < 36.85);
+  X.fillStyle = '#05070a'; X.fillRect(-140, -640, 280, 130); X.strokeStyle = '#3a4048'; X.lineWidth = 4; X.strokeRect(-140, -640, 280, 130);
+  X.save(); X.shadowColor = glitch ? '#ff3040' : '#ffb040'; X.shadowBlur = 26 * S; X.fillStyle = glitch ? '#ff5060' : '#ffc060'; X.font = '700 104px Bahnschrift, Consolas, monospace';
+  X.textAlign = 'center'; X.textBaseline = 'middle'; X.fillText(ind, 20, -572);
+  if (moving(tau)) { X.beginPath(); X.moveTo(-112, -556); X.lineTo(-88, -596); X.lineTo(-64, -556); X.closePath(); X.fill(); }
+  X.restore();
+  X.fillStyle = '#15191e'; X.fillRect(290, -180, 70, 260); for (let i = 0; i < 8; i++) { const lit = i === 0 && set === 'lobby' && tau > 34.5 && tau < 36.9; X.fillStyle = lit ? '#ffc060' : '#5a636c'; X.beginPath(); X.arc(325, -150 + i * 30, 9, 0, Math.PI * 2); X.fill(); }
+  if (light < 1) { X.fillStyle = `rgba(0,0,0,${(1 - light) * .6})`; X.fillRect(-700, -1100, 1400, 2200); }
+  const p = ftrack(HF_K, tau), J = POVZ ? fjoints(FP.fGuard, -170, 880, 3.6) : fjoints(p, -235, 1000, 4.4);
+  drawFrontal(X, J, true, null, { prop: set === 'boiler' ? 'staff' : null, pa: .1 });
+}
+
+// ---------------------------------------------------------------- camera (side shots): [tau, x, y, zoom, rot]
+const CAM = {
+  lobby: [[0, -560, -330, 1.35, 0], [1.3, -330, -340, 1.45, 0], [2.0, -200, -380, 1.5, 0], [2.7, -120, -360, 1.45, 0], [3.5, -160, -320, 1.55, 0], [3.9, -200, -300, 1.7, 0],
+    [4.3, -190, -290, 1.8, -2], [4.6, -170, -300, 1.75, 2], [4.9, -120, -300, 1.6, 0], [5.2, 150, -380, 1.4, 0], [5.45, 450, -340, 1.55, 0], [5.65, 560, -330, 1.6, 3],
+    [6.0, 250, -330, 1.45, 0], [6.6, 40, -330, 1.45, 0], [7.4, 0, -300, 1.75, 0]],
+  office: [[9.6, 0, -310, 1.7, 0], [10.1, 40, -300, 1.65, 0], [10.5, 60, -290, 1.8, 0], [10.88, -60, -300, 1.65, -2], [11.4, -80, -300, 1.6, 0], [11.9, -90, -290, 1.8, 0],
+    [12.2, -250, -300, 1.6, 0], [12.5, -500, -320, 1.55, 2], [12.75, -200, -310, 1.5, 0], [12.95, -60, -300, 1.85, -4], [13.02, -50, -300, 1.9, -4], [13.3, 330, -300, 1.6, 0],
+    [13.6, 400, -280, 1.75, 0], [14.05, 350, -290, 1.8, 0], [14.4, 200, -300, 1.6, 0], [14.9, 200, -320, 1.5, 0], [15.5, 40, -320, 1.55, 0], [15.9, 0, -300, 1.75, 0]],
+  dojo: [[18.0, 0, -310, 1.7, 0], [18.45, -60, -320, 1.55, 0], [18.8, 40, -320, 1.5, 0], [19.15, 80, -300, 1.7, 0], [19.5, 40, -290, 1.75, 0], [19.7, 40, -280, 1.9, -4],
+    [19.78, 40, -280, 1.95, -4], [20.1, 0, -290, 1.75, 0], [20.45, 40, -300, 1.7, 0], [20.6, 60, -320, 1.85, 3], [20.68, 60, -320, 1.9, 3], [21.0, 60, -300, 1.65, 0],
+    [21.55, 80, -290, 1.75, 0], [21.9, -60, -300, 1.65, 0], [22.3, -380, -310, 1.45, 0], [22.5, -150, -310, 1.5, 0], [22.8, 120, -300, 1.65, 0], [23.2, 420, -310, 1.5, 0],
+    [23.5, 200, -320, 1.45, 0], [24.0, 40, -320, 1.55, 0], [24.5, 0, -300, 1.75, 0]],
+  boiler: [[26.6, 60, -320, 1.55, 0], [27.1, 140, -320, 1.65, 0], [27.42, 60, -310, 1.7, 0], [27.52, 40, -310, 1.75, -3], [27.8, -360, -300, 1.6, 0], [28.1, -300, -320, 1.5, 0],
+    [28.85, -380, -340, 1.5, 0], [29.1, -400, -330, 1.6, 3], [29.4, -260, -310, 1.7, 0], [29.7, -260, -320, 1.6, 0], [30.2, -340, -360, 1.55, 0], [30.33, -360, -420, 1.7, -5],
+    [30.45, -370, -430, 1.75, -5], [30.8, -380, -350, 1.65, 0], [31.1, -390, -370, 1.6, 0], [31.35, -380, -560, 1.4, -4], [31.62, -420, -520, 1.5, 5], [31.75, -460, -400, 1.75, 0], [31.95, -460, -320, 1.65, 0], [32.45, -380, -310, 1.55, 0],
+    [33.0, -200, -310, 1.6, 0], [33.6, 0, -310, 1.65, 0], [34.1, 0, -300, 1.75, 0]],
+};
+function hermite(K, tau, c) {
+  if (K.length === 1 || tau <= K[0][0]) return K[0][c]; if (tau >= K[K.length - 1][0]) return K[K.length - 1][c];
+  let i = 0; while (i < K.length - 2 && K[i + 1][0] <= tau) i++;
+  const a = K[i], b = K[i + 1], h = b[0] - a[0], u = (tau - a[0]) / h;
+  const sl = j => (j <= 0 || j >= K.length - 1) ? 0 : ((K[j + 1][c] - K[j][c]) / (K[j + 1][0] - K[j][0]) + (K[j][c] - K[j - 1][c]) / (K[j][0] - K[j - 1][0])) / 2;
+  const m0 = sl(i) * h, m1 = sl(i + 1) * h, u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * a[c] + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * b[c] + (u3 - u2) * m1;
+}
+function shakeAt(t) {
+  let x = 0, y = 0;
+  for (const m of TL.impacts) { const d = t - realOf(m.tau); if (d < 0 || d > 1) continue; const a = m.shake * .8 * Math.exp(-d / .2);
+    x += a * (Math.sin(d * 34 + m.tau) * .6 + Math.sin(d * 47) * .4); y += a * (Math.sin(d * 39 + 2) * .6 + Math.sin(d * 53 + m.tau) * .4); }
+  return [x * S, y * S];
+}
+
+// ---------------------------------------------------------------- frame
+let GRAIN = [];
+function buildGrain() { for (let k = 0; k < 4; k++) { const c = mk(256, 256), x = c.getContext('2d'), im = x.createImageData(256, 256); for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); GRAIN.push(c); } }
+function draw(t) {
+  const tau = tauOf(t), shot = shotAt(tau), slow = 1 - slowOnly(tau);
+  X.globalCompositeOperation = 'source-over'; X.globalAlpha = 1; X.filter = 'none';
+  X.setTransform(1, 0, 0, 1, 0, 0); X.fillStyle = '#000'; X.fillRect(0, 0, W, H);
+  if (shot.type === 'pov') drawPOV(tau, t, shot);
+  else {
+    let punch = 0; for (const m of TL.impacts) { const d = t - realOf(m.tau); if (d >= 0 && d < .6 && shotAt(m.tau).set === shot.set) punch += .045 * Math.max(.6, m.size) * Math.exp(-d / .12); }
+    const K = CAM[shot.set], cam = { x: hermite(K, tau, 1) + 4 * Math.sin(t * .7), y: hermite(K, tau, 2) + 3 * Math.sin(t * 1.1), z: hermite(K, tau, 3) * (1 + punch), r: hermite(K, tau, 4) };
+    const sh = shakeAt(t), M = new DOMMatrix(); M.translateSelf(W / 2 + sh[0], H / 2 + sh[1]); M.rotateSelf(cam.r); M.scaleSelf(cam.z * S, cam.z * S); M.translateSelf(-cam.x, -cam.y);
+    drawSide(tau, t, shot, M, cam);
+  }
+  X.setTransform(1, 0, 0, 1, 0, 0);
+  X.globalCompositeOperation = 'soft-light'; X.fillStyle = 'rgba(30,70,90,.28)'; X.fillRect(0, 0, W, H); X.globalCompositeOperation = 'source-over';
+  if (slow > .05) {
+    const k = slow / .8, fr = Math.floor(t * 30); X.save(); X.translate(W / 2, H / 2); X.strokeStyle = `rgba(255,255,255,${.2 * k})`;
+    for (let i = 0; i < 70; i++) { const a = rnd(fr * 7 + i) * Math.PI * 2, r0 = (.5 + .35 * rnd(fr + i * 3)) * H * .5, r1 = H * .7; X.lineWidth = (1 + 3 * rnd(i + fr)) * S;
+      X.beginPath(); X.moveTo(Math.cos(a) * r0 * .56, Math.sin(a) * r0); X.lineTo(Math.cos(a) * r1 * .56, Math.sin(a) * r1); X.stroke(); }
+    X.restore();
+  }
+  post(t);
+  const ta = smooth((tau - .3) / .5) * (1 - smooth((tau - 2.1) / .4));
+  if (ta > 0) {
+    X.globalAlpha = ta; X.textAlign = 'center'; X.textBaseline = 'middle';
+    X.font = `300 ${Math.round(96 * S)}px Bahnschrift, Segoe UI, sans-serif`; X.fillStyle = '#f2f7ff'; X.shadowColor = 'rgba(255,190,90,.8)'; X.shadowBlur = 24 * S;
+    if ('letterSpacing' in X) X.letterSpacing = `${Math.round(30 * S)}px`; X.fillText('ELEVATOR', W / 2 + 15 * S, 230 * S);
+    if ('letterSpacing' in X) X.letterSpacing = '0px'; X.shadowBlur = 0; X.globalAlpha = 1;
+  }
+  const bk = smooth((tau - 39.2) / .25); if (bk > 0) { X.fillStyle = `rgba(0,0,0,${bk})`; X.fillRect(0, 0, W, H); }
+}
+function post(t) {
+  X.setTransform(1, 0, 0, 1, 0, 0);
+  BX.setTransform(1, 0, 0, 1, 0, 0); BX.filter = 'none'; BX.clearRect(0, 0, BL.width, BL.height);
+  BX.filter = 'brightness(.7) contrast(2.4) blur(5px)'; BX.drawImage(out, 0, 0, BL.width, BL.height); BX.filter = 'none';
+  X.globalCompositeOperation = 'lighter'; X.globalAlpha = .45; X.drawImage(BL, 0, 0, W, H); X.globalAlpha = 1;
+  const v = X.createRadialGradient(W / 2, H / 2, W * .35, W / 2, H / 2, H * .62); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.6)');
+  X.globalCompositeOperation = 'source-over'; X.fillStyle = v; X.fillRect(0, 0, W, H);
+  const fr = Math.floor(t * 30); X.globalCompositeOperation = 'overlay'; X.globalAlpha = .1; X.fillStyle = X.createPattern(GRAIN[fr % 4], 'repeat');
+  X.save(); X.translate(rnd(fr) * 256, rnd(fr + 1) * 256); X.fillRect(-256, -256, W + 512, H + 512); X.restore();
+  X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
+}
+
+// ---------------------------------------------------------------- thumbnails (?thumb=A or ?thumb=B)
+let POVZ = 0, INDRED = false;
+function thumbA() {
+  const C = [RED, [255, 60, 90], PURPLE, ORANGE, PINK, [255, 40, 120], VIOLET, [255, 90, 40]];
+  const big = [['TA', RED, 0, 2.2, [], 1]];
+  const rows = [[3.0, [-150, 150]], [3.8, [-170, -60, 70, 180]], [4.8, [-200, -100, 0, 110, 210]], [6.0, [-240, -130, 130, 240]], [7.2, [0], 1.75],
+    [7.8, [-280, -170, -60, 70, 180, 290]], [9.5, [-320, -200, -80, 50, 170, 300]], [11.5, [-360, -230, -110, 10, 130, 250, 370]], [14, [-400, -260, -130, 0, 140, 270, 400]]];
+  let n = 0; for (const [z, xs, sc] of rows) for (const x of xs) { big.push(['c' + n, C[n % C.length], x, z, [], sc || 1, n === 0 ? 'staff' : n === 3 ? 'knife' : null]); n++; }
+  POVF.lobby = big; POVZ = 1.42; INDRED = true;
+  draw(realOf(39.1));
+  // red haze in the doorway, a cyan rim on him
+  X.setTransform(1, 0, 0, 1, 0, 0); X.save(); X.globalCompositeOperation = 'lighter';
+  let g = X.createRadialGradient(W * .5, H * .38, 10, W * .5, H * .38, W * .75); g.addColorStop(0, 'rgba(255,40,50,.32)'); g.addColorStop(1, 'rgba(255,40,50,0)'); X.fillStyle = g; X.fillRect(0, 0, W, H);
+  g = X.createRadialGradient(W * .3, H * .9, 10, W * .3, H * .9, W * .5); g.addColorStop(0, 'rgba(80,220,255,.25)'); g.addColorStop(1, 'rgba(80,220,255,0)'); X.fillStyle = g; X.fillRect(0, 0, W, H);
+  X.restore();
+}
+function thumbB() {
+  X.setTransform(1, 0, 0, 1, 0, 0); X.fillStyle = '#000'; X.fillRect(0, 0, W, H);
+  const br = { pose: { t: -10, h: -50, aF: -40, eF: 50, aB: -20, eB: 60, lF: 12, kF: -14, lB: -22, kB: -8 }, x: 230, air: 0, sx: -1, spin: -4, sc: 2.2, eye: 1 }, JB = joints(br);
+  const tgt = [JB.head[0] - 34, JB.head[1] + 26];
+  const hs = { pose: { ...P.jumpKick, t: -28, aF: 40, eF: 100, aB: -70, eB: 40 }, x: 0, air: 0, sx: 1, spin: -4, sc: 1.3, eye: 1 }, J0 = joints(hs);
+  hs.x = tgt[0] - J0.fF[0]; hs.air = -(tgt[1] - J0.fF[1]); const JH = joints(hs);
+  const cam = { x: tgt[0] - 90, y: tgt[1] + 200, z: 1.5, r: -8 };
+  const M = new DOMMatrix(); M.translateSelf(W / 2, H / 2); M.rotateSelf(cam.r); M.scaleSelf(cam.z * S, cam.z * S); M.translateSelf(-cam.x, -cam.y);
+  X.setTransform(M); drawSetBack(X, 'boiler', 30.0, 1);
+  steam(X, 31.4, 30.0, 99, -580, -240, -.4, 520, 26, 1.2, 70, .55);
+  X.fillStyle = 'rgba(0,0,0,.45)'; X.beginPath(); X.ellipse(JB.hip[0], 4, 170, 16, 0, 0, Math.PI * 2); X.fill();
+  drawFig(X, JB, 'enemy', cam.z, { col: PURPLE });
+  for (let i = 5; i >= 1; i--) { const st = { ...hs, x: hs.x - 52 * i, air: hs.air - 16 * i }; drawFig(X, joints(st), 'ghost', cam.z, { color: 'rgba(120,220,255,1)', alpha: .22 * (1 - i / 6), lw: 9 }); }
+  drawFig(X, JH, 'hero', cam.z);
+  // the hit: flash, ring, sparks, chips
+  const [px, py] = tgt;
+  X.save(); X.globalCompositeOperation = 'lighter';
+  let g = X.createRadialGradient(px, py, 0, px, py, 150); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.12, 'rgba(255,240,200,.8)'); g.addColorStop(.4, 'rgba(255,140,60,.25)'); g.addColorStop(1, 'rgba(255,90,40,0)');
+  X.fillStyle = g; X.beginPath(); X.arc(px, py, 150, 0, Math.PI * 2); X.fill(); X.restore();
+  drawFig(X, JH, 'hero', cam.z);
+  X.strokeStyle = 'rgba(255,255,255,.7)'; X.lineWidth = 6; X.beginPath(); X.ellipse(px, py, 120, 85, -.4, 0, Math.PI * 2); X.stroke();
+  X.strokeStyle = 'rgba(255,200,120,.45)'; X.lineWidth = 3; X.beginPath(); X.ellipse(px, py, 175, 125, -.4, 0, Math.PI * 2); X.stroke();
+  X.lineCap = 'round';
+  for (let i = 0; i < 34; i++) { const a = rnd(i * 3.3) * Math.PI * 2, d0 = 40 + 90 * rnd(i + 9), Ln = 40 + 110 * rnd(i + 4); X.strokeStyle = i % 3 ? 'rgba(255,255,255,.95)' : 'rgba(255,170,70,.95)'; X.lineWidth = 3 + 4 * rnd(i + 2);
+    X.beginPath(); X.moveTo(px + Math.cos(a) * d0, py + Math.sin(a) * d0); X.lineTo(px + Math.cos(a) * (d0 + Ln), py + Math.sin(a) * (d0 + Ln)); X.stroke(); }
+  // speed lines from the frame edges toward the hit
+  X.setTransform(1, 0, 0, 1, 0, 0); const sp = M.transformPoint(new DOMPoint(px, py));
+  for (let i = 0; i < 90; i++) { const a = rnd(i * 7.7) * Math.PI * 2, r0 = (380 + 300 * rnd(i + 1)) * S, r1 = 1400 * S; X.strokeStyle = `rgba(255,255,255,${.12 + .2 * rnd(i + 5)})`; X.lineWidth = (1 + 4 * rnd(i + 3)) * S;
+    X.beginPath(); X.moveTo(sp.x + Math.cos(a) * r0, sp.y + Math.sin(a) * r0); X.lineTo(sp.x + Math.cos(a) * r1, sp.y + Math.sin(a) * r1); X.stroke(); }
+  X.globalCompositeOperation = 'soft-light'; X.fillStyle = 'rgba(255,60,30,.25)'; X.fillRect(0, 0, W, H); X.globalCompositeOperation = 'source-over';
+  post(0);
+}
+window.render = x => { const th = q.get('thumb'); if (th === 'A') return thumbA(); if (th === 'B') return thumbB(); draw(RATE ? x / RATE : x); };
+fetch('tl.json').then(r => r.json()).then(async j => {
+  TL = j; buildMap(); buildGrain();
+  window.DUR_REAL = realOf(TL.dur);
+  await document.fonts.ready; draw(0); window.READY = true;
+});
+</script></body></html>

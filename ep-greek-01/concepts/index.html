@@ -1,0 +1,78 @@
+<!doctype html><html><head><meta charset="utf-8"><title>concepts</title>
+<style>@font-face{font-family:"Playfair Display SC";font-weight:900;src:url(fonts/PlayfairDisplaySC-Black.ttf)}@font-face{font-family:"Old Standard TT";font-style:italic;src:url(fonts/OldStandard-Italic.ttf)}html,body{margin:0;background:#000}canvas{display:block;width:100vw;height:100vh}</style></head><body><canvas id="c"></canvas>
+<script src="chars.js"></script>
+<script>
+const W = innerWidth, H = innerHeight, cv = document.getElementById('c'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
+const S = W / 1920; let seed = 9; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const V = new URLSearchParams(location.search).get('v') || 'chat';
+const IM = {}; for (const k of ['zt', 't']) { IM[k] = new Image(); IM[k].src = `img/${k}.jpg`; }
+const B = (kind, x, y, s, o = {}) => bust(Object.assign({ kind, x: x * S, y: y * S, s: s * S, t: 1.3 }, o));
+function wrap(txt, maxW) { const w = txt.split(' '), out = []; let cur = ''; for (const x of w) { const t = cur ? cur + ' ' + x : x; if (ctx.measureText(t).width > maxW && cur) { out.push(cur); cur = x; } else cur = t; } out.push(cur); return out; }
+function rr(x, y, w, h, r, fill, stroke) { ctx.beginPath(); ctx.roundRect(x * S, y * S, w * S, h * S, r * S); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 3 * S; ctx.stroke(); } }
+function txt(t, x, y, size, col, font = '600', align = 'left', fam = '"Segoe UI",Arial') { ctx.font = `${font} ${size * S}px ${fam}`; ctx.fillStyle = col; ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(t, x * S, y * S); }
+
+function chat() {
+  // background: Olympus night, blurred feel
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0d1230'); g.addColorStop(1, '#2a1a40'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; for (let i = 0; i < 80; i++) { ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, (0.8 + rnd() * 1.6) * S, 0, 7); ctx.fill(); }
+  // speaker on the left, big, talking
+  const gl = ctx.createRadialGradient(360 * S, 560 * S, 0, 360 * S, 560 * S, 420 * S); gl.addColorStop(0, 'rgba(255,200,120,.35)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+  B('cronos', 360, 700, 380, { expr: 'shout', look: 0.6 });
+  B('titan', 120, 900, 150, { expr: 'scared', v: 1, look: 0.7 }); B('titan', 610, 920, 140, { expr: 'scared', v: 3, look: -0.4, flip: true });
+  // chat window
+  const X = 760, Y = 70, Wd = 1060, Hd = 900; rr(X, Y, Wd, Hd, 36, '#f4ecdc', '#33200f');
+  rr(X, Y, Wd, 96, 36, '#3a2a1a'); ctx.fillStyle = '#3a2a1a'; ctx.fillRect(X * S, (Y + 60) * S, Wd * S, 36 * S);
+  txt('🏛  The First Family', X + 40, Y + 62, 40, '#ffe6b0', '800'); txt('Gaia, Ouranos and 18 children', X + 40 + 420, Y + 60, 26, '#d9c28a', '500');
+  let y = Y + 150;
+  const msg = (who, text, cite, mine, react) => {
+    ctx.font = `500 ${32 * S}px "Segoe UI",Arial`; const lines = wrap(text, 640 * S); const h = 40 + lines.length * 42 + 30;
+    const bx = mine ? X + Wd - 40 - 720 : X + 130; rr(bx, y, 720, h, 26, mine ? '#dff2d0' : '#ffffff', 'rgba(51,32,15,.25)');
+    if (!mine) B(who, X + 70, y + 66, 62, { expr: 'neutral', look: 0.3 }); else B(who, X + Wd - 0 + 0, y + 66, 0);
+    txt(who === 'gaia' ? 'Gaia' : who === 'cronos' ? 'Cronos' : who, bx + 26, y + 38, 26, mine ? '#4a7a2a' : '#8e3f56', '800');
+    lines.forEach((l, i) => txt(l, bx + 26, y + 82 + i * 42, 32, '#2a1a10', '500'));
+    txt(cite, bx + 720 - 24, y + h - 14, 20, '#9a8a70', '600', 'right');
+    if (react) { rr(bx + 600, y + h - 18, 110, 46, 23, '#fff', 'rgba(51,32,15,.3)'); txt(react, bx + 655, y + h + 16, 28, '#000', '600', 'center'); }
+    y += h + 34;
+  };
+  msg('gaia', '“My children, gotten of a sinful father, if you will obey me, we should punish the vile outrage of your father.”', 'Theogony 164', false);
+  rr(X + 300, y, 460, 52, 26, 'rgba(51,32,15,.12)'); txt('none of them uttered a word', X + 530, y + 35, 26, '#6a5a40', 'italic 600', 'center'); y += 84;
+  msg('cronos', '“Mother, I will undertake to do this deed.”', 'Theogony 170', false, '😊 Gaia');
+  ctx.font = `600 ${26 * S}px "Segoe UI",Arial`; txt('Cronos is typing…', X + 140, y + 10, 26, '#9a8a70', 'italic 600');
+  // caption bar like the real video
+  txt('“Mother, I will undertake to do this deed.”', 960, 1035, 44, '#fff', '700', 'center');
+  rr(36, 36, 300, 60, 14, 'rgba(0,0,0,.55)'); txt('CONCEPT A · THE CHAT', 186, 76, 26, '#ffd36a', '800', 'center');
+}
+
+function cork() {
+  // cork board
+  ctx.fillStyle = '#b07c48'; ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 9000; i++) { const v = rnd(); ctx.fillStyle = v < 0.5 ? `rgba(90,50,20,${rnd() * 0.35})` : `rgba(230,180,120,${rnd() * 0.3})`; ctx.fillRect(rnd() * W, rnd() * H, (1 + rnd() * 3) * S, (1 + rnd() * 3) * S); }
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  const pins = [];
+  const polaroid = (x, y, w, rot, draw, label, sub, tag) => { ctx.save(); ctx.translate(x * S, y * S); ctx.rotate(rot); ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect((-w / 2 + 10) * S, (-w * 0.6 + 14) * S, w * S, w * 1.2 * S); ctx.fillStyle = '#f8f4ea'; ctx.fillRect(-w / 2 * S, -w * 0.6 * S, w * S, w * 1.2 * S); ctx.fillStyle = '#2a2236'; ctx.fillRect((-w / 2 + 16) * S, (-w * 0.6 + 16) * S, (w - 32) * S, (w - 32) * S);
+    ctx.save(); ctx.beginPath(); ctx.rect((-w / 2 + 16) * S, (-w * 0.6 + 16) * S, (w - 32) * S, (w - 32) * S); ctx.clip(); draw(w); ctx.restore();
+    ctx.font = `800 ${w * 0.11 * S}px "Segoe UI",Arial`; ctx.fillStyle = '#2a1a10'; ctx.textAlign = 'center'; ctx.fillText(label, 0, (w * 0.52) * S); ctx.font = `italic 600 ${w * 0.07 * S}px "Segoe UI",Arial`; ctx.fillStyle = '#6a5a40'; ctx.fillText(sub, 0, (w * 0.585) * S);
+    if (tag) { ctx.save(); ctx.translate(0, -w * 0.2 * S); ctx.rotate(-0.25); ctx.strokeStyle = '#c8281e'; ctx.lineWidth = 6 * S; ctx.font = `900 ${w * 0.12 * S}px "Segoe UI Black",Arial`; const tw = ctx.measureText(tag).width; ctx.strokeRect(-tw / 2 - 12 * S, -w * 0.09 * S, tw + 24 * S, w * 0.15 * S); ctx.fillStyle = '#c8281e'; ctx.fillText(tag, 0, w * 0.035 * S); ctx.restore(); }
+    ctx.restore(); pins.push([x, y - w * 0.55]); };
+  const face = (kind, expr, o = {}) => (w) => bust(Object.assign({ kind, x: 0, y: (-w * 0.6 + 16 + (w - 32) * 0.78) * S, s: (w - 32) * 0.5 * S, t: 1.3, expr }, o));
+  // string connections drawn first (behind)
+  const pts = { metis: [960, 330], zeus: [560, 360], gaia: [1380, 260], jar: [1440, 720], quote: [600, 780] };
+  ctx.strokeStyle = '#c8281e'; ctx.lineWidth = 4 * S; for (const [a, b] of [['zeus', 'metis'], ['gaia', 'zeus'], ['gaia', 'metis'], ['quote', 'zeus'], ['jar', 'gaia']]) { ctx.beginPath(); ctx.moveTo(pts[a][0] * S, (pts[a][1] - 130) * S); ctx.lineTo(pts[b][0] * S, (pts[b][1] - 130) * S); ctx.stroke(); }
+  polaroid(560, 360, 300, -0.05, face('zeus', 'smug'), 'ZEUS', 'king of the gods', 'SUSPECT');
+  polaroid(960, 330, 280, 0.04, face('metis', 'worry', { belly: true }), 'METIS', 'his first wife', 'MISSING');
+  polaroid(1380, 260, 250, -0.03, face('gaia', 'smug', { wink: true }), 'GAIA', 'the Earth', 'ADVISER?');
+  // exhibit: the real jar photo
+  ctx.save(); ctx.translate(1440 * S, 720 * S); ctx.rotate(0.05); ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(-250 * S, -150 * S, 520 * S, 330 * S); ctx.fillStyle = '#f8f4ea'; ctx.fillRect(-260 * S, -160 * S, 520 * S, 330 * S); const im = IM.zt; if (im.complete) { const sc = 490 / im.naturalWidth; ctx.drawImage(im, -245 * S, -145 * S, 490 * S, im.naturalHeight * sc * S * 0.85); } ctx.font = `800 ${28 * S}px "Segoe UI",Arial`; ctx.fillStyle = '#2a1a10'; ctx.textAlign = 'center'; ctx.fillText('EXHIBIT A · Munich jar, c. 540 BC', 0, 155 * S); ctx.restore(); pins.push([1440, 570]);
+  // exhibit: the quote card
+  ctx.save(); ctx.translate(600 * S, 780 * S); ctx.rotate(-0.03); ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(-370 * S, -120 * S, 760 * S, 260 * S); ctx.fillStyle = '#efe4c4'; ctx.fillRect(-380 * S, -130 * S, 760 * S, 260 * S); ctx.font = `italic 400 ${36 * S}px "Old Standard TT",Georgia`; ctx.fillStyle = '#2a1a10'; ctx.textAlign = 'left';
+  ['“…craftily deceived her with cunning words', 'and put her in his own belly, as Earth and', 'starry Heaven advised.”'].forEach((l, i) => ctx.fillText(l, -350 * S, (-60 + i * 50) * S)); ctx.font = `800 ${24 * S}px "Segoe UI",Arial`; ctx.fillText('EXHIBIT B · Theogony 889–890', -350 * S, 100 * S);
+  ctx.save(); ctx.translate(250 * S, 70 * S); ctx.rotate(-0.2); ctx.strokeStyle = '#c8281e'; ctx.lineWidth = 6 * S; ctx.strokeRect(-110 * S, -40 * S, 220 * S, 70 * S); ctx.font = `900 ${46 * S}px "Segoe UI Black",Arial`; ctx.fillStyle = '#c8281e'; ctx.textAlign = 'center'; ctx.fillText('MOTIVE?', 0, 12 * S); ctx.restore(); ctx.restore(); pins.push([600, 650]);
+  for (const [x, y] of pins) { ctx.fillStyle = '#d6322e'; ctx.beginPath(); ctx.arc(x * S, y * S, 13 * S, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc((x - 4) * S, (y - 4) * S, 4 * S, 0, 7); ctx.fill(); }
+  // title tape
+  ctx.save(); ctx.translate(960 * S, 70 * S); ctx.rotate(-0.01); ctx.fillStyle = 'rgba(245,235,200,.92)'; ctx.fillRect(-470 * S, -42 * S, 940 * S, 84 * S); ctx.font = `900 ${44 * S}px "Playfair Display SC",Georgia`; ctx.fillStyle = '#2a1a10'; ctx.textAlign = 'center'; ctx.fillText('CASE 001 · THE SWALLOWED WIFE', 0, 16 * S); ctx.restore();
+  ctx.font = `700 ${44 * S}px "Segoe UI",Arial`; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.shadowColor = '#000'; ctx.shadowBlur = 8; ctx.fillText('Three suspects. One missing wife. A 2,700-year-old poem.', 960 * S, 1040 * S); ctx.shadowBlur = 0;
+  rr(36, 36, 330, 60, 14, 'rgba(0,0,0,.55)'); txt('CONCEPT B · THE CASE FILE', 201, 76, 26, '#ffd36a', '800', 'center');
+}
+function draw() { if (V === 'chat') chat(); else cork(); }
+Promise.all([document.fonts.load('900 40px "Playfair Display SC"'), document.fonts.load('italic 40px "Old Standard TT"'), ...Object.values(IM).map(i => i.decode().catch(() => { }))]).then(() => { window.render = () => { seed = 9; draw(); }; window.DUR = 1; window.READY = true; draw(); });
+</script></body></html>

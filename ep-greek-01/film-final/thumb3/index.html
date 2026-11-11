@@ -1,0 +1,83 @@
+<!doctype html><html><head><meta charset="utf-8"><title>thumb v3</title>
+<style>@font-face{font-family:"Playfair Display SC";font-weight:900;src:url(fonts/PlayfairDisplaySC-Black.ttf)}html,body{margin:0;background:#000}canvas{display:block;width:100vw;height:100vh}</style></head><body><canvas id="c"></canvas>
+<script>
+// main canvas + a scratch canvas: characters are drawn on the scratch, then stamped with a thick white sticker outline
+const W = innerWidth, H = innerHeight, main = document.getElementById('c'); main.width = W; main.height = H; const mctx = main.getContext('2d');
+const scratch = document.createElement('canvas'); scratch.width = W; scratch.height = H; let ctx = scratch.getContext('2d');
+</script>
+<script src="chars.js"></script>
+<script>
+const SX = W / 1280, V = new URLSearchParams(location.search).get('v') || '1';
+function clearS() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); }
+function stamp(r = 12, col = '#fff') { // white outline around everything on scratch, then the art
+  const sil = document.createElement('canvas'); sil.width = W; sil.height = H; const s = sil.getContext('2d'); s.drawImage(scratch, 0, 0); s.globalCompositeOperation = 'source-in'; s.fillStyle = col; s.fillRect(0, 0, W, H);
+  mctx.save(); mctx.shadowColor = 'rgba(0,0,0,.45)'; mctx.shadowBlur = 24 * SX; mctx.shadowOffsetY = 10 * SX; for (let a = 0; a < 24; a++) mctx.drawImage(sil, Math.cos(a / 24 * 6.283) * r * SX, Math.sin(a / 24 * 6.283) * r * SX); mctx.restore();
+  for (let a = 0; a < 24; a++) mctx.drawImage(sil, Math.cos(a / 24 * 6.283) * r * SX, Math.sin(a / 24 * 6.283) * r * SX);
+  mctx.drawImage(scratch, 0, 0); clearS(); }
+function sunburst(c1, c2, cx, cy) { const g = mctx.createRadialGradient(cx * SX, cy * SX, 0, cx * SX, cy * SX, 900 * SX); g.addColorStop(0, c1); g.addColorStop(1, c2); mctx.fillStyle = g; mctx.fillRect(0, 0, W, H); mctx.save(); mctx.translate(cx * SX, cy * SX); mctx.fillStyle = 'rgba(255,255,255,.10)'; for (let i = 0; i < 18; i++) { mctx.rotate(Math.PI / 9); mctx.beginPath(); mctx.moveTo(0, 0); mctx.lineTo(1400 * SX, -110 * SX); mctx.lineTo(1400 * SX, 110 * SX); mctx.fill(); } mctx.restore(); }
+function word(t, x, y, size, fill, rot = 0, stroke = '#111') { mctx.save(); mctx.translate(x * SX, y * SX); mctx.rotate(rot); mctx.font = `900 ${size * SX}px "Segoe UI Black","Arial Black",Arial`; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.lineJoin = 'round';
+  mctx.shadowColor = 'rgba(0,0,0,.5)'; mctx.shadowOffsetY = 8 * SX; mctx.shadowBlur = 0; mctx.lineWidth = size * 0.32 * SX; mctx.strokeStyle = stroke; mctx.strokeText(t, 0, 0); mctx.shadowColor = 'transparent'; mctx.fillStyle = fill; mctx.fillText(t, 0, 0); mctx.restore(); }
+function arrow(x1, y1, x2, y2, w = 34) { mctx.save(); mctx.lineCap = 'round'; const a = Math.atan2(y2 - y1, x2 - x1); const mx = (x1 + x2) / 2 + Math.sin(a) * 60, my = (y1 + y2) / 2 - Math.cos(a) * 60;
+  for (const [col, ww] of [['#fff', w + 18], ['#e8231d', w]]) { mctx.strokeStyle = col; mctx.lineWidth = ww * SX; mctx.beginPath(); mctx.moveTo(x1 * SX, y1 * SX); mctx.quadraticCurveTo(mx * SX, my * SX, x2 * SX, y2 * SX); mctx.stroke(); }
+  const b = Math.atan2(y2 - my, x2 - mx), L = w * 2.6; for (const [col, k] of [['#fff', 1.35], ['#e8231d', 1]]) { mctx.fillStyle = col; mctx.beginPath(); mctx.moveTo((x2 + Math.cos(b) * L * 0.5 * k) * SX, (y2 + Math.sin(b) * L * 0.5 * k) * SX); mctx.lineTo((x2 + Math.cos(b + 2.4) * L * k) * SX, (y2 + Math.sin(b + 2.4) * L * k) * SX); mctx.lineTo((x2 + Math.cos(b - 2.4) * L * k) * SX, (y2 + Math.sin(b - 2.4) * L * k) * SX); mctx.closePath(); mctx.fill(); } mctx.restore(); }
+const B = (kind, x, y, s, o = {}) => bust(Object.assign({ kind, x: x * SX, y: y * SX, s: s * SX, t: 1.3 }, o));
+function vessel(x, y, ang, len, w, col, depth) { // branching blood vessel
+  if (depth <= 0 || len < 6) return; const X = v => v * SX; const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len, mx = (x + x2) / 2 + Math.sin(ang * 3 + depth) * len * 0.15, my = (y + y2) / 2 + Math.cos(ang * 2 + depth) * len * 0.15;
+  ctx.strokeStyle = col; ctx.lineWidth = X(w); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(X(x), X(y)); ctx.quadraticCurveTo(X(mx), X(my), X(x2), X(y2)); ctx.stroke();
+  vessel(x2, y2, ang - 0.5, len * 0.7, w * 0.65, col, depth - 1); vessel(x2, y2, ang + 0.45, len * 0.65, w * 0.6, col, depth - 1); }
+function gutTube(pts, w) { const X = v => v * SX; for (const [col, ww] of [[OL, w + 6], ['#f09a9a', w], ['rgba(255,220,220,.7)', w * 0.3]]) { ctx.strokeStyle = col; ctx.lineWidth = X(ww); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(X(pts[0][0]), X(pts[0][1])); for (let k = 1; k < pts.length - 1; k++) { const xc = (pts[k][0] + pts[k + 1][0]) / 2, yc = (pts[k][1] + pts[k + 1][1]) / 2; ctx.quadraticCurveTo(X(pts[k][0]), X(pts[k][1]), X(xc), X(yc)); } ctx.stroke(); } }
+function xray(cx, cy, r, ratio = 1.35) { // cartoon cut-away: robe, skin, fat, flesh, ribs, vessels, stomach with Metis, fluid, intestines
+  const X = v => v * SX, rx = r * ratio, ry = r;
+  const oval = (k) => { ctx.beginPath(); ctx.ellipse(X(cx), X(cy), X(rx * k), X(ry * k), 0, 0, 7); };
+  ctx.save(); ctx.beginPath(); for (let i = 0; i <= 40; i++) { const a = i / 40 * 6.283, j = 1.12 + (i % 2 ? 0.05 : -0.02) + 0.03 * Math.sin(i * 2.7); ctx.lineTo(X(cx + Math.cos(a) * rx * j), X(cy + Math.sin(a) * ry * j)); } ctx.closePath(); ctx.fillStyle = '#e8dcc4'; ctx.fill(); ctx.lineWidth = X(5); ctx.strokeStyle = OL; ctx.stroke(); ctx.restore();
+  oval(1.06); ctx.fillStyle = '#e2ae82'; ctx.fill(); oval(1.0); ctx.fillStyle = '#f7d9a8'; ctx.fill(); oval(0.94); ctx.fillStyle = '#d9605e'; ctx.fill();
+  ctx.save(); oval(0.94); ctx.clip();
+  let g = ctx.createRadialGradient(X(cx), X(cy - ry * 0.2), X(10), X(cx), X(cy), X(rx)); g.addColorStop(0, '#b8323e'); g.addColorStop(1, '#5a0f1e'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // vessels on the cavity wall
+  vessel(cx - rx * 0.95, cy - ry * 0.1, -0.3, rx * 0.4, 10, '#ff4a5a', 4); vessel(cx + rx * 0.95, cy + ry * 0.1, Math.PI + 0.3, rx * 0.4, 10, '#5a7aff', 4);
+  vessel(cx - rx * 0.9, cy + ry * 0.5, -0.8, rx * 0.3, 6, '#4a6ad8', 3); vessel(cx + rx * 0.9, cy - ry * 0.45, Math.PI + 0.7, rx * 0.3, 6, '#e8384a', 3);
+  // ribs: curved bones on both sides plus the breastbone
+  for (const sg of [-1, 1]) for (let k = 0; k < 4; k++) { const y = cy - ry * 0.75 + k * ry * 0.3; for (const [col, w] of [[OL, 20], ['#f6eedb', 13]]) { ctx.strokeStyle = col; ctx.lineWidth = X(w); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(X(cx + sg * rx * 0.12), X(y - 10)); ctx.quadraticCurveTo(X(cx + sg * rx * 0.75), X(y - ry * 0.18), X(cx + sg * rx * 1.0), X(y + ry * 0.25)); ctx.stroke(); } }
+  ctx.fillStyle = '#f6eedb'; ctx.strokeStyle = OL; ctx.lineWidth = X(5); ctx.beginPath(); ctx.roundRect(X(cx - 14), X(cy - ry * 0.95), X(28), X(ry * 0.6), X(10)); ctx.fill(); ctx.stroke();
+  // stomach sac
+  const sx = cx + rx * 0.02, sy = cy + ry * 0.04, srx = rx * 0.6, sry = ry * 0.5;
+  ctx.beginPath(); ctx.moveTo(X(sx - srx), X(sy - sry * 0.2)); ctx.bezierCurveTo(X(sx - srx), X(sy - sry * 1.3), X(sx + srx * 1.05), X(sy - sry * 1.25), X(sx + srx), X(sy - sry * 0.05)); ctx.bezierCurveTo(X(sx + srx * 0.95), X(sy + sry * 1.1), X(sx - srx * 0.9), X(sy + sry * 1.15), X(sx - srx), X(sy - sry * 0.2)); ctx.closePath();
+  g = ctx.createRadialGradient(X(sx - srx * 0.3), X(sy - sry * 0.4), X(5), X(sx), X(sy), X(srx * 1.1)); g.addColorStop(0, '#ffb7b0'); g.addColorStop(1, '#e0656e'); ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = X(6); ctx.strokeStyle = OL; ctx.stroke();
+  ctx.save(); ctx.clip();
+  ctx.strokeStyle = 'rgba(170,50,70,.5)'; ctx.lineWidth = X(4); for (let k = 0; k < 7; k++) { ctx.beginPath(); ctx.moveTo(X(sx - srx + k * srx * 0.3), X(sy - sry)); ctx.bezierCurveTo(X(sx - srx + k * srx * 0.3 + 30), X(sy - sry * 0.4), X(sx - srx + k * srx * 0.3 - 30), X(sy), X(sx - srx + k * srx * 0.3 + 10), X(sy + sry * 0.4)); ctx.stroke(); }
+  vessel(sx - srx * 0.95, sy - sry * 0.5, 0.2, srx * 0.35, 4, 'rgba(200,30,50,.8)', 3); vessel(sx + srx * 0.95, sy + sry * 0.2, Math.PI - 0.2, srx * 0.3, 4, 'rgba(70,90,200,.75)', 3);
+  B('metis', sx - 4, sy + sry * 0.1, sry * 1.2, { expr: 'scared', belly: true, look: 0.5, noEmblem: true });
+  const fy = sy + sry * 0.62; ctx.beginPath(); ctx.moveTo(X(sx - srx * 1.2), X(fy)); for (let x = -1.2; x <= 1.2; x += 0.1) ctx.lineTo(X(sx + srx * x), X(fy + Math.sin(x * 9) * 4)); ctx.lineTo(X(sx + srx * 1.2), X(sy + sry * 1.4)); ctx.lineTo(X(sx - srx * 1.2), X(sy + sry * 1.4)); ctx.closePath(); ctx.fillStyle = 'rgba(170,220,90,.85)'; ctx.fill(); ctx.strokeStyle = '#6a9a2a'; ctx.lineWidth = X(4); ctx.stroke();
+  for (const [bx, by, br] of [[-0.6, 0.75, 7], [-0.3, 0.88, 5], [0.35, 0.8, 8], [0.6, 0.92, 5], [0.1, 0.95, 4]]) { ctx.beginPath(); ctx.arc(X(sx + srx * bx), X(sy + sry * by), X(br), 0, 7); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fill(); ctx.strokeStyle = '#6a9a2a'; ctx.lineWidth = X(2); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(X(sx - srx * 0.55), X(sy - sry * 0.6), X(srx * 0.2), X(sry * 0.09), -0.5, 0, 7); ctx.fill();
+  ctx.restore();
+  // intestines coiled below the stomach
+  const by = cy + ry * 0.6, L = cx - rx * 0.88, R = cx + rx * 0.88;
+  gutTube([[L, by - 10], [L + 30, by + 30], [L + 70, by - 15], [L + 110, by + 25], [L + 150, by - 10], [L + 190, by + 28], [L + 230, by - 8], [L + 270, by + 25], [R, by]], 22);
+  gutTube([[L + 10, by + 48], [L + 60, by + 34], [L + 110, by + 58], [L + 160, by + 36], [L + 210, by + 60], [L + 260, by + 38], [R, by + 52]], 20); gutTube([[L - 10, by - 60], [L + 20, by - 20], [L - 5, by + 20], [L + 25, by + 60]], 18); gutTube([[R + 10, by - 60], [R - 20, by - 20], [R + 5, by + 20], [R - 25, by + 60]], 18);
+  ctx.restore();
+  ctx.save(); oval(0.94); ctx.lineWidth = X(8); ctx.strokeStyle = 'rgba(60,0,10,.6)'; ctx.stroke(); oval(1.0); ctx.lineWidth = X(4); ctx.strokeStyle = OL; ctx.stroke(); ctx.restore(); }
+function draw() {
+  mctx.clearRect(0, 0, W, H); clearS();
+  if (V === '1') { // "SHE'S INSIDE HIM" : x-ray of Zeus's belly
+    sunburst('#ffd84a', '#ff8a1a', 420, 380);
+    B('zeus', 300, 470, 380, { expr: 'smug', look: 0.7, noEmblem: true });
+    ctx.save(); const gg = ctx.createRadialGradient(300 * SX, 600 * SX, 0, 300 * SX, 600 * SX, 62 * SX); gg.addColorStop(0, 'rgba(232,35,29,.45)'); gg.addColorStop(1, 'rgba(232,35,29,.08)'); ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(300 * SX, 600 * SX, 62 * SX, 0, 7); ctx.fill(); ctx.setLineDash([16 * SX, 10 * SX]); ctx.lineWidth = 8 * SX; ctx.strokeStyle = '#e8231d'; ctx.stroke(); ctx.restore(); stamp(12);
+    // connector lines from the belly to the magnifier
+    mctx.save(); mctx.strokeStyle = '#fff'; mctx.lineWidth = 10 * SX; mctx.lineCap = 'round'; mctx.beginPath(); mctx.moveTo(340 * SX, 545 * SX); mctx.lineTo(760 * SX, 330 * SX); mctx.moveTo(352 * SX, 640 * SX); mctx.lineTo(790 * SX, 680 * SX); mctx.stroke(); mctx.restore();
+    xray(930, 495, 190, 1.0); stamp(10);
+    word("SHE'S INSIDE", 940, 85, 92, '#fff', -0.02); word('HIM', 1150, 190, 104, '#ffe23a', -0.02);
+  } else if (V === '2') { // swallowing moment, giant mouth, tiny pregnant wife
+    sunburst('#5fe0ff', '#1a6ad8', 640, 360);
+    B('zeus', 400, 500, 350, { expr: 'shout', look: 0.7, noEmblem: true }); stamp(12);
+    B('metis', 700, 270, 150, { expr: 'scared', belly: true, tilt: 0.5, look: -0.6 }); stamp(9);
+    arrow(1000, 600, 540, 450, 26);
+    word('HIS OWN', 960, 120, 104, '#fff', 0.04); word('WIFE?!', 960, 260, 132, '#ffe23a', 0.04);
+  } else { // three thrones, bright
+    sunburst('#b6ff7a', '#2aa84a', 640, 330);
+    [['ouranos', 'dazed'], ['cronos', 'dazed'], ['zeus', 'smug']].forEach(([k, e], i) => { const x = 230 + i * 410; prop({ n: 'throne', x: x * SX, y: 470 * SX, s: 330 * SX, t: 1, crack: i < 2 }); B(k, x, 400, 190, { expr: e, tilt: i < 2 ? (i ? 0.2 : -0.2) : 0, noEmblem: true }); }); stamp(10);
+    word('3 KINGS.', 640, 110, 130, '#fff'); word('2 FELL.', 640, 640, 150, '#ffe23a');
+  }
+}
+Promise.all([document.fonts.load('900 40px "Playfair Display SC"')]).then(() => { window.render = () => draw(); window.DUR = 1; window.READY = true; draw(); });
+</script></body></html>

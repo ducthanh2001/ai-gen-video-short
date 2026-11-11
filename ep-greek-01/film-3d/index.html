@@ -1,0 +1,201 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Clay and Myth - vase test</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body><canvas id="gl"></canvas>
+<script type="module">
+// Test: a black-figure amphora built in code. Lathe body, painted texture (Zeus vs Typhoeus), museum light.
+// render(x): seconds. Camera orbits slowly; ?rate=<fps> makes x a frame index.
+import * as THREE from 'three';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+const q = new URLSearchParams(location.search), RATE = +q.get('rate') || 0;
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gl'), antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.9;
+const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, W / H, 0.01, 20);
+
+const CLAY = '#c9682c', BLACK = '#15100f', INC = '#d98a4a';
+const PAL_COL = { clay: CLAY, black: BLACK, inc: INC, wing: '#7c2a1c' };
+const PAL_ROUGH = { clay: '#e8e8e8', black: '#707070', inc: '#e0e0e0', wing: '#c0c0c0' };
+
+// ------------------------------------------------------------------ profile (radius, height in metres), resampled by arc length
+const ctrl = [[0, 0], [0.075, 0], [0.078, 0.012], [0.05, 0.028], [0.042, 0.05], [0.085, 0.09], [0.145, 0.15], [0.165, 0.215], [0.152, 0.285], [0.105, 0.335], [0.058, 0.362], [0.05, 0.395], [0.062, 0.418], [0.082, 0.43], [0.082, 0.438]];
+function catmull(P, n = 18) {
+  const out = [];
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
+    for (let t = 0; t < n; t++) { const u = t / n, f = k => .5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * u + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * u * u + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * u ** 3); out.push([f(0), f(1)]); }
+  }
+  out.push(P[P.length - 1]); return out;
+}
+const dense = catmull(ctrl); const cum = [0];
+for (let i = 1; i < dense.length; i++) cum.push(cum[i - 1] + Math.hypot(dense[i][0] - dense[i - 1][0], dense[i][1] - dense[i - 1][1]));
+const TOT = cum[cum.length - 1];
+const at = s => { const d = s * TOT; let i = 1; while (i < cum.length - 1 && cum[i] < d) i++; const k = (d - cum[i - 1]) / (cum[i] - cum[i - 1] || 1); return [dense[i - 1][0] + (dense[i][0] - dense[i - 1][0]) * k, dense[i - 1][1] + (dense[i][1] - dense[i - 1][1]) * k]; };
+const N = 240, prof = Array.from({ length: N + 1 }, (_, i) => at(i / N));
+const sOfHeight = h => { let lo = 0, hi = 1; for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (at(m)[1] < h) lo = m; else hi = m; } return (lo + hi) / 2; };
+
+// ------------------------------------------------------------------ drawing helpers (figure units: height = 1)
+function spline(ctx, P, closed = true) {
+  const n = P.length; ctx.moveTo(P[0][0], P[0][1]);
+  const cnt = closed ? n : n - 1;
+  for (let i = 0; i < cnt; i++) {
+    const g = k => closed ? P[(k + n) % n] : P[Math.min(n - 1, Math.max(0, k))];
+    const p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2);
+    ctx.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]);
+  }
+}
+const fillShape = (ctx, P, col, closed = true) => { ctx.fillStyle = col; ctx.beginPath(); spline(ctx, P, closed); ctx.closePath(); ctx.fill(); };
+function strokeCurve(ctx, P, col, w) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath(); spline(ctx, P, false); ctx.stroke(); }
+function limb(ctx, pts, widths, col) {
+  const Lp = [], Rp = [];
+  pts.forEach((p, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)]; let tx = b[0] - a[0], ty = b[1] - a[1]; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l;
+    Lp.push([p[0] - ty * widths[i] / 2, p[1] + tx * widths[i] / 2]); Rp.push([p[0] + ty * widths[i] / 2, p[1] - tx * widths[i] / 2]); });
+  fillShape(ctx, Lp.concat(Rp.reverse()), col);
+}
+const HEAD = [[-0.55, 0.55], [-0.64, 0.10], [-0.50, -0.40], [-0.15, -0.62], [0.25, -0.52], [0.50, -0.22], [0.52, 0.00], [0.82, 0.22], [0.56, 0.31], [0.62, 0.42], [0.52, 0.52], [0.60, 0.66], [0.30, 0.86], [0.0, 0.78], [-0.30, 0.72]];
+function drawHead(ctx, c, r, pal, beard, wild) {
+  const m = p => [c[0] + p[0] * r, c[1] + p[1] * r];
+  fillShape(ctx, HEAD.map(m), pal.black);
+  fillShape(ctx, [[-0.66, 0.35], [-0.80, -0.1], [-0.6, -0.6], [-0.1, -0.82], [0.34, -0.68], [0.55, -0.3], [0.2, -0.4], [-0.2, -0.3], [-0.45, 0.0], [-0.6, 0.7]].map(m), pal.black);
+  if (beard) fillShape(ctx, [[0.46, 0.45], [0.70, 0.62], [0.78, 1.0], [0.5, 1.38], [0.1, 1.2], [-0.2, 0.8]].map(m), pal.black);
+  ctx.strokeStyle = pal.inc; ctx.lineWidth = r * 0.07; ctx.lineCap = 'round';
+  for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(...m([-0.2 + k * 0.17, -0.6])); ctx.quadraticCurveTo(...m([-0.3 + k * 0.17, -0.3]), ...m([-0.5 + k * 0.1, 0.0])); ctx.stroke(); }
+  if (beard) for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.moveTo(...m([0.5 - k * 0.1, 0.66 + k * 0.05])); ctx.lineTo(...m([0.62 - k * 0.13, 1.1 + k * 0.03])); ctx.stroke(); }
+  const e = m([0.3, 0.0]); ctx.fillStyle = pal.inc; ctx.beginPath(); ctx.moveTo(e[0] - 0.2 * r, e[1] + 0.01 * r); ctx.quadraticCurveTo(e[0], e[1] - 0.2 * r, e[0] + 0.2 * r, e[1]); ctx.quadraticCurveTo(e[0], e[1] + 0.16 * r, e[0] - 0.2 * r, e[1] + 0.01 * r); ctx.fill();
+  ctx.fillStyle = pal.black; ctx.beginPath(); ctx.arc(e[0] + 0.03 * r, e[1] + 0.01 * r, 0.075 * r, 0, 7); ctx.fill();
+}
+function foot(ctx, a, dir, pal) { fillShape(ctx, [[a[0] - 0.02 * dir, a[1] - 0.025], [a[0] + 0.03 * dir, a[1] - 0.015], [a[0] + 0.10 * dir, a[1] + 0.03], [a[0] + 0.125 * dir, a[1] + 0.055], [a[0] + 0.02 * dir, a[1] + 0.055], [a[0] - 0.03 * dir, a[1] + 0.03]], pal.black); }
+function muscleLines(ctx, lines, pal) { ctx.strokeStyle = pal.inc; ctx.lineWidth = 0.0042; ctx.lineCap = 'round'; lines.forEach(l => { ctx.beginPath(); spline(ctx, l, false); ctx.stroke(); }); }
+
+// ------------------------------------------------------------------ Zeus (striding right, bolt raised)
+function drawZeus(ctx, pal) {
+  const W3 = [0.115, 0.105, 0.078, 0.092, 0.042];
+  // far arm (reaches forward)
+  limb(ctx, [[0.02, 0.2], [0.09, 0.25], [0.15, 0.275], [0.22, 0.27]], [0.062, 0.055, 0.045, 0.034], pal.black);
+  fillShape(ctx, [[0.215, 0.255], [0.255, 0.255], [0.275, 0.268], [0.255, 0.285], [0.215, 0.285]], pal.black);
+  // far leg
+  limb(ctx, [[0.0, 0.5], [-0.045, 0.6], [-0.095, 0.72], [-0.15, 0.82], [-0.185, 0.925]], W3, pal.black); foot(ctx, [-0.185, 0.93], 1, pal);
+  // near leg
+  limb(ctx, [[0.01, 0.5], [0.07, 0.585], [0.125, 0.69], [0.125, 0.8], [0.145, 0.925]], W3, pal.black); foot(ctx, [0.145, 0.93], 1, pal);
+  muscleLines(ctx, [[[0.06, 0.55], [0.085, 0.62], [0.1, 0.68]], [[0.1, 0.72], [0.115, 0.76], [0.108, 0.82]], [[-0.07, 0.62], [-0.095, 0.7], [-0.11, 0.76]], [[-0.14, 0.78], [-0.155, 0.84], [-0.16, 0.89]]], pal);
+  // torso: broad chest, narrow waist
+  fillShape(ctx, [[0.02, 0.165], [0.085, 0.2], [0.095, 0.27], [0.065, 0.37], [0.055, 0.46], [0.07, 0.52], [-0.065, 0.52], [-0.055, 0.45], [-0.075, 0.36], [-0.1, 0.26], [-0.075, 0.19]], pal.black);
+  muscleLines(ctx, [[[0.0, 0.2], [0.03, 0.27], [0.01, 0.34]], [[0.02, 0.36], [0.03, 0.42]], [[-0.02, 0.37], [-0.03, 0.43]], [[-0.07, 0.24], [-0.04, 0.3]]], pal);
+  // short chiton
+  fillShape(ctx, [[-0.07, 0.47], [0.075, 0.47], [0.13, 0.58], [0.16, 0.655], [0.03, 0.675], [-0.1, 0.66], [-0.125, 0.58]], pal.black);
+  muscleLines(ctx, [[[-0.07, 0.5], [-0.09, 0.58], [-0.095, 0.64]], [[-0.02, 0.5], [-0.03, 0.6], [-0.03, 0.66]], [[0.03, 0.5], [0.06, 0.6], [0.08, 0.665]], [[-0.07, 0.49], [0.07, 0.49]], [[-0.1, 0.648], [0.0, 0.658], [0.1, 0.65], [0.15, 0.645]]], pal);
+  // head
+  limb(ctx, [[0.02, 0.15], [0.03, 0.19]], [0.05, 0.06], pal.black);
+  drawHead(ctx, [0.04, 0.085], 0.098, pal, true);
+  // near arm raised with thunderbolt
+  limb(ctx, [[0.0, 0.205], [-0.06, 0.16], [-0.075, 0.085], [-0.02, 0.03]], [0.066, 0.058, 0.048, 0.036], pal.black);
+  fillShape(ctx, [[-0.04, 0.012], [0.0, 0.005], [0.02, 0.02], [0.0, 0.04], [-0.04, 0.036]], pal.black);
+  // thunderbolt: three leaf-shaped flames
+  [[-0.04, -0.12], [0.0, -0.17], [0.07, -0.13]].forEach((d, k) => {
+    const s = [0.0, 0.02], e = [d[0] + 0.05, d[1]];
+    fillShape(ctx, [s, [s[0] - 0.012 + k * 0.012, (s[1] + e[1]) / 2 + 0.01], [e[0], e[1]], [s[0] + 0.025 + k * 0.012, (s[1] + e[1]) / 2 - 0.0]], pal.black);
+    strokeCurve(ctx, [[s[0] + 0.006, s[1] - 0.01], [(s[0] + e[0]) / 2, (s[1] + e[1]) / 2], [e[0] - 0.005, e[1] + 0.012]], pal.inc, 0.0035);
+  });
+}
+
+// ------------------------------------------------------------------ Typhoeus (drawn facing right, flipped by the caller)
+function wingShape(ctx, ang, sc, pal) {
+  ctx.save(); ctx.translate(0, 0.36); ctx.rotate(ang); ctx.scale(sc, sc); ctx.translate(0, -0.36);
+  const P = [[0, 0.33], [-0.1, 0.18], [-0.3, 0.08], [-0.52, 0.06], [-0.64, 0.13], [-0.6, 0.23], [-0.65, 0.31], [-0.57, 0.4], [-0.5, 0.44], [-0.4, 0.5], [-0.22, 0.47], [-0.08, 0.43]];
+  fillShape(ctx, P, pal.black);
+  // scale rows near the root, feather lines toward the edge
+  ctx.strokeStyle = pal.inc; ctx.lineWidth = 0.0032; ctx.lineCap = 'round';
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 8 - r; c++) { const cx = -0.07 - c * 0.056 - (r % 2) * 0.028, cy = 0.2 + r * 0.045 + c * -0.006; ctx.beginPath(); ctx.arc(cx, cy, 0.024, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
+  for (let k = 0; k < 11; k++) { const t = k / 10; ctx.beginPath(); ctx.moveTo(-0.1 - t * 0.14, 0.34 + t * 0.03); ctx.lineTo(-0.28 - t * 0.34, 0.36 + t * 0.05 + (t > 0.7 ? 0.0 : 0)); ctx.stroke(); }
+  ctx.restore();
+}
+function drawTyphoeus(ctx, pal) {
+  // serpent tails with incised scale dots
+  const tails = [
+    { P: [[0.0, 0.56], [0.06, 0.7], [0.0, 0.83], [-0.18, 0.9], [-0.4, 0.88], [-0.55, 0.95], [-0.72, 0.92], [-0.9, 0.97]], W: [0.17, 0.15, 0.13, 0.115, 0.1, 0.08, 0.05, 0.015] },
+    { P: [[-0.02, 0.58], [-0.12, 0.7], [-0.3, 0.76], [-0.5, 0.8], [-0.68, 0.84], [-0.82, 0.78]], W: [0.15, 0.13, 0.11, 0.09, 0.06, 0.02] }];
+  tails.forEach(t => {
+    const pts = []; const sm = (() => { const o = []; for (let i = 0; i < t.P.length - 1; i++) for (let u = 0; u < 8; u++) { const g = k => t.P[Math.min(t.P.length - 1, Math.max(0, k))]; const p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2); const uu = u / 8; o.push([0, 1].map(k => .5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * uu + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * uu * uu + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * uu ** 3))); } return o; })();
+    const ws = sm.map((_, i) => { const f = i / (sm.length - 1) * (t.W.length - 1), a = Math.floor(f), b = Math.min(t.W.length - 1, a + 1); return t.W[a] + (t.W[b] - t.W[a]) * (f - a); });
+    limb(ctx, sm, ws, pal.black);
+    ctx.fillStyle = pal.inc; sm.forEach((p, i) => { if (i % 3 === 0 && i < sm.length - 4) { ctx.beginPath(); ctx.arc(p[0], p[1] + ws[i] * 0.12, ws[i] * 0.07, 0, 7); ctx.fill(); } });
+    ctx.strokeStyle = pal.inc; ctx.lineWidth = 0.0035; ctx.beginPath(); sm.forEach((p, i) => i ? ctx.lineTo(p[0], p[1] - ws[i] * 0.3) : ctx.moveTo(p[0], p[1] - ws[i] * 0.3)); ctx.stroke();
+  });
+  wingShape(ctx, -0.75, 1.05, pal); wingShape(ctx, 0.0, 1.0, pal);
+  fillShape(ctx, [[0.02, 0.16], [0.095, 0.2], [0.1, 0.3], [0.07, 0.42], [0.075, 0.58], [-0.075, 0.58], [-0.07, 0.42], [-0.105, 0.28], [-0.08, 0.19]], pal.black);
+  muscleLines(ctx, [[[0.0, 0.2], [0.03, 0.28], [0.01, 0.36]], [[0.02, 0.41], [0.03, 0.5]], [[-0.02, 0.42], [-0.03, 0.5]]], pal);
+  // snake heads rising from the shoulders
+  [[0.07, 0.19, -0.8], [-0.07, 0.18, -2.3]].forEach(([x, y, a]) => {
+    const e = [x + Math.cos(a) * 0.13, y + Math.sin(a) * 0.13]; limb(ctx, [[x, y], [(x + e[0]) / 2 + 0.02, (y + e[1]) / 2 - 0.02], e], [0.04, 0.032, 0.026], pal.black);
+    ctx.save(); ctx.translate(e[0], e[1]); ctx.rotate(a + 0.2); fillShape(ctx, [[-0.01, -0.02], [0.04, -0.02], [0.075, 0.0], [0.04, 0.025], [-0.01, 0.022]], pal.black); ctx.fillStyle = pal.inc; ctx.beginPath(); ctx.arc(0.025, -0.005, 0.005, 0, 7); ctx.fill();
+    strokeCurve(ctx, [[0.07, 0.0], [0.1, -0.005], [0.12, -0.02]], pal.black, 0.004); ctx.restore();
+  });
+  limb(ctx, [[0.02, 0.15], [0.035, 0.19]], [0.05, 0.06], pal.black);
+  drawHead(ctx, [0.05, 0.09], 0.095, pal, true);
+}
+
+// ------------------------------------------------------------------ texture painter
+function paint(ctx, w, h, pal, isCol) {
+  ctx.fillStyle = pal.clay; ctx.fillRect(0, 0, w, h);
+  const Y = hh => (1 - sOfHeight(hh)) * h;          // canvas y of a height on the vase
+  const band = (y0, y1) => { ctx.fillStyle = pal.black; ctx.fillRect(0, Y(y1), w, Y(y0) - Y(y1)); };
+  band(0, 0.045);                                   // black foot
+  // rays rising from the foot
+  ctx.fillStyle = pal.black; const nr = 36; for (let i = 0; i < nr; i++) { const x = (i + .5) * w / nr; ctx.beginPath(); ctx.moveTo(x - w / nr * .42, Y(0.075)); ctx.lineTo(x, Y(0.118)); ctx.lineTo(x + w / nr * .42, Y(0.075)); ctx.fill(); }
+  band(0.072, 0.078);
+  band(0.31, 0.316); band(0.325, 0.331);          // lines above the panel
+  band(0.115, 0.121);                               // line below the panel
+  band(0.331, 0.445);                              // black shoulder, neck, lip (panel above belly shows clay)
+  // panel: clay ground. Red-and-black stripes at the top of the shoulder
+  const pyTop = Y(0.316), pyBot = Y(0.121), ph = pyBot - pyTop;
+  const cx = w / 2;
+  // figures. figure height in px
+  const fh = ph * 0.97;
+  ctx.save(); ctx.translate(cx - w * 0.075, pyBot - ph * 0.025); ctx.scale(fh, fh); ctx.translate(0, -1.0); drawZeus(ctx, pal); ctx.restore();
+  ctx.save(); ctx.translate(cx + w * 0.085, pyBot - ph * 0.025); ctx.scale(-fh * 0.98, fh * 0.98); ctx.translate(0, -1.0); drawTyphoeus(ctx, pal); ctx.restore();
+  // incised name beside Zeus
+  ctx.fillStyle = pal.black; ctx.font = `${ph * 0.07}px Georgia`; ctx.textAlign = 'center'; ctx.fillText('ZEYΣ', cx - w * 0.04, pyTop + ph * 0.2);
+  // grain on the colour map
+  if (isCol) { for (let i = 0; i < 140000; i++) { const v = Math.random(); ctx.fillStyle = v < .5 ? 'rgba(60,30,10,0.05)' : 'rgba(255,200,140,0.04)'; ctx.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 1 + Math.random() * 3); } }
+}
+const mkTex = (pal, isCol) => { const c = document.createElement('canvas'); c.width = 4096; c.height = 2048; paint(c.getContext('2d'), 4096, 2048, pal, isCol); const t = new THREE.CanvasTexture(c); if (isCol) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16; return t; };
+
+// ------------------------------------------------------------------ scene
+let vase, ready = false;
+async function init() {
+  const hdr = await new RGBELoader().loadAsync('/core/assets/polyhaven/photo_studio_loft_hall_2k.hdr'); hdr.mapping = THREE.EquirectangularReflectionMapping;
+  scene.environment = hdr; scene.environmentIntensity = 0.2; scene.background = new THREE.Color('#0b0807');
+  const colMap = mkTex(PAL_COL, true), roughMap = mkTex(PAL_ROUGH, false);
+  const mat = new THREE.MeshStandardMaterial({ map: colMap, roughnessMap: roughMap, roughness: 1, metalness: 0, side: THREE.DoubleSide });
+  const g = new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 192);
+  vase = new THREE.Group();
+  const body = new THREE.Mesh(g, mat); body.castShadow = body.receiveShadow = true; vase.add(body);
+  const glaze = new THREE.MeshStandardMaterial({ color: '#0a0706', roughness: 0.38, metalness: 0.0 });
+  [-1, 1].forEach(sg => { const c = new THREE.CatmullRomCurve3([[0.056, 0.378], [0.115, 0.412], [0.176, 0.36], [0.158, 0.288]].map(p => new THREE.Vector3(sg * p[0], p[1], 0)));
+    const t = new THREE.Mesh(new THREE.TubeGeometry(c, 40, 0.0105, 12), glaze); t.castShadow = true; vase.add(t); });
+  vase.rotation.y = Math.PI; scene.add(vase);
+  // plinth
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.30, 0.04, 96), new THREE.MeshStandardMaterial({ color: '#2a2220', roughness: 0.6 }));
+  plinth.position.y = -0.02; plinth.receiveShadow = true; scene.add(plinth);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.MeshStandardMaterial({ color: '#100c0b', roughness: 0.9 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -0.041; scene.add(floor);
+  // museum light
+  const key = new THREE.SpotLight('#ffe2c0', 95, 5, 0.32, 0.8, 1.6); key.position.set(-0.9, 1.25, 1.2); key.target.position.set(0, 0.22, 0); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; scene.add(key, key.target);
+  const rim = new THREE.SpotLight('#9fb4ff', 18, 3, 0.6, 0.8, 1.6); rim.position.set(0.7, 0.5, -0.7); rim.target.position.set(0, 0.22, 0); scene.add(rim, rim.target);
+  const fill = new THREE.PointLight('#ffb070', 0.6, 3); fill.position.set(0.5, 0.2, 0.6); scene.add(fill);
+  ready = true; draw(0); window.READY = true;
+}
+const ease = k => (k = Math.min(1, Math.max(0, k)), k * k * (3 - 2 * k));
+function draw(t) {
+  const k = ease(t / 12);
+  vase.rotation.y = Math.PI + (-0.28 + 0.56 * k);                 // slow turn of the vase
+  const dist = 1.2 - 0.38 * ease((t - 1) / 8);                    // push in
+  cam.position.set(0, 0.25 + 0.02 * k, dist); cam.lookAt(0, 0.215, 0);
+  renderer.render(scene, cam);
+}
+window.DUR = 12; window.render = x => { if (ready) draw(RATE ? x / RATE : x); };
+init();
+</script></body></html>

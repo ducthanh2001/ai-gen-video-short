@@ -1,0 +1,186 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Clay and Myth - sticker map test</title>
+<style>
+html,body{margin:0;background:#000;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+#cap{position:absolute;left:0;right:0;bottom:8%;text-align:center;font:600 46px/1.2 "Segoe UI","Helvetica Neue",Arial,sans-serif;color:#fff;letter-spacing:.3px;
+  text-shadow:0 2px 3px rgba(0,0,0,.9),0 0 10px rgba(0,0,0,.7),1px 1px 0 #000,-1px -1px 0 #000;pointer-events:none}
+</style>
+<script src="mapdata.js"></script><script src="timing.js"></script></head><body><canvas id="c"></canvas><div id="cap"></div>
+<script>
+// Map-sticker explainer test (GeoGlobeTales-like). Half-body stickers slide/pop on an antique map. render(t) seconds.
+const W = innerWidth, H = innerHeight, cv = document.getElementById('c'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
+const OL = '#33200f', TEXTS = ['They send her to Crete.', 'In a cave on a mountain, Gaia takes the baby from her, and hides him.', 'To Cronos, Gaia gives a great stone, wrapped in baby clothes.', 'He takes it.', 'He swallows it.', 'And he never notices.'];
+let seed = 5; const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const sm = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x), cl = x => Math.max(0, Math.min(1, x));
+const K = (t, keys) => { if (t <= keys[0][0]) return keys[0][1]; for (let i = 1; i < keys.length; i++) if (t <= keys[i][0]) { const a = keys[i - 1], b = keys[i]; return a[1] + (b[1] - a[1]) * sm((t - a[0]) / (b[0] - a[0])); } return keys[keys.length - 1][1]; };
+const backOut = x => { x = cl(x); const c1 = 2.2, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const pop = (t, t0, d = 0.4) => t < t0 ? 0 : backOut((t - t0) / d);
+
+// ------------------------------------------------------------ projection + map
+const KPX = 420, COS = Math.cos(37 * Math.PI / 180);
+const P = (lon, lat) => [(lon - 25) * COS * KPX, -(lat - 37) * KPX];
+const rings = window.LAND.map(r => r.map(([lo, la]) => P(lo, la)));
+const landPath = new Path2D(); const pathOf = (pt, r) => { pt.moveTo(r[0][0], r[0][1]); for (let i = 1; i < r.length; i++) pt.lineTo(r[i][0], r[i][1]); pt.closePath(); };
+rings.forEach(r => pathOf(landPath, r));
+const creteRing = window.LAND.findIndex(r => { const xs = r.map(c => c[0]), ys = r.map(c => c[1]); return Math.min(...xs) > 23 && Math.max(...xs) < 26.5 && Math.min(...ys) > 34.8 && Math.max(...ys) < 35.8; });
+const cretePath = new Path2D(); pathOf(cretePath, rings[creteRing]);
+const GLYPHS = []; for (let lo = 19.5; lo < 28.5; lo += 0.2) for (let la = 34.9; la < 41.2; la += 0.2) { const [x, y] = P(lo + (rnd() - .5) * .16, la + (rnd() - .5) * .16); if (ctx.isPointInPath(landPath, x, y) && rnd() < 0.42) GLYPHS.push([x, y, 26 + rnd() * 26]); }
+const NOISE = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); for (let i = 0; i < 3500; i++) { x.fillStyle = `rgba(${rnd() < .5 ? '60,40,10' : '255,250,230'},${rnd() * .10})`; x.fillRect(rnd() * 256, rnd() * 256, 1 + rnd() * 2, 1 + rnd() * 2); } return ctx.createPattern(c, 'repeat'); })();
+const HATCH = (() => { const c = document.createElement('canvas'); c.width = c.height = 24; const x = c.getContext('2d'); x.strokeStyle = 'rgba(255,255,255,.55)'; x.lineWidth = 4; x.beginPath(); x.moveTo(-4, 28); x.lineTo(28, -4); x.stroke(); return ctx.createPattern(c, 'repeat'); })();
+function mount(x, y, s, shade = '#b79a68') { ctx.save(); ctx.translate(x, y); ctx.lineJoin = 'round'; ctx.strokeStyle = '#7b6038'; ctx.lineWidth = Math.max(2, s * 0.02);
+  const R = [[-1, 0], [-0.6, -0.5], [-0.42, -0.36], [-0.08, -1.0], [0.12, -0.62], [0.34, -0.82], [0.72, -0.3], [1, 0]];
+  ctx.fillStyle = '#e8d6a6'; ctx.beginPath(); R.forEach(([a, b], i) => i ? ctx.lineTo(a * s, b * s * 1.0) : ctx.moveTo(a * s, b * s)); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = shade; ctx.beginPath(); ctx.moveTo(-0.08 * s, -1.0 * s); ctx.lineTo(0.12 * s, -0.62 * s); ctx.lineTo(0.34 * s, -0.82 * s); ctx.lineTo(0.72 * s, -0.3 * s); ctx.lineTo(s, 0); ctx.lineTo(0.2 * s, 0); ctx.lineTo(0.02 * s, -0.45 * s); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); R.forEach(([a, b], i) => i ? ctx.lineTo(a * s, b * s) : ctx.moveTo(a * s, b * s)); ctx.closePath(); ctx.stroke();
+  if (s > 120) { ctx.fillStyle = '#f7f3e6'; ctx.beginPath(); ctx.moveTo(-0.08 * s, -1.0 * s); ctx.lineTo(0.12 * s, -0.62 * s); ctx.lineTo(0.02 * s, -0.66 * s); ctx.lineTo(-0.1 * s, -0.58 * s); ctx.lineTo(-0.19 * s, -0.66 * s); ctx.lineTo(-0.2 * s, -0.74 * s); ctx.closePath(); ctx.fill(); ctx.stroke(); } ctx.restore(); }
+function drawWorld(z, cx, cy, t, o = {}) {
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-cx, -cy);
+  // sea
+  const half = Math.max(W, H) / z;
+  ctx.fillStyle = '#76a1ab'; ctx.fillRect(cx - half, cy - half, half * 2, half * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 3 / z * z; for (let lo = 14; lo <= 34; lo += 1) { const [x] = P(lo, 0); ctx.beginPath(); ctx.moveTo(x, cy - half); ctx.lineTo(x, cy + half); ctx.stroke(); } for (let la = 30; la <= 46; la += 1) { const [, y] = P(0, la); ctx.beginPath(); ctx.moveTo(cx - half, y); ctx.lineTo(cx + half, y); ctx.stroke(); }
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(170,206,212,.55)'; ctx.lineWidth = 46; ctx.stroke(landPath);
+  ctx.strokeStyle = 'rgba(190,222,226,.55)'; ctx.lineWidth = 22; ctx.stroke(landPath);
+  ctx.save(); ctx.translate(10, 14); ctx.fillStyle = 'rgba(40,60,70,.28)'; ctx.fill(landPath); ctx.restore();
+  ctx.fillStyle = '#dcc896'; ctx.fill(landPath); ctx.strokeStyle = '#8a7246'; ctx.lineWidth = 5; ctx.stroke(landPath);
+  for (const [x, y, s] of GLYPHS) mount(x, y + s * 0.4, s * 0.55);
+  if (o.crete) { const k = o.crete; ctx.save(); ctx.globalAlpha = k; ctx.fillStyle = '#c9623a'; ctx.fill(cretePath); ctx.fillStyle = HATCH; ctx.fill(cretePath); ctx.strokeStyle = '#7a2e18'; ctx.lineWidth = 6; ctx.stroke(cretePath); ctx.restore(); }
+  ctx.restore();
+}
+function label(txt, x, y, size, a, z, cx, cy) { if (a <= 0.01) return; ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-cx, -cy); ctx.globalAlpha = a; ctx.font = `italic 700 ${size}px "Palatino Linotype",Georgia,serif`; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = size * 0.1; ctx.strokeStyle = 'rgba(255,248,226,.9)'; ctx.fillStyle = '#4a3318'; if (ctx.letterSpacing !== undefined) ctx.letterSpacing = size * 0.12 + 'px'; ctx.strokeText(txt, x, y); ctx.fillText(txt, x, y); ctx.restore(); }
+
+// ------------------------------------------------------------ stickers (half-body busts), unit = head diameter
+function ell(x, y, rx, ry, fill, stroke = true, lw = 0.03) { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.lineWidth = lw; ctx.strokeStyle = OL; ctx.stroke(); } }
+const CHAR = {
+  gaia: { skin: '#f0bd98', robe: '#4f9a4a', trim: '#f4e6b0', hair: '#2e1a10', long: true, wreath: true },
+  cronos: { skin: '#dba27a', robe: '#8e3f56', trim: '#f0cf7a', hair: '#b0aaa0', beard: true, brow: '#8e8a80' },
+  rhea: { skin: '#f0bd98', robe: '#3f6fa8', trim: '#f4e6b0', hair: '#7a4a28', veil: '#e6d8b8' },
+};
+function bust(c) {
+  const o = CHAR[c.kind], t = c.t || 0, s = c.s || 170, ex = c.expr || 'neutral', pp = c.pop ?? 1; if (pp <= 0.001) return;
+  const bob = Math.sin(t * 2.6 + (c.ph || 0)) * 0.025, flip = c.flip ? -1 : 1, sq = c.squash || 0;
+  ctx.save(); ctx.translate(c.x, c.y + bob * s); ctx.rotate((c.tilt || 0) + Math.sin(t * 1.7 + (c.ph || 0)) * 0.025); ctx.scale(s * pp * flip * (1 + sq), s * pp * (1 - sq));
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // drop shadow
+  ctx.save(); ctx.translate(0.07, 0.09); ctx.fillStyle = 'rgba(50,30,10,.28)'; ctx.beginPath(); ctx.ellipse(0, -0.55, 0.52, 0.52, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(-0.66, 0.62); ctx.quadraticCurveTo(-0.7, 0.1, -0.3, 0.0); ctx.lineTo(0.3, 0); ctx.quadraticCurveTo(0.7, 0.1, 0.66, 0.62); ctx.fill(); ctx.restore();
+  if (o.long) { ctx.fillStyle = o.hair; ctx.beginPath(); ctx.moveTo(-0.5, -0.7); ctx.bezierCurveTo(-0.7, -0.2, -0.62, 0.3, -0.52, 0.6); ctx.lineTo(0.52, 0.6); ctx.bezierCurveTo(0.62, 0.3, 0.7, -0.2, 0.5, -0.7); ctx.closePath(); ctx.fill(); ctx.lineWidth = 0.03; ctx.strokeStyle = OL; ctx.stroke(); }
+  // body
+  ctx.fillStyle = o.robe; ctx.beginPath(); ctx.moveTo(-0.66, 0.62); ctx.quadraticCurveTo(-0.72, 0.12, -0.3, 0.0); ctx.lineTo(0.3, 0.0); ctx.quadraticCurveTo(0.72, 0.12, 0.66, 0.62); ctx.closePath(); ctx.fill(); ctx.lineWidth = 0.035; ctx.strokeStyle = OL; ctx.stroke();
+  ctx.strokeStyle = o.trim; ctx.lineWidth = 0.05; ctx.beginPath(); ctx.moveTo(-0.3, 0.02); ctx.quadraticCurveTo(0, 0.2, 0.3, 0.02); ctx.stroke();
+  ctx.fillStyle = o.skin; ctx.fillRect(-0.09, -0.12, 0.18, 0.2); ctx.lineWidth = 0.03; ctx.strokeStyle = OL; ctx.strokeRect(-0.09, -0.12, 0.18, 0.2);
+  // head
+  ctx.fillStyle = o.skin; ctx.beginPath(); ctx.arc(0, -0.55, 0.5, 0, 7); ctx.fill(); ctx.lineWidth = 0.035; ctx.strokeStyle = OL; ctx.stroke();
+  ell(-0.5, -0.5, 0.07, 0.1, o.skin); ell(0.5, -0.5, 0.07, 0.1, o.skin); ctx.fillStyle = o.skin; ctx.beginPath(); ctx.arc(0, -0.55, 0.49, 0, 7); ctx.fill();
+  // hair / head cover
+  if (o.veil) { ctx.fillStyle = o.hair; ctx.beginPath(); ctx.arc(0, -0.55, 0.5, Math.PI * 1.1, Math.PI * 1.9); ctx.quadraticCurveTo(0.15, -0.72, -0.2, -0.64); ctx.quadraticCurveTo(-0.4, -0.6, -0.48, -0.42); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = o.veil; ctx.beginPath(); ctx.arc(0, -0.55, 0.62, Math.PI * 0.96, Math.PI * 2.04); ctx.lineTo(0.68, 0.24); ctx.lineTo(0.5, 0.2); ctx.lineTo(0.5, -0.5); ctx.arc(0, -0.55, 0.5, 0, Math.PI, true); ctx.lineTo(-0.5, 0.2); ctx.lineTo(-0.68, 0.24); ctx.closePath(); ctx.fill(); ctx.lineWidth = 0.03; ctx.strokeStyle = OL; ctx.stroke(); }
+  else { ctx.fillStyle = o.hair; ctx.beginPath(); ctx.arc(0, -0.55, 0.515, Math.PI * 1.03, Math.PI * 1.97); ctx.quadraticCurveTo(0.3, -0.78, 0.0, -0.76); ctx.quadraticCurveTo(-0.35, -0.8, -0.5, -0.4); ctx.closePath(); ctx.fill(); ctx.lineWidth = 0.03; ctx.stroke(); }
+  if (o.wreath) for (let i = 0; i < 10; i++) { const a = Math.PI * (1.12 + i * 0.076); ctx.fillStyle = i % 2 ? '#5f9a3e' : '#86c552'; ctx.beginPath(); ctx.ellipse(Math.cos(a) * 0.52, -0.55 + Math.sin(a) * 0.52, 0.08, 0.045, a + Math.PI / 2, 0, 7); ctx.fill(); ctx.lineWidth = 0.02; ctx.stroke(); }
+  // eyes
+  const lk = c.look ?? 0.3, blink = (t % 3.4) < 0.12 && ex !== 'swallow';
+  for (const sg of [-1, 1]) { const x = sg * 0.2, y = -0.52;
+    const wink = c.wink && sg === 1;
+    if (ex === 'swallow' || blink || wink) { ctx.strokeStyle = OL; ctx.lineWidth = 0.035; ctx.beginPath(); ctx.arc(x, y + 0.02, 0.08, Math.PI * 1.1, Math.PI * 1.9, ex !== 'swallow'); ctx.stroke(); continue; }
+    const big = ex === 'shock' ? 1.25 : 1; ell(x, y, 0.115 * big, 0.14 * big, '#fff', true, 0.025);
+    ctx.fillStyle = '#1b0f0a'; ctx.beginPath(); ctx.arc(x + lk * 0.04, y + 0.01, 0.065 * big, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + lk * 0.04 + 0.02, y - 0.03, 0.02, 0, 7); ctx.fill();
+    if (ex === 'smug') { ctx.fillStyle = o.skin; ctx.beginPath(); ctx.ellipse(x, y - 0.05, 0.125, 0.1, 0, Math.PI, 0); ctx.fill(); ctx.lineWidth = 0.03; ctx.strokeStyle = OL; ctx.beginPath(); ctx.moveTo(x - 0.12, y); ctx.lineTo(x + 0.12, y); ctx.stroke(); }
+    // brows
+    const up = ex === 'shock' ? -0.06 : (ex === 'smug' && sg === 1 ? -0.05 : 0), by = y - 0.2 + up, inner = ex === 'worry' ? -0.06 : 0; ctx.strokeStyle = o.brow || (o.hair === '#7a4a28' ? '#5a3418' : o.hair); ctx.lineWidth = 0.045;
+    ctx.beginPath(); ctx.moveTo(x - 0.1, by + (sg === 1 ? inner : 0)); ctx.lineTo(x + 0.1, by + (sg === -1 ? inner : 0)); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(230,110,100,.35)'; ell(-0.3, -0.35, 0.07, 0.045, ctx.fillStyle, false); ell(0.3, -0.35, 0.07, 0.045, ctx.fillStyle, false);
+  ctx.fillStyle = 'rgba(160,100,70,.55)'; ctx.beginPath(); ctx.ellipse(0.0, -0.42, 0.03, 0.045, 0, 0, 7); ctx.fill();
+  if (o.beard) { ctx.fillStyle = o.hair; ctx.beginPath(); ctx.moveTo(-0.44, -0.36); ctx.bezierCurveTo(-0.5, 0.05, 0.5, 0.05, 0.44, -0.36); ctx.quadraticCurveTo(0.2, -0.26, 0, -0.27); ctx.quadraticCurveTo(-0.2, -0.26, -0.44, -0.36); ctx.fill(); ctx.lineWidth = 0.03; ctx.strokeStyle = OL; ctx.stroke(); }
+  // mouth
+  const my = o.beard ? -0.17 : -0.22; ctx.strokeStyle = OL; ctx.lineWidth = 0.035;
+  if (ex === 'swallow' || ex === 'shock') { const rw = ex === 'swallow' ? 0.15 : 0.07, rh = ex === 'swallow' ? 0.13 : 0.1; ell(0, my + 0.03, rw, rh, '#4a1510', true, 0.03); if (ex === 'swallow') ell(0, my + 0.1, 0.1, 0.05, '#d4685a', false); }
+  else if (ex === 'worry') { ctx.beginPath(); ctx.arc(0, my + 0.1, 0.09, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke(); }
+  else if (ex === 'smile' || ex === 'smug') { ctx.beginPath(); ctx.arc(ex === 'smug' ? 0.04 : 0, my - 0.06, 0.14, Math.PI * 0.18, Math.PI * 0.82); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.moveTo(-0.07, my + 0.02); ctx.lineTo(0.07, my + 0.02); ctx.stroke(); }
+  ctx.restore();
+}
+function bundle(x, y, s, kind, t, a = 1, rot = 0) { if (s <= 0.001 || a <= 0) return; ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s); ctx.globalAlpha = a; ctx.lineWidth = 0.05; ctx.strokeStyle = OL; ctx.lineJoin = 'round';
+  ctx.fillStyle = 'rgba(50,30,10,.25)'; ctx.beginPath(); ctx.ellipse(0.06, 0.12, 0.4, 0.34, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#f2e6c8'; ctx.beginPath(); ctx.ellipse(0, 0.04, 0.42, 0.34, 0, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#c9b27a'; ctx.lineWidth = 0.04; ctx.beginPath(); ctx.arc(0, 0.04, 0.26, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0.04, 0.26, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke(); ctx.strokeStyle = OL;
+  if (kind === 'stone') { ctx.fillStyle = '#8f897f'; ctx.lineWidth = 0.05; ctx.beginPath(); ctx.moveTo(-0.2, -0.22); ctx.lineTo(-0.08, -0.46); ctx.lineTo(0.14, -0.43); ctx.lineTo(0.26, -0.24); ctx.lineTo(0.1, -0.12); ctx.lineTo(-0.12, -0.12); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else { ctx.fillStyle = '#f0bd98'; ctx.beginPath(); ctx.arc(0, -0.28, 0.27, 0, 7); ctx.fill(); ctx.lineWidth = 0.045; ctx.strokeStyle = OL; ctx.stroke(); ctx.fillStyle = '#1b0f0a'; ctx.beginPath(); ctx.arc(-0.09, -0.3, 0.04, 0, 7); ctx.arc(0.09, -0.3, 0.04, 0, 7); ctx.fill(); ctx.lineWidth = 0.03; ctx.beginPath(); ctx.arc(0, -0.2, 0.05, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke(); ctx.fillStyle = 'rgba(230,110,100,.4)'; ctx.beginPath(); ctx.arc(-0.17, -0.2, 0.035, 0, 7); ctx.arc(0.17, -0.2, 0.035, 0, 7); ctx.fill(); }
+  ctx.restore(); }
+function bez(p0, p1, p2, u) { const a = 1 - u; return [a * a * p0[0] + 2 * a * u * p1[0] + u * u * p2[0], a * a * p0[1] + 2 * a * u * p1[1] + u * u * p2[1]]; }
+function trail(p0, p1, p2, prog, z) { if (prog <= 0) return; ctx.save(); ctx.strokeStyle = '#fffaf0'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.setLineDash([1, 22]); ctx.shadowColor = 'rgba(40,25,10,.5)'; ctx.shadowBlur = 4; ctx.beginPath(); for (let i = 0; i <= 50; i++) { const q = bez(p0, p1, p2, Math.min(prog, i / 50 * prog)); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); } ctx.stroke(); ctx.restore(); }
+
+// ------------------------------------------------------------ captions
+const capEl = document.getElementById('cap'); let capKey = '';
+function chunksOf(text) { const w = text.split(' '), out = []; let cur = []; for (const x of w) { cur.push(x); if (cur.length >= 4 || /[,.]$/.test(x)) { out.push(cur.join(' ')); cur = []; } } if (cur.length) out.push(cur.join(' ')); return out; }
+function caption(t) { let txt = ''; for (let i = 0; i < T.length; i++) { const a = T[i].s, b = T[i].e + 0.15; if (t >= a && t < b) { const ch = chunksOf(TEXTS[i]), tot = ch.reduce((n, c) => n + c.length, 0); let acc = 0; for (const c of ch) { const s0 = a + (T[i].e - a) * acc / tot; acc += c.length; if (t >= s0) txt = c; } } } if (txt !== capKey) { capKey = txt; capEl.textContent = txt; } }
+
+// ------------------------------------------------------------ scene
+const toW = (lon, lat) => P(lon, lat);
+const START = toW(22.4, 37.9), CRETE = toW(24.9, 35.2), CAVE = [CRETE[0] + 110, CRETE[1] - 60];
+const STAGE = [-804, -900];
+function frame(t) {
+  // camera
+  const z = K(t, [[0, 0.5], [1.7, 0.5], [3.0, 1.35], [5.9, 1.4], [6.5, 0.5], [7.1, 1.35], [10.4, 1.4], [11.0, 2.6], [13.0, 2.6], [14.4, 1.9]]);
+  const cx = K(t, [[0, -300], [1.7, -300], [3.0, CRETE[0] + 120], [5.9, CRETE[0] + 120], [6.5, -500], [7.1, STAGE[0] + 20], [10.4, STAGE[0] + 20], [11.0, STAGE[0] - 130], [14, STAGE[0] - 60]]);
+  const cy = K(t, [[0, 250], [1.7, 250], [3.0, CRETE[1] - 20], [5.9, CRETE[1] - 20], [6.5, -200], [7.1, STAGE[1] + 20], [10.4, STAGE[1] + 20], [11.0, STAGE[1] - 20], [14, STAGE[1] - 20]]);
+  drawWorld(z, cx, cy, t, { crete: sm((t - 1.1) / 0.5) * (t < 6.5 ? 1 : 1 - sm((t - 6.2) / 0.4)) });
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-cx, -cy);
+  const inCrete = t < 6.6, inStage = t >= 6.3;
+  // labels
+  ctx.restore();
+  label('GREECE', toW(22.2, 39.4)[0], toW(22.2, 39.4)[1], 150, 0.55 * (1 - sm((z - 0.5) / 0.3)), z, cx, cy);
+  label('CRETE', CRETE[0] - 20, CRETE[1] - 150, 120, sm((t - 1.1) / 0.4) * (t < 6.4 ? 1 : 0), z, cx, cy);
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-cx, -cy);
+  // ---- Crete part
+  if (inCrete) {
+    const mk = pop(t, 2.2, 0.5); if (mk > 0) { ctx.save(); ctx.translate(CAVE[0], CAVE[1]); ctx.scale(mk, mk); mount(0, 0, 300, '#a98d5c'); ctx.fillStyle = '#2a170c'; ctx.beginPath(); ctx.moveTo(-60, 0); ctx.quadraticCurveTo(-60, -130, 0, -135); ctx.quadraticCurveTo(60, -130, 60, 0); ctx.closePath(); ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = OL; ctx.stroke(); ctx.restore(); }
+    // Rhea slides in along a dotted path
+    const rp = [START, [START[0] + 200, CRETE[1] - 200], [CRETE[0] - 330, CRETE[1] + 40]], rt = sm((t - 0.5) / 1.5), rpos = bez(rp[0], rp[1], rp[2], rt);
+    trail(rp[0], rp[1], rp[2], rt, z);
+    const settle = sm((t - 2.0) / 0.5);
+    const rhea = { kind: 'rhea', x: rpos[0], y: rpos[1], s: 150, t, ph: 0, pop: pop(t, 0.5, 0.4), expr: t < 5.4 ? 'worry' : 'smile', look: 0.6, tilt: -0.05 };
+    bust(rhea);
+    // Gaia pops in
+    const gaia = { kind: 'gaia', x: CRETE[0] + 340, y: CRETE[1] + 40, s: 175, t, ph: 1, pop: pop(t, 3.0, 0.45), expr: t < 5.4 ? 'neutral' : 'smile', look: -0.6, flip: true };
+    bust(gaia);
+    // baby: held by Rhea -> Gaia -> cave
+    const held = [rpos[0] + 90, rpos[1] + 100], gb = [gaia.x - 90, gaia.y + 100];
+    let bp = held, bs = 105 * pop(t, 1.7, 0.4);
+    if (t > 3.9) { const u = sm((t - 3.9) / 0.8); bp = bez(held, [(held[0] + gb[0]) / 2, held[1] - 150], gb, u); }
+    if (t > 4.9) { const u = sm((t - 4.9) / 0.6); bp = [gb[0] + (CAVE[0] - gb[0]) * u, gb[1] + (CAVE[1] - 30 - gb[1]) * u]; bs *= 1 - 0.45 * u; }
+    if (t < 5.5) bundle(bp[0], bp[1], bs, 'baby', t, 1, Math.sin(t * 3) * 0.05);
+    // rock covers the cave
+    const rk = sm((t - 5.35) / 0.45); if (rk > 0) { const dy = -300 * (1 - rk) + Math.sin(rk * Math.PI) * 0; ctx.save(); ctx.translate(CAVE[0], CAVE[1] + dy - 6); ctx.fillStyle = '#8a7a68'; ctx.strokeStyle = OL; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(-90, 10); ctx.quadraticCurveTo(-100, -110, -10, -130); ctx.quadraticCurveTo(80, -140, 92, -30); ctx.quadraticCurveTo(96, 6, 82, 10); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.ellipse(-20, -80, 38, 18, -0.3, 0, 7); ctx.fill(); ctx.restore(); }
+  }
+  // ---- stage part
+  if (inStage && t > 6.5) {
+    const cr = { kind: 'cronos', x: STAGE[0] - 250, y: STAGE[1] + 30, s: 185, t, ph: 2, pop: pop(t, 6.9, 0.45), look: 0.5 };
+    const g2 = { kind: 'gaia', x: STAGE[0] + 290, y: STAGE[1] + 20, s: 175, t, ph: 3, pop: pop(t, 7.2, 0.45), flip: true, look: -0.5 };
+    cr.expr = t < 10.9 ? 'neutral' : t < 12.1 ? 'smile' : t < 13.1 ? 'swallow' : 'smug';
+    g2.expr = t < 8.4 ? 'neutral' : 'smile'; g2.wink = t > 13.6;
+    cr.squash = t > 12.7 && t < 13.2 ? 0.1 * Math.sin((t - 12.7) / 0.5 * Math.PI) : 0;
+    const a = [g2.x - 60, g2.y + 50], c1 = [cr.x + 90, cr.y + 110];
+    const dl = sm((t - 7.7) / 0.7); const mid = [(a[0] + c1[0]) / 2, a[1] - 110];
+    if (t < 10.9) trail(a, mid, c1, dl, z);
+    cr.look = t < 12 ? 0.5 : 0; bust(cr); bust(g2);
+    // stone
+    const sk = pop(t, 7.6, 0.4); let sp = [a[0] + 10, a[1] + 100], ss = 100 * sk, rot = 0;
+    if (t > 8.4) { const u = sm((t - 8.4) / 1.2); sp = bez([a[0] + 10, a[1] + 100], [mid[0], mid[1] + 40], [c1[0] + 40, c1[1] + 60], u); rot = u * 6.28; }
+    if (t > 10.9) sp = [c1[0] + 40, c1[1] + 60];
+    if (t > 12.1) { const u = sm((t - 12.1) / 0.55); sp = [c1[0] + 40 + (cr.x - c1[0] - 40) * u, c1[1] + 60 + (cr.y - 20 - c1[1] - 60) * u]; ss *= 1 - 0.85 * u; if (t > 12.65) ss = 0; rot = u * 3; }
+    bundle(sp[0], sp[1], ss, 'stone', t, 1, rot);
+  }
+  ctx.restore();
+  // inset: meanwhile, the baby is safe (picture-in-picture)
+  if (t > 13.3) { const k = sm((t - 13.3) / 0.45), r = 165 * k, ix = W / 2 + 40, iy = 210; ctx.save(); ctx.beginPath(); ctx.arc(ix, iy, r, 0, 7); ctx.clip(); ctx.translate(ix - W / 2, iy - H / 2); drawWorld(1.7, CRETE[0] + 110, CRETE[1] - 80, t, { crete: 0 }); ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(1.7, 1.7); ctx.translate(-(CRETE[0] + 110), -(CRETE[1] - 80));
+    mount(CAVE[0], CAVE[1], 300, '#a98d5c'); ctx.fillStyle = '#2a170c'; ctx.beginPath(); ctx.moveTo(CAVE[0] - 60, CAVE[1]); ctx.quadraticCurveTo(CAVE[0] - 60, CAVE[1] - 130, CAVE[0], CAVE[1] - 135); ctx.quadraticCurveTo(CAVE[0] + 60, CAVE[1] - 130, CAVE[0] + 60, CAVE[1]); ctx.closePath(); ctx.fill();
+    bundle(CAVE[0], CAVE[1] - 40, 70, 'baby', t, 1, Math.sin(t * 2) * 0.04); ctx.font = '700 46px Georgia'; ctx.fillStyle = '#fff'; ctx.fillText('z', CAVE[0] + 50, CAVE[1] - 100 - ((t * 20) % 30)); ctx.restore(); ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.arc(ix, iy, r, 0, 7); ctx.lineWidth = 8; ctx.strokeStyle = '#fffaf0'; ctx.stroke(); ctx.restore(); }
+  // paper grain + vignette
+  ctx.save(); ctx.globalAlpha = 0.6; ctx.fillStyle = NOISE; ctx.fillRect(0, 0, W, H); ctx.restore();
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, H * 1.0); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(30,18,6,.42)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  caption(t);
+}
+window.DUR = window.END; window.render = t => frame(t); window.READY = true; frame(0);
+</script></body></html>

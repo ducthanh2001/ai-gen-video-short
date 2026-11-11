@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><title>thumb</title>
+<style>@font-face{font-family:"Playfair Display SC";font-weight:900;src:url(fonts/PlayfairDisplaySC-Black.ttf)}html,body{margin:0;background:#000}canvas{display:block;width:100vw;height:100vh}</style></head><body><canvas id="c"></canvas>
+<script src="chars.js"></script>
+<script>
+const W = innerWidth, H = innerHeight, cv = document.getElementById('c'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
+const SX = W / 1280; let seed = 3; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const V = new URLSearchParams(location.search).get('v') || 'A';
+const vase = new Image(); vase.src = 'img/zt.jpg';
+function bg(a, b) { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, a); g.addColorStop(1, b); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#fff'; for (let i = 0; i < 70; i++) { ctx.globalAlpha = 0.25 + rnd() * 0.5; ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, (0.8 + rnd() * 1.6) * SX, 0, 7); ctx.fill(); } ctx.globalAlpha = 1; }
+function glow(x, y, r, col) { const g = ctx.createRadialGradient(x * SX, y * SX, 0, x * SX, y * SX, r * SX); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
+function text(t, x, y, size, col, rot = 0, align = 'center') { ctx.save(); ctx.translate(x * SX, y * SX); ctx.rotate(rot); ctx.font = `900 ${size * SX}px "Segoe UI Black","Arial Black",Arial`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = size * SX * 0.22; ctx.strokeStyle = '#140a04'; ctx.strokeText(t, 0, 0); ctx.fillStyle = col; ctx.fillText(t, 0, 0); ctx.restore(); }
+function B(kind, x, y, s, o = {}) { bust(Object.assign({ kind, x: x * SX, y: y * SX, s: s * SX, t: 1.0 }, o)); }
+function P(n, x, y, s, o = {}) { prop(Object.assign({ n, x: x * SX, y: y * SX, s: s * SX, t: 1 }, o)); }
+function draw() {
+  if (V === 'A') { // Zeus swallowing pregnant Metis + "THE REAL REASON"
+    bg('#1a0f3a', '#4a1240'); glow(420, 380, 520, 'rgba(255,90,60,.45)');
+    B('zeus', 360, 560, 380, { expr: 'shout', look: 0.6 });
+    B('metis', 640, 360, 200, { expr: 'scared', tilt: 0.5, belly: true, look: -0.6 });
+    text('THE REAL', 985, 210, 100, '#fff'); text('REASON', 985, 345, 122, '#ffd36a', -0.03);
+    ctx.save(); ctx.fillStyle = 'rgba(20,10,4,.85)'; ctx.beginPath(); ctx.roundRect(735 * SX, 455 * SX, 500 * SX, 62 * SX, 14 * SX); ctx.fill(); ctx.font = `700 ${32 * SX}px "Segoe UI",Arial`; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FROM A 2,700-YEAR-OLD POEM', 985 * SX, 486 * SX); ctx.restore(); }
+  else if (V === 'C') { // close on pregnant Metis, Zeus's open mouth looming
+    bg('#0c1430', '#2a1446'); glow(860, 420, 420, 'rgba(255,240,170,.35)');
+    B('zeus', 250, 640, 700, { expr: 'swallow', look: 0.6 });
+    B('metis', 900, 520, 380, { expr: 'scared', belly: true, look: -0.6, flip: true });
+    text('SHE WAS', 980, 80, 92, '#fff'); text('PREGNANT', 900, 650, 110, '#ffd36a', -0.03); }
+  else if (V === 'B') { // three kings, two fell
+    bg('#0f1c3a', '#243a5a'); glow(640, 300, 600, 'rgba(255,220,120,.25)');
+    [['ouranos', 0.25, 'dazed'], ['cronos', 0, 'dazed'], ['zeus', 0, 'smug']].forEach(([k, tl, e], i) => { const x = 230 + i * 410; P('throne', x, 430, 330, { crack: i < 2 }); B(k, x, 360, 190, { expr: e, tilt: i < 2 ? (i ? 0.2 : -0.2) : 0 }); });
+    text('3 KINGS.', 640, 100, 120, '#fff'); text('2 FELL.', 640, 640, 140, '#ffd36a'); }
+}
+Promise.all([document.fonts.load('900 40px "Playfair Display SC"'), vase.decode().catch(() => { })]).then(() => { window.render = () => draw(); window.DUR = 1; window.READY = true; draw(); });
+</script></body></html>

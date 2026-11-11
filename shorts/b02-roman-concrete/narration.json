@@ -1,0 +1,20 @@
+[
+["l01","He ruined the concrete on purpose, and it started to boil."],
+["l02","The master builder screamed at him to stop."],
+["l03","You see, if this wall failed, the sea would flood the harbour."],
+["l04","The others soaked their lime first. He threw in raw quicklime."],
+["l05","His finished wall was full of white lumps."],
+["l06a","Sloppy,","MASTER",0.88],
+["l06b","said the master. The young builder shrugged."],
+["l06c","Give it time.","am_michael",0.84],
+["l07","Years later, a storm cracked the wall."],
+["l08","Water crept in and hit a white lump."],
+["l09","It was lime that never got wet. It dissolved and hardened in the crack."],
+["l10","The crack sealed itself."],
+["l11","Okay, that builder's made up. But the lumps are real."],
+["l12","In 2023, MIT scientists made concrete the Roman way and cracked it."],
+["l13","Water ran through the crack. Two weeks later, it stopped."],
+["l14","Without quicklime, the crack never closed."],
+["l15a","Give it time,","am_michael",0.84],
+["l15b","he said. Roman concrete has had two thousand years."]
+]

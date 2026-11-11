@@ -1,0 +1,529 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Elevator</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh}</style>
+</head><body><canvas id="c"></canvas>
+<script>
+// "ELEVATOR": a stick figure rides from floor 1 to 30; every ding opens the doors on a new fighter. At 30 the panel flips back to 1.
+// 9:16 (1080x1920). Side view of the car cut open; the doors are on the back wall, so fighters step out of the doorway (depth d) into the car.
+// World px: car floor y = 0, up is negative. Everything is authored in story time tau (tl.json); render(x) takes seconds or a frame index (?rate=).
+const q = new URLSearchParams(location.search), RATE = +q.get('rate') || 0;
+const W = innerWidth, H = innerHeight, S = W / 1080;
+const out = document.getElementById('c'); out.width = W; out.height = H; const X = out.getContext('2d');
+const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const BL = mk(W >> 2, H >> 2), BX = BL.getContext('2d');
+const D2R = Math.PI / 180, clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), lerp = (a, b, k) => a + (b - a) * k;
+const smooth = k => (k = clamp(k), k * k * (3 - 2 * k));
+const EASE = { l: k => clamp(k), io: k => (k = clamp(k), k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2),
+  o: k => 1 - Math.pow(1 - clamp(k), 3), i: k => Math.pow(clamp(k), 3), o2: k => 1 - Math.pow(1 - clamp(k), 2), i2: k => clamp(k) ** 2 };
+function rnd(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+const mixc = (a, b, k) => a.map((v, i) => lerp(v, b[i], k));
+const rgba = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+
+// ---------------------------------------------------------------- time
+let TL; const TAB = [], DT = 1 / 2000;
+function speed(tau) { let s = 1; for (const [a, b, m] of TL.slow) { const r = TL.ramp, w = smooth((tau - (a - r)) / r) * (1 - smooth((tau - b) / r)); s = Math.min(s, 1 - (1 - m) * w); } return s; }
+function buildMap() { let t = 0; const n = Math.ceil((TL.dur + 2) / DT); for (let i = 0; i <= n; i++) { TAB.push(t); t += DT / speed((i + .5) * DT); } }
+function realOf(tau) { const f = tau / DT, i = Math.floor(f); if (i < 0) return tau; if (i >= TAB.length - 1) return TAB[TAB.length - 1]; return lerp(TAB[i], TAB[i + 1], f - i); }
+function tauOf(t) { if (t <= 0) return t; let lo = 0, hi = TAB.length - 1; if (t >= TAB[hi]) return hi * DT; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (TAB[m] <= t) lo = m; else hi = m; } return (lo + (t - TAB[lo]) / (TAB[hi] - TAB[lo])) * DT; }
+// generic value track: [[tau, value, ease]]; the ease is how we arrive at that key
+function track1(K, tau) {
+  if (tau <= K[0][0]) return K[0][1]; for (let i = 1; i < K.length; i++) if (tau < K[i][0]) { const a = K[i - 1], b = K[i]; return lerp(a[1], b[1], EASE[b[2] || 'io']((tau - a[0]) / (b[0] - a[0]))); }
+  return K[K.length - 1][1];
+}
+
+// ---------------------------------------------------------------- poses (facing right; absolute limb angles, 0 = down, + = forward)
+const PK = ['t', 'h', 'aF', 'eF', 'aB', 'eB', 'lF', 'kF', 'lB', 'kB'];
+const P = {
+  stand: { t: 3, h: 0, aF: 8, eF: 10, aB: -8, eB: 12, lF: 6, kF: -2, lB: -6, kB: -2 },
+  lookUp: { t: -2, h: -30, aF: 8, eF: 10, aB: -8, eB: 12, lF: 6, kF: -2, lB: -6, kB: -2 },
+  slump: { t: 22, h: 38, aF: 2, eF: 4, aB: -2, eB: 4, lF: 6, kF: -6, lB: -6, kB: -6 },
+  press: { t: 4, h: 4, aF: 82, eF: 6, aB: -8, eB: 12, lF: 10, kF: -4, lB: -8, kB: -2 },
+  guard: { t: 12, h: -2, aF: 50, eF: 105, aB: 28, eB: 122, lF: 24, kF: -24, lB: -26, kB: -14 },
+  tilt: { t: 10, h: -16, aF: 50, eF: 105, aB: 28, eB: 122, lF: 24, kF: -24, lB: -26, kB: -14 },
+  peek: { t: 24, h: 14, aF: 30, eF: 60, aB: 10, eB: 40, lF: 22, kF: -18, lB: -18, kB: -10 },
+  breathe: { t: 22, h: 14, aF: 14, eF: 24, aB: -2, eB: 22, lF: 16, kF: -16, lB: -16, kB: -12 },
+  duck: { t: 52, h: 22, aF: 62, eF: 118, aB: 40, eB: 125, lF: 72, kF: -122, lB: -22, kB: -108 },
+  limbo: { t: -62, h: -8, aF: 115, eF: 10, aB: 70, eB: 30, lF: 55, kF: -95, lB: 22, kB: -85 },
+  kickChamber: { t: -12, h: 2, aF: 48, eF: 100, aB: 20, eB: 115, lF: 88, kF: -115, lB: -6, kB: -8 },
+  sideKick: { t: -32, h: 6, aF: 35, eF: 95, aB: -35, eB: 70, lF: 94, kF: -2, lB: -10, kB: -4 },
+  backChamber: { t: 42, h: -22, aF: 45, eF: 95, aB: 25, eB: 110, lF: 8, kF: -12, lB: -48, kB: -110 },
+  backKick: { t: 58, h: -35, aF: 70, eF: 70, aB: 30, eB: 90, lF: 10, kF: -10, lB: -100, kB: 5 },
+  crouchJump: { t: 30, h: -10, aF: -35, eF: 30, aB: -50, eB: 25, lF: 62, kF: -110, lB: -12, kB: -100 },
+  tuck: { t: 25, h: 10, aF: 40, eF: 120, aB: 30, eB: 130, lF: 95, kF: -140, lB: 70, kB: -140 },
+  crouchLand: { t: 34, h: -20, aF: 22, eF: 8, aB: -55, eB: 25, lF: 68, kF: -112, lB: 12, kB: -108 },
+  windup: { t: 2, h: -2, aF: -15, eF: 115, aB: 45, eB: 95, lF: 20, kF: -24, lB: -22, kB: -16 },
+  punch: { t: 20, h: -6, aF: 92, eF: 2, aB: 22, eB: 128, lF: 32, kF: -22, lB: -32, kB: -4 },
+  hook: { t: 24, h: -6, aF: 70, eF: 5, aB: 22, eB: 128, lF: 34, kF: -24, lB: -34, kB: -4 },
+  knee: { t: -4, h: 0, aF: 60, eF: 120, aB: 30, eB: 125, lF: 105, kF: -150, lB: -6, kB: -4 },
+  elbow: { t: 26, h: -4, aF: 95, eF: 150, aB: 20, eB: 120, lF: 32, kF: -22, lB: -32, kB: -4 },
+  uppercutLoad: { t: 32, h: -10, aF: 8, eF: 95, aB: 40, eB: 110, lF: 52, kF: -92, lB: -30, kB: -40 },
+  uppercut: { t: -16, h: -12, aF: 168, eF: 12, aB: 25, eB: 115, lF: 16, kF: -8, lB: -36, kB: -6 },
+  hitRecoil: { t: -34, h: -26, aF: 72, eF: 25, aB: 52, eB: 35, lF: 34, kF: -26, lB: -8, kB: -28 },
+  flyBack: { t: -52, h: -30, aF: 120, eF: 20, aB: 92, eB: 40, lF: 52, kF: -40, lB: 22, kB: -60 },
+  ko: { t: 0, h: 12, aF: 75, eF: 14, aB: -50, eB: 20, lF: 16, kF: -10, lB: -14, kB: -26 },
+  launched: { t: -12, h: 30, aF: -25, eF: 12, aB: 12, eB: 10, lF: 12, kF: -20, lB: -10, kB: -12 },
+  staffReady: { t: 10, h: -2, aF: 55, eF: 70, aB: 40, eB: 80, lF: 24, kF: -24, lB: -26, kB: -14 },
+  staffSpin: { t: 6, h: 0, aF: 80, eF: 40, aB: 30, eB: 90, lF: 22, kF: -20, lB: -22, kB: -12 },
+  swingLow: { t: 38, h: 4, aF: 60, eF: 15, aB: 45, eB: 25, lF: 45, kF: -60, lB: -32, kB: -20 },
+  swingHigh: { t: 4, h: -4, aF: 100, eF: 5, aB: 85, eB: 15, lF: 28, kF: -22, lB: -28, kB: -8 },
+  staffStrike: { t: 22, h: -6, aF: 92, eF: 2, aB: 75, eB: 30, lF: 34, kF: -24, lB: -34, kB: -4 },
+  catchStaff: { t: 0, h: -14, aF: 150, eF: 10, aB: 20, eB: 60, lF: 16, kF: -10, lB: -16, kB: -8 },
+  wallPlant: { t: -24, h: 6, aF: -40, eF: 40, aB: -60, eB: 30, lF: 82, kF: -70, lB: 62, kB: -96 },
+  jumpKick: { t: -16, h: 4, aF: 55, eF: 85, aB: -50, eB: 60, lF: 95, kF: 0, lB: -40, kB: -100 },
+  slash: { t: 18, h: -6, aF: 98, eF: 0, aB: -30, eB: 60, lF: 36, kF: -26, lB: -34, kB: -4 },
+};
+function gait(ph, amp, lean) {
+  const s = Math.sin(ph), c = Math.cos(ph);
+  return { t: lean, h: -2, lF: 6 + 40 * amp * s, kF: -12 - 75 * amp * Math.max(0, c), lB: 6 - 40 * amp * s, kB: -12 - 75 * amp * Math.max(0, -c),
+    aF: 12 - 50 * amp * s, eF: 70, aB: 12 + 50 * amp * s, eB: 70 };
+}
+function resolve(p, tau) {
+  if (p === 'run') return gait(tau * 2 * Math.PI * 2.6, 1, 24);
+  if (p === 'walk') { const g = gait(tau * 2 * Math.PI * 1.5, .45, 8); g.aF = 40; g.eF = 100; g.aB = 25; g.eB = 115; return g; }
+  if (p === 'breathe') { const b = (Math.sin(tau * 2 * Math.PI * 1.1) + 1) / 2, o = { ...P.breathe }; o.t += 6 * b; o.h += 4 * b; return o; }
+  return P[p];
+}
+
+// ---------------------------------------------------------------- fighters: [tau, pose, {x, air, sx, spin, d (depth into the doorway), sc, pa (prop angle), prop, hide, e, ex, ea}]
+function track(keys) {
+  const o2 = []; let prev = { x: 0, air: 0, sx: 1, spin: 0, d: 0, sc: 1, pa: 0, prop: 0, hide: 0 };
+  for (const [t, p, o = {}] of keys) { const k = { t, p, ...prev, ...o }; k.e = o.e || 'io'; k.ex = o.ex || k.e; k.ea = o.ea || k.e;
+    prev = { x: k.x, air: k.air, sx: k.sx, spin: k.spin, d: k.d, sc: k.sc, pa: k.pa, prop: k.prop, hide: k.hide }; o2.push(k); }
+  return o2.sort((a, b) => a.t - b.t);
+}
+const RED = [255, 40, 58], ORANGE = [255, 140, 30], PURPLE = [170, 80, 255], GREEN = [60, 255, 140];
+const MCOL = [[255, 200, 40], [40, 180, 255], [255, 60, 200], [120, 255, 80], [255, 110, 60]];
+const FIG = {
+  H: { kind: 'hero', keys: [
+    [0, 'press', { x: -200, sx: -1 }], [0.55, 'press'], [0.95, 'stand', { x: -170, sx: 1 }], [2.6, 'stand'],
+    [3.3, 'guard', { x: -170 }], [3.95, 'guard', { x: -160 }], [4.05, 'duck', { e: 'o' }], [4.2, 'duck'], [4.28, 'kickChamber', { x: -150 }],
+    [4.36, 'sideKick', { x: -130, e: 'o' }], [4.6, 'sideKick'], [4.95, 'guard', { x: -150 }], [5.6, 'stand', { x: -160 }],
+    [7.2, 'stand'], [7.8, 'guard', { x: -160 }], [8.25, 'crouchJump', { x: -155 }], [8.36, 'tuck', { x: -150, air: 110, ea: 'o', e: 'o' }],
+    [8.55, 'crouchLand', { x: -145, air: 0, ea: 'i' }], [8.7, 'guard', { x: -140 }], [8.9, 'duck', { x: -140, e: 'o' }], [9.05, 'duck'],
+    [9.2, 'backChamber', { x: -110, sx: -1, e: 'o' }], [9.38, 'backKick', { x: -100, e: 'o' }], [9.55, 'backKick'], [9.7, 'guard', { x: -110, sx: 1 }],
+    [9.82, 'catchStaff', { x: -115, prop: 1, pa: 40 }], [10.1, 'staffReady', { x: -120, pa: 300 }], [12.0, 'staffReady'], [13.2, 'staffReady', { x: -130 }],
+    [13.33, 'staffStrike', { x: -110, e: 'o', pa: 355 }], [13.36, 'staffStrike', { prop: 0 }], [13.55, 'guard', { x: -150 }],
+    [13.75, 'crouchJump', { x: -215 }], [13.92, 'wallPlant', { x: -245, air: 285, sx: -1, e: 'o', ea: 'o' }], [14.3, 'wallPlant'],
+    [14.45, 'tuck', { x: -238, air: 300, sx: 1 }], [14.75, 'jumpKick', { x: -222, air: 300, e: 'o' }], [14.9, 'jumpKick', { x: -215, air: 250 }],
+    [15.15, 'crouchLand', { x: -200, air: 0, ea: 'i' }], [15.7, 'guard'], [16.25, 'breathe', { x: -150 }],
+    [20.4, 'breathe', { x: -150 }], [22.0, 'breathe', { x: -150 }], [23.0, 'breathe'], [23.05, 'walk', { x: -150 }], [23.6, 'walk', { x: 20, e: 'l' }],
+    [23.75, 'peek', { x: 25 }], [24.1, 'peek'], [24.28, 'guard', { x: 20, sx: -1 }], [24.38, 'limbo', { x: 25, e: 'o' }], [24.6, 'limbo'],
+    [24.7, 'uppercutLoad', { x: 5 }], [24.8, 'uppercut', { x: -10, air: 20, e: 'o' }], [25.0, 'uppercut', { air: 0 }], [25.4, 'breathe', { x: -20, sx: 1 }],
+    [26.0, 'breathe', { x: -100 }], [27.0, 'stand', { x: -100 }], [27.65, 'lookUp'], [28.1, 'lookUp'], [28.5, 'stand'], [28.85, 'slump'], [29.8, 'slump'],
+    [30.4, 'guard', { x: -110 }], [31.75, 'guard']] },
+  TA: { kind: 'enemy', col: RED, keys: [
+    [0, 'guard', { x: 150, d: 1.05, sx: -1, hide: 1 }], [2.79, 'guard', { hide: 0 }], [3.4, 'guard'], [3.85, 'walk', { x: 60, d: 0, e: 'l' }],
+    [3.92, 'windup', { x: 40 }], [4.05, 'punch', { x: 20, e: 'o' }], [4.3, 'punch', { x: 22 }], [4.36, 'hitRecoil', { x: 25, e: 'o' }],
+    [4.55, 'flyBack', { x: 120, d: .9, air: 60, ea: 'o', e: 'o' }], [4.85, 'ko', { x: 170, d: 1.5, air: 0, spin: -90, ea: 'i' }], [5.5, 'ko', { hide: 1 }],
+    // the loop: he is waiting in the lobby again
+    [28.09, 'guard', { x: 150, d: 1.05, spin: 0, hide: 0 }], [29.3, 'guard'], [29.5, 'tilt'], [30.1, 'tilt'], [30.3, 'guard'], [30.45, 'walk', { x: 150, d: 1 }],
+    [30.85, 'guard', { x: 70, d: 0 }], [31.75, 'guard']] },
+  ST: { kind: 'enemy', col: ORANGE, keys: [
+    [0, 'staffSpin', { x: 150, d: 1.1, sx: -1, hide: 1, prop: 1, pa: 0 }], [7.34, 'staffSpin', { hide: 0, pa: 0 }], [7.85, 'staffSpin', { pa: 720, e: 'l' }],
+    [8.2, 'staffReady', { x: 50, d: 0, pa: 1020 }], [8.33, 'swingLow', { x: 40, pa: 1090, e: 'o' }], [8.55, 'staffReady', { pa: 1020 }],
+    [8.75, 'windup', { pa: 930 }], [8.95, 'swingHigh', { x: 30, pa: 1075, e: 'o' }], [9.3, 'swingHigh'], [9.38, 'hitRecoil', { x: 40, e: 'o', prop: 0 }],
+    [9.6, 'flyBack', { x: 130, d: 1, air: 70, ea: 'o' }], [9.95, 'ko', { x: 170, d: 1.5, air: 0, spin: -90, ea: 'i' }], [10.8, 'ko', { hide: 1 }]] },
+  BR: { kind: 'enemy', col: PURPLE, keys: [
+    [0, 'guard', { x: 150, d: 1.1, sx: -1, sc: 1.5, hide: 1 }], [12.14, 'guard', { hide: 0 }], [12.7, 'guard', { d: 1.05 }], [13.15, 'walk', { x: 40, d: 0, e: 'l' }],
+    [13.2, 'guard', { x: 30 }], [13.6, 'windup', { x: -40 }], [13.95, 'hook', { x: -100, e: 'o' }], [14.25, 'hook'], [14.45, 'guard', { x: -95 }],
+    [14.75, 'hitRecoil', { x: -90, e: 'o' }], [15.0, 'flyBack', { x: 40, d: .6, air: 40, spin: -35, ea: 'o', e: 'o' }],
+    [15.45, 'ko', { x: 160, d: 1.4, air: 0, spin: -90, ea: 'i' }], [16.3, 'ko', { hide: 1 }]] },
+  NJ: { kind: 'enemy', col: GREEN, knife: 1, keys: [
+    [0, 'tuck', { x: -170, air: 600, sx: 1, hide: 1 }], [23.8, 'tuck', { hide: 0 }], [24.05, 'crouchLand', { air: 0, ea: 'i', e: 'o' }],
+    [24.25, 'guard', { x: -150 }], [24.32, 'windup', { x: -120 }], [24.45, 'slash', { x: -80, e: 'o' }], [24.62, 'slash', { x: -70 }],
+    [24.78, 'hitRecoil', { x: -70, e: 'o' }], [25.1, 'launched', { x: -165, air: 640, spin: 30, ea: 'o' }], [25.11, 'launched', { hide: 1 }]] },
+};
+// the montage: five quick doors, five fighters, five strikes
+const STRIKE = [['windup', 'punch', -60], ['guard', 'knee', 5], ['kickChamber', 'sideKick', -60], ['windup', 'elbow', 0], ['uppercutLoad', 'uppercut', 15]];
+function buildMontage() {
+  TL.beats.forEach((b, i) => {
+    FIG['M' + i] = { kind: 'enemy', col: MCOL[i], keys: [[0, 'guard', { x: 160, d: 1, sx: -1, hide: 1 }], [b - .001, 'guard', { hide: 0, x: 160, d: 1 }],
+      [b + .18, 'punch', { x: 75, d: .2, e: 'o' }], [b + .28, 'hitRecoil', { x: 78, d: .15, e: 'o' }],
+      [b + .5, 'flyBack', { x: 175, d: 1.4, air: 60, spin: -50, e: 'o', ea: 'o' }], [b + .551, 'flyBack', { hide: 1 }]] };
+    const [w, s, hx] = STRIKE[i];
+    FIG.H.keys.push([b - .001, 'guard', { x: hx - 20, sx: 1, air: 0 }], [b + .2, w, { x: hx - 10 }], [b + .28, s, { x: hx, e: 'o' }], [b + .55, s], [b + .551, 'breathe', { x: -150 }]);
+  });
+  for (const id in FIG) FIG[id].keys = track(FIG[id].keys);
+}
+function figState(F, tau) {
+  const K = F.keys; let i = 0; while (i < K.length - 1 && K[i + 1].t <= tau) i++;
+  const a = K[i], b = K[Math.min(i + 1, K.length - 1)];
+  const base = k => ({ x: k.x, air: k.air, sx: k.sx, spin: k.spin, d: k.d, sc: k.sc, pa: k.pa, prop: k.prop, hide: k.hide });
+  if (b === a || tau <= a.t) return { pose: resolve(a.p, tau), ...base(a) };
+  const u = (tau - a.t) / (b.t - a.t), w = EASE[b.e](u), wx = EASE[b.ex](u), wa = EASE[b.ea](u);
+  const pa = resolve(a.p, tau), pb = resolve(b.p, tau), pose = {}; for (const k of PK) pose[k] = lerp(pa[k], pb[k], w);
+  return { pose, x: lerp(a.x, b.x, wx), air: lerp(a.air, b.air, wa), sx: lerp(a.sx, b.sx, w), spin: lerp(a.spin, b.spin, w), d: lerp(a.d, b.d, wx),
+    sc: lerp(a.sc, b.sc, w), pa: lerp(a.pa, b.pa, w), prop: a.prop, hide: a.hide };
+}
+
+// ---------------------------------------------------------------- skeleton
+const LEN = { th: 60, sh: 62, ua: 46, fa: 46, tor: 84, neck: 12, hr: 21 };
+const dir = a => (a *= D2R, [Math.sin(a), Math.cos(a)]);
+function joints(st) {
+  const p = st.pose, sc = st.sc || 1, tr = p.t * D2R, up = [Math.sin(tr), -Math.cos(tr)], J = { hip: [0, 0] };
+  J.neck = [up[0] * LEN.tor, up[1] * LEN.tor];
+  const hr = (p.t + p.h) * D2R, hu = [Math.sin(hr), -Math.cos(hr)], hf = [Math.cos(hr), Math.sin(hr)], d = LEN.neck + LEN.hr;
+  J.head = [J.neck[0] + hu[0] * d, J.neck[1] + hu[1] * d];
+  J.eye = [J.head[0] + hf[0] * LEN.hr * .5 + hu[0] * 3, J.head[1] + hf[1] * LEN.hr * .5 + hu[1] * 3];
+  J.sh = [up[0] * (LEN.tor - 6), up[1] * (LEN.tor - 6)];
+  for (const s of ['F', 'B']) {
+    const d1 = dir(p['a' + s]), d2 = dir(p['a' + s] + p['e' + s]);
+    J['e' + s] = [J.sh[0] + d1[0] * LEN.ua, J.sh[1] + d1[1] * LEN.ua]; J['h' + s] = [J['e' + s][0] + d2[0] * LEN.fa, J['e' + s][1] + d2[1] * LEN.fa];
+    const l1 = dir(p['l' + s]), l2 = dir(p['l' + s] + p['k' + s]);
+    J['k' + s] = [l1[0] * LEN.th, l1[1] * LEN.th]; J['f' + s] = [J['k' + s][0] + l2[0] * LEN.sh, J['k' + s][1] + l2[1] * LEN.sh];
+  }
+  const r = st.spin * D2R, c = Math.cos(r), sn = Math.sin(r); let low = 0;
+  for (const k in J) { const [x, y] = J[k]; J[k] = [(x * c - y * sn) * st.sx * sc, (x * sn + y * c) * sc]; if (k !== 'eye') low = Math.max(low, J[k][1] + (k === 'head' ? LEN.hr * sc : 0)); }
+  const hy = -(low + 6) - st.air;
+  for (const k in J) J[k] = [J[k][0] + st.x, J[k][1] + hy];
+  J.sc = sc; J.f = st.sx >= 0 ? 1 : -1; return J;
+}
+function pathLimbs(ctx, J, s) { ctx.beginPath(); ctx.moveTo(...J.sh); ctx.lineTo(...J['e' + s]); ctx.lineTo(...J['h' + s]); ctx.moveTo(...J.hip); ctx.lineTo(...J['k' + s]); ctx.lineTo(...J['f' + s]); }
+function pathBody(ctx, J) { pathLimbs(ctx, J, 'F'); ctx.moveTo(...J.hip); ctx.lineTo(...J.neck); }
+function drawFig(ctx, J, kind, z, o = {}) {
+  const lw = (o.lw || 11) * J.sc, R = LEN.hr * J.sc;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = o.alpha ?? 1;
+  const head = (r = R) => { ctx.beginPath(); ctx.arc(J.head[0], J.head[1], r, 0, Math.PI * 2); };
+  if (kind === 'sil' || kind === 'ghost') {
+    ctx.strokeStyle = ctx.fillStyle = o.color; ctx.lineWidth = lw; pathLimbs(ctx, J, 'B'); ctx.stroke(); pathBody(ctx, J); ctx.stroke(); head(); ctx.fill();
+  } else if (kind === 'hero') {
+    ctx.shadowColor = 'rgba(110,225,255,.95)'; ctx.shadowBlur = 24 * S * z;
+    ctx.strokeStyle = '#9fb4cb'; ctx.lineWidth = lw; pathLimbs(ctx, J, 'B'); ctx.stroke();
+    ctx.strokeStyle = '#f4f9ff'; pathBody(ctx, J); ctx.stroke(); ctx.fillStyle = '#f4f9ff'; head(); ctx.fill();
+  } else {
+    const col = o.col;
+    for (const side of ['B', 'F']) {
+      const p = () => side === 'B' ? pathLimbs(ctx, J, 'B') : pathBody(ctx, J);
+      ctx.shadowColor = rgba(col, .9); ctx.shadowBlur = 16 * S * z; ctx.strokeStyle = rgba(side === 'B' ? col.map(v => v * .65) : col); ctx.lineWidth = lw + 5; p(); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.strokeStyle = side === 'B' ? '#08080b' : '#111217'; ctx.lineWidth = lw; p(); ctx.stroke();
+    }
+    ctx.shadowColor = rgba(col, .9); ctx.shadowBlur = 16 * S * z; ctx.fillStyle = rgba(col); head(); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#111217'; head(R - 3 * J.sc); ctx.fill();
+    const an = Math.atan2(J.eye[1] - J.head[1], J.eye[0] - J.head[0]);
+    ctx.save(); ctx.translate(...J.eye); ctx.rotate(an + Math.PI / 2); ctx.shadowColor = rgba(col); ctx.shadowBlur = 18 * S * z; ctx.fillStyle = rgba(mixc(col, [255, 255, 255], .7));
+    ctx.beginPath(); ctx.ellipse(0, 0, 7 * J.sc, 2.6 * J.sc, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  ctx.restore();
+}
+// props: a staff (gripped at a third of its length) and a knife
+function propDir(J, pa) { const a = pa * D2R; return [Math.cos(a) * J.f, Math.sin(a)]; }
+function drawStaff(ctx, p, d, sil) {
+  const L = 300, a = [p[0] - d[0] * L * .35, p[1] - d[1] * L * .35], b = [p[0] + d[0] * L * .65, p[1] + d[1] * L * .65];
+  ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = sil || '#8a5a32'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
+  if (!sil) { ctx.strokeStyle = 'rgba(255,210,150,.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); } ctx.restore();
+}
+function drawKnife(ctx, J, sil) {
+  const d = [J.hF[0] - J.eF[0], J.hF[1] - J.eF[1]], n = Math.hypot(...d), u = [d[0] / n, d[1] / n];
+  ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = sil || '#e8f0ff'; ctx.shadowColor = '#bfffe0'; ctx.shadowBlur = sil ? 0 : 12 * S; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(...J.hF); ctx.lineTo(J.hF[0] + u[0] * 58, J.hF[1] + u[1] * 58); ctx.stroke(); ctx.restore();
+}
+
+// ---------------------------------------------------------------- the car, the shaft, the floors
+const CAR = { x0: -320, x1: 320, top: -560 }, DOOR = { x0: 0, x1: 300, top: -430 }, VP = [150, -230], FLOORH = 760;
+const FLOOR_K = [[0, 1], [0.7, 1], [2.6, 3], [5.6, 3], [7.2, 7], [10.8, 7], [12.0, 12], [16.25, 12], [16.45, 15], [17.05, 15], [17.27, 18], [17.85, 18],
+  [18.07, 21], [18.65, 21], [18.87, 24], [19.45, 24], [19.67, 27], [20.25, 27], [22.0, 29], [26.0, 29], [27.4, 30]];
+let DOOR_K = [[0, .45], [0.6, 0], [2.8, 0], [3.3, 1], [4.95, 1], [5.45, 0], [7.35, 0], [7.85, 1], [10.25, 1], [10.75, 0], [12.15, 0], [12.65, 1], [15.7, 1], [16.2, 0],
+  [22.3, 0], [22.8, 1], [25.4, 1], [25.9, 0], [28.1, 0], [28.6, 1], [30.7, 1], [31.2, 0]];
+const floorAt = tau => track1(FLOOR_K, tau);
+const doorAt = tau => track1(DOOR_K, tau);
+const THEMES = {
+  lobby: { wall: [120, 96, 70], floor: [70, 52, 38], light: [255, 220, 170], acc: [255, 190, 110] },
+  office: { wall: [150, 160, 170], floor: [80, 86, 94], light: [235, 245, 255], acc: [120, 200, 255] },
+  dojo: { wall: [150, 110, 60], floor: [110, 70, 35], light: [255, 200, 130], acc: [255, 140, 30] },
+  boiler: { wall: [60, 40, 46], floor: [40, 28, 30], light: [255, 90, 60], acc: [255, 70, 50] },
+  server: { wall: [20, 40, 70], floor: [12, 24, 40], light: [80, 170, 255], acc: [60, 200, 255] },
+  neon: { wall: [60, 20, 70], floor: [30, 10, 36], light: [255, 60, 200], acc: [255, 60, 200] },
+  garage: { wall: [80, 76, 60], floor: [50, 48, 40], light: [255, 220, 90], acc: [255, 200, 40] },
+  hospital: { wall: [120, 160, 140], floor: [70, 96, 86], light: [200, 255, 220], acc: [120, 255, 160] },
+  dark: { wall: [16, 20, 22], floor: [8, 10, 12], light: [40, 255, 120], acc: [40, 255, 120] },
+};
+const FLOOR_THEME = { 1: 'lobby', 3: 'office', 7: 'dojo', 12: 'boiler', 15: 'server', 18: 'neon', 21: 'garage', 24: 'hospital', 27: 'office', 29: 'dark', 30: 'lobby' };
+function lightAt(tau) {
+  const [a, b] = TL.dark; if (tau < a - .8 || tau > b + .25) return 1;
+  if (tau < a) return rnd(Math.floor(tau * 14)) > .35 ? 1 : .25;
+  if (tau < b) return rnd(Math.floor(tau * 9) + 7) > .93 ? .6 : .3;
+  return rnd(Math.floor(tau * 16) + 3) > .5 ? 1 : .3;
+}
+function indicator(tau) {
+  if (tau >= 27.65 && tau < 27.95) { const k = Math.floor(tau * 22) % 3; return ['30', '1', '--'][k]; }
+  if (tau >= 27.95) return '1';
+  return String(Math.round(floorAt(tau)));
+}
+function moving(tau) { return Math.abs(floorAt(tau + .03) - floorAt(tau - .03)) > .002; }
+
+function drawShaft(ctx, tau, light) {
+  const f = floorAt(tau);
+  ctx.fillStyle = '#07090c'; ctx.fillRect(-1400, -3000, 2800, 6000);
+  // rails and cables
+  ctx.fillStyle = '#12161b'; ctx.fillRect(-372, -3000, 16, 6000); ctx.fillRect(356, -3000, 16, 6000);
+  ctx.strokeStyle = '#2a3038'; ctx.lineWidth = 4; for (const x of [-30, -10, 10, 30]) { ctx.beginPath(); ctx.moveTo(x, -3000); ctx.lineTo(x, CAR.top - 40); ctx.stroke(); }
+  // floor slabs with painted numbers, scrolling past
+  for (let k = Math.floor(f) - 3; k <= Math.floor(f) + 3; k++) {
+    if (k < 1 || k > 30) continue; const y = (f - k) * FLOORH;
+    ctx.fillStyle = '#1a1f26'; ctx.fillRect(-1400, y, 2800, 70);
+    ctx.fillStyle = 'rgba(255,200,60,.55)'; for (let s = 0; s < 20; s++) ctx.fillRect(-1400 + s * 140, y, 70, 8);
+    ctx.fillStyle = 'rgba(210,220,230,.55)'; ctx.font = '700 80px Bahnschrift, Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(String(k), -300, y - 24); ctx.fillText(String(k), 200, y - 24);
+    // the landing door on the far side of the shaft
+    ctx.strokeStyle = 'rgba(120,130,140,.25)'; ctx.lineWidth = 3; ctx.strokeRect(-1000, y - 430, 300, 430); ctx.strokeRect(700, y - 430, 300, 430);
+  }
+}
+function corridor(ctx, theme, tau, light) {
+  const T = THEMES[theme], k = light;
+  ctx.save(); ctx.beginPath(); ctx.rect(DOOR.x0, DOOR.top, DOOR.x1 - DOOR.x0, -DOOR.top); ctx.clip();
+  const P = (x, y, d) => { const s = 1 / (1 + .22 * d); return [VP[0] + (x - VP[0]) * s, VP[1] + (y - VP[1]) * s]; };
+  const far = 9, quad = (pts, c) => { ctx.fillStyle = c; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p)); ctx.closePath(); ctx.fill(); };
+  const cw = 0 - 160, cE = 300 + 160, cTop = -470;
+  quad([P(cw, 0, 0), P(cE, 0, 0), P(cE, 0, far), P(cw, 0, far)], rgba(T.floor.map(v => v * k)));
+  quad([P(cw, cTop, 0), P(cE, cTop, 0), P(cE, cTop, far), P(cw, cTop, far)], rgba(T.wall.map(v => v * .5 * k)));
+  quad([P(cw, 0, 0), P(cw, cTop, 0), P(cw, cTop, far), P(cw, 0, far)], rgba(T.wall.map(v => v * .8 * k)));
+  quad([P(cE, 0, 0), P(cE, cTop, 0), P(cE, cTop, far), P(cE, 0, far)], rgba(T.wall.map(v => v * .7 * k)));
+  quad([P(cw, cTop, far), P(cE, cTop, far), P(cE, 0, far), P(cw, 0, far)], rgba(T.wall.map(v => v * .6 * k)));
+  // ceiling lights receding, floor lines
+  for (let d = .6; d < far; d += 1.4) { const a = P(VP[0] - 40, cTop + 2, d), b = P(VP[0] + 40, cTop + 2, d); ctx.fillStyle = rgba(T.light, .9 * k); ctx.fillRect(a[0], a[1], b[0] - a[0], 6 / (1 + .22 * d)); }
+  ctx.strokeStyle = rgba(T.light, .12 * k); ctx.lineWidth = 2; for (let d = 1; d < far; d += 1) { const a = P(cw, 0, d), b = P(cE, 0, d); ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); }
+  const g = ctx.createRadialGradient(VP[0], VP[1], 10, VP[0], VP[1], 330); g.addColorStop(0, rgba(T.light, .35 * k)); g.addColorStop(1, rgba(T.light, 0));
+  ctx.fillStyle = g; ctx.fillRect(DOOR.x0, DOOR.top, 300, 430);
+  // floor number painted on the corridor wall
+  const fl = theme === 'lobby' && tau > 27 ? '1' : indicator(tau), np = P(cw, -300, 1.6);
+  ctx.save(); ctx.translate(...np); ctx.scale(.62, .62); ctx.fillStyle = rgba(T.acc, .85 * Math.max(k, .35)); ctx.font = '800 120px Bahnschrift, Segoe UI, sans-serif';
+  ctx.textAlign = 'left'; ctx.fillText(theme === 'lobby' ? 'L' : fl, 30, 40); ctx.restore();
+  if (theme === 'dark') { ctx.fillStyle = 'rgba(40,255,120,.9)'; ctx.font = '700 22px Bahnschrift, sans-serif'; const e = P(VP[0], -420, 5); ctx.fillText('EXIT', e[0] - 20, e[1]); }
+  ctx.restore();
+}
+function drawCarBack(ctx, tau, light) {
+  // back wall: brushed steel panels, handrail, the doorway with its corridor and sliding doors
+  const g = ctx.createLinearGradient(CAR.x0, 0, CAR.x1, 0); g.addColorStop(0, '#2a2f36'); g.addColorStop(.5, '#4a525c'); g.addColorStop(1, '#262b31');
+  ctx.fillStyle = g; ctx.fillRect(CAR.x0, CAR.top, CAR.x1 - CAR.x0, -CAR.top);
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2; for (let x = CAR.x0 + 107; x < CAR.x1; x += 107) { ctx.beginPath(); ctx.moveTo(x, CAR.top); ctx.lineTo(x, 0); ctx.stroke(); }
+  const op = doorAt(tau), fl = Math.round(floorAt(tau));
+  const theme = tau > 27.5 ? 'lobby' : FLOOR_THEME[fl] || 'office';
+  if (op > .001) corridor(ctx, theme, tau, theme === 'dark' ? .25 : 1);
+  // door frame and the two panels sliding into the frame
+  ctx.fillStyle = '#15191e'; ctx.fillRect(DOOR.x0 - 14, DOOR.top - 14, 328, 14); ctx.fillRect(DOOR.x0 - 14, DOOR.top, 14, -DOOR.top); ctx.fillRect(DOOR.x1, DOOR.top, 14, -DOOR.top);
+  ctx.save(); ctx.beginPath(); ctx.rect(DOOR.x0, DOOR.top, 300, -DOOR.top); ctx.clip();
+  const half = 150 * (1 - op);
+  for (const [x, w] of [[DOOR.x0, half], [DOOR.x1 - half, half]]) {
+    const pg = ctx.createLinearGradient(x, 0, x + w, 0); pg.addColorStop(0, '#5d6670'); pg.addColorStop(.5, '#8a939c'); pg.addColorStop(1, '#4f575f');
+    ctx.fillStyle = pg; ctx.fillRect(x, DOOR.top, w, -DOOR.top); ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.strokeRect(x, DOOR.top, w, -DOOR.top);
+  }
+  ctx.restore();
+  // handrail
+  ctx.fillStyle = '#9aa4ad'; ctx.fillRect(CAR.x0, -118, DOOR.x0 - CAR.x0 - 14, 7); ctx.fillRect(DOOR.x1 + 14, -118, CAR.x1 - DOOR.x1 - 14, 7);
+  // floor indicator above the door: the clock of the story
+  const ix = 150, iy = -500, ind = indicator(tau);
+  ctx.fillStyle = '#05070a'; ctx.fillRect(ix - 95, iy - 48, 190, 92); ctx.strokeStyle = '#3a4048'; ctx.lineWidth = 3; ctx.strokeRect(ix - 95, iy - 48, 190, 92);
+  const glitch = tau >= 27.65 && tau < 27.95;
+  ctx.save(); ctx.shadowColor = glitch ? '#ff3040' : '#ffb040'; ctx.shadowBlur = 22 * S; ctx.fillStyle = glitch ? '#ff5060' : '#ffc060';
+  ctx.font = '700 72px Bahnschrift, Consolas, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ind, ix + 12, iy + 2);
+  if (moving(tau)) { ctx.beginPath(); ctx.moveTo(ix - 72, iy + 14); ctx.lineTo(ix - 56, iy - 14); ctx.lineTo(ix - 40, iy + 14); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  // the button panel on the left
+  ctx.fillStyle = '#1a1e24'; ctx.fillRect(-318, -300, 24, 150);
+  for (let i = 0; i < 6; i++) { const lit = (i === 0 && tau > .45 && tau < 27.4) || (i === 5 && tau >= 27.95); ctx.fillStyle = lit ? '#ffc060' : '#5a636c'; ctx.beginPath(); ctx.arc(-306, -285 + i * 24, 6, 0, Math.PI * 2); ctx.fill(); }
+}
+function drawCarFrame(ctx, tau, light) {
+  // side walls (cut edges), floor and ceiling slabs, the roof hatch, the ceiling light
+  ctx.fillStyle = '#0c0f13'; ctx.fillRect(CAR.x0 - 22, CAR.top - 40, 22, -CAR.top + 70); ctx.fillRect(CAR.x1, CAR.top - 40, 22, -CAR.top + 70);
+  ctx.fillRect(CAR.x0 - 22, 0, CAR.x1 - CAR.x0 + 44, 34);
+  const ho = clamp((tau - 23.7) / .12) * (1 - clamp((tau - 25.12) / .06));
+  ctx.fillRect(CAR.x0 - 22, CAR.top - 40, 90 + 22, 40); ctx.fillRect(-110, CAR.top - 40, CAR.x1 + 22 + 110, 40);
+  ctx.save(); ctx.translate(-230, CAR.top - 20); ctx.rotate(-ho * 1.2); ctx.fillStyle = '#1b2027'; ctx.fillRect(0, -20, 120, 40); ctx.restore();
+  ctx.fillStyle = 'rgba(255,200,60,.5)'; ctx.fillRect(CAR.x0 - 22, 28, CAR.x1 - CAR.x0 + 44, 6);
+  const lc = light; ctx.fillStyle = `rgba(255,245,225,${.95 * lc})`; ctx.fillRect(-60, CAR.top, 260, 8);
+  // safety gear under the car, cable hitch on top
+  ctx.fillStyle = '#0c0f13'; ctx.fillRect(-60, CAR.top - 90, 120, 50); ctx.fillRect(-200, 34, 400, 40);
+}
+function carLight(ctx, light) {
+  const g = ctx.createRadialGradient(70, CAR.top, 20, 70, -200, 700); g.addColorStop(0, `rgba(255,240,215,${.22 * light})`); g.addColorStop(1, 'rgba(255,240,215,0)');
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(CAR.x0, CAR.top, CAR.x1 - CAR.x0, -CAR.top); ctx.restore();
+  if (light < 1) { ctx.fillStyle = `rgba(0,0,0,${(1 - light) * .82})`; ctx.fillRect(CAR.x0, CAR.top, CAR.x1 - CAR.x0, -CAR.top); }
+}
+// persistent damage: the brute's fist dents the left wall
+function drawDamage(ctx, tau) {
+  const m = TL.impacts.find(m => m.wall); if (!m || tau < m.tau) return; const g = EASE.o((tau - m.tau) / .1), [px, py] = m.pt;
+  ctx.save(); ctx.strokeStyle = 'rgba(10,10,12,.9)'; ctx.lineWidth = 3;
+  for (let b = 0; b < 8; b++) { let a = rnd(b + 3) * Math.PI * 2, x = px + 18, y = py; ctx.beginPath(); ctx.moveTo(x, y); for (let s = 0; s < 4 * g; s++) { a += (rnd(b * 7 + s) - .5) * .8; x += Math.cos(a) * 22; y += Math.sin(a) * 22; ctx.lineTo(Math.max(CAR.x0, x), y); } ctx.stroke(); }
+  ctx.restore();
+}
+// staff in flight between the clone that drops it and the hero who catches it, and the two halves after it snaps
+function freeStaff(ctx, tau, sil) {
+  if (tau >= 9.38 && tau < 9.82) {
+    const a = handAt('ST', 9.38), b = handAt('H', 9.82), u = (tau - 9.38) / .44, top = [-20, -470];
+    const p = [lerp(lerp(a[0], top[0], u), lerp(top[0], b[0], u), u), lerp(lerp(a[1], top[1], u), lerp(top[1], b[1], u), u)];
+    const ang = lerp(-175, 400, u) * D2R; drawStaff(ctx, p, [Math.cos(ang), Math.sin(ang)], sil);
+  }
+  if (tau >= 13.36) {
+    const s = handAt('H', 13.36), dt = tau - 13.36;
+    for (const [vx, vy, w, half] of [[-260, -650, 9, 0], [380, -420, -7, 1]]) {
+      const [x, y, ta, rest] = ballistic({ px: s[0] + (half ? 110 : 0), py: s[1], vx, vy }, dt, 1800); const a = (rest ? (half ? 0 : 180) : w * ta * 57) * D2R;
+      ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = sil || '#8a5a32'; ctx.lineWidth = 8; ctx.translate(x, rest ? -6 : y); ctx.rotate(a);
+      ctx.beginPath(); ctx.moveTo(-70, 0); ctx.lineTo(70, 0); ctx.stroke(); ctx.restore();
+    }
+  }
+}
+const HAND = {};
+function handAt(id, tau) { const k = id + tau; if (!HAND[k]) HAND[k] = joints(figState(FIG[id], tau)).hF; return HAND[k]; }
+function ballistic(p, dt, g = 1700) {
+  const th = (-p.vy + Math.sqrt(p.vy * p.vy - 2 * g * p.py)) / g;
+  if (dt < th) return [p.px + p.vx * dt, p.py + p.vy * dt + .5 * g * dt * dt, dt, false];
+  const u = dt - th, k = 6; return [p.px + p.vx * th + p.vx * .3 * (1 - Math.exp(-k * u)) / k, -2, th, true];
+}
+
+// ---------------------------------------------------------------- effects
+const IMP = {};
+function impactPoint(m) { if (IMP[m.tau]) return IMP[m.tau]; return (IMP[m.tau] = m.pt ? m.pt : joints(figState(FIG[m.fig], m.tau))[m.j]); }
+function drawSparks(ctx, tau, sil) {
+  for (const m of TL.impacts) {
+    if (m.nospark) continue; const u = (tau - m.tau) / .36; if (u < 0 || u > 1) continue; const [px, py] = impactPoint(m), sz = m.size;
+    if (!sil) { const g = ctx.createRadialGradient(px, py, 0, px, py, 140 * sz); g.addColorStop(0, `rgba(255,255,255,${.9 * (1 - u)})`); g.addColorStop(.3, `rgba(255,220,160,${.3 * (1 - u)})`); g.addColorStop(1, 'rgba(255,220,160,0)');
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, 140 * sz, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    ctx.save(); ctx.lineCap = 'round';
+    for (let i = 0; i < 14; i++) { const s = m.tau * 1000 + i, a = rnd(s) * Math.PI * 2, d0 = (18 + 230 * EASE.o(u) * (.5 + rnd(s + 1))) * sz, L = 55 * (1 - u) * sz * (.5 + rnd(s + 2));
+      ctx.strokeStyle = sil || (i % 3 ? 'rgba(255,255,255,.95)' : 'rgba(255,190,90,.95)'); ctx.lineWidth = (sil ? 6 : 3.5) * (1 - u * .6);
+      ctx.beginPath(); ctx.moveTo(px + Math.cos(a) * d0, py + Math.sin(a) * d0); ctx.lineTo(px + Math.cos(a) * (d0 + L), py + Math.sin(a) * (d0 + L)); ctx.stroke(); }
+    ctx.restore();
+  }
+}
+function drawDebris(ctx, tau) {   // dust from the hatch after the ninja goes back up through it
+  if (tau < 25.1 || tau > 26.3) return; const dt = tau - 25.1; ctx.fillStyle = 'rgba(160,170,180,.8)';
+  for (let i = 0; i < 26; i++) { const [x, y, , rest] = ballistic({ px: -230 + 120 * rnd(i), py: CAR.top + 4, vx: (rnd(i + 5) - .5) * 80, vy: 40 * rnd(i + 9) }, dt - .3 * rnd(i + 2), 900); if (dt < .3 * rnd(i + 2) || rest) continue; ctx.fillRect(x, y, 3, 3); }
+}
+
+// ---------------------------------------------------------------- camera
+let SHOTS = [
+  [[0, -10, -360, 1.18, 0], [2.6, -20, -330, 1.3, 0]],
+  [[2.6, 40, -300, 1.3, 0], [3.4, 60, -280, 1.45, 0], [4.0, -20, -250, 1.7, 0], [4.4, 30, -250, 1.65, 0], [5.0, 60, -300, 1.4, 0], [5.6, 0, -340, 1.22, 0], [7.2, 0, -340, 1.22, 0]],
+  [[7.2, 70, -300, 1.35, 0], [7.8, 40, -270, 1.55, 0], [8.4, -10, -270, 1.6, 0], [8.88, -50, -230, 1.9, -4], [9.02, -50, -230, 1.95, -5], [9.4, 20, -260, 1.6, 0],
+   [10.2, 0, -300, 1.4, 0], [12.0, 0, -340, 1.22, 0]],
+  [[12.0, 80, -330, 1.25, 0], [12.6, 100, -330, 1.3, 0], [13.4, 20, -300, 1.5, 0], [14.0, -50, -310, 1.45, 2], [14.4, -110, -320, 1.5, 0],
+   [14.6, -60, -340, 1.85, 6], [14.72, -50, -340, 1.9, 6], [15.2, 40, -270, 1.45, 0], [16.25, 0, -340, 1.22, 0]],
+  [[20.25, 0, -380, 1.12, 0], [22.0, 0, -340, 1.25, 0], [23.4, 40, -300, 1.5, 0], [23.9, -60, -330, 1.4, 0], [24.36, -60, -280, 1.8, -5],
+   [24.56, -60, -280, 1.85, -5], [24.9, -100, -420, 1.4, 0], [25.5, 0, -340, 1.25, 0]],
+  [[25.5, 0, -340, 1.25, 0], [27.4, 20, -330, 1.35, 0], [28.5, 50, -310, 1.45, 0], [29.7, 30, -300, 1.6, 0], [31.2, 20, -330, 1.38, 0], [31.75, 20, -330, 1.36, 0]],
+];
+function buildShots() {
+  const M = [];
+  TL.beats.forEach((b, i) => {
+    const r = i % 2 ? 6 : -6, zx = [40, 70, 30, 60, 50][i];
+    M.push([[b, zx, -260, 1.75, r], [b + .55, zx + 10, -255, 1.9, r * 1.2]]);
+    M.push([[b + .55, 0, -420, 1.0, 0], [b + .8, 0, -400, 1.04, 0]]);
+  });
+  M.unshift([[16.25, 0, -340, 1.22, 0], [16.5, 0, -400, 1.05, 0]]);
+  SHOTS = SHOTS.concat(M).sort((a, b) => a[0][0] - b[0][0]);
+}
+function hermite(K, tau, c) {
+  if (K.length === 1 || tau <= K[0][0]) return K[0][c]; if (tau >= K[K.length - 1][0]) return K[K.length - 1][c];
+  let i = 0; while (i < K.length - 2 && K[i + 1][0] <= tau) i++;
+  const a = K[i], b = K[i + 1], h = b[0] - a[0], u = (tau - a[0]) / h;
+  const sl = j => (j <= 0 || j >= K.length - 1) ? 0 : ((K[j + 1][c] - K[j][c]) / (K[j + 1][0] - K[j][0]) + (K[j][c] - K[j - 1][c]) / (K[j][0] - K[j - 1][0])) / 2;
+  const m0 = sl(i) * h, m1 = sl(i + 1) * h, u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * a[c] + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * b[c] + (u3 - u2) * m1;
+}
+function camAt(tau, t) {
+  let K = SHOTS[0]; for (const s of SHOTS) if (tau >= s[0][0]) K = s;
+  const mv = moving(tau) ? 1 : 0;
+  return { x: hermite(K, tau, 1) + 4 * Math.sin(t * .7), y: hermite(K, tau, 2) + 3 * Math.sin(t * 1.1) + mv * 1.6 * Math.sin(t * 57), z: hermite(K, tau, 3) * 1.28, r: hermite(K, tau, 4) };
+}
+function shakeAt(t) {
+  let x = 0, y = 0;
+  for (const m of TL.impacts) { const d = t - realOf(m.tau); if (d < 0 || d > 1) continue; const a = m.shake * .8 * Math.exp(-d / .2);
+    x += a * (Math.sin(d * 34 + m.tau) * .6 + Math.sin(d * 47) * .4); y += a * (Math.sin(d * 39 + 2) * .6 + Math.sin(d * 53 + m.tau) * .4); }
+  return [x * S, y * S];
+}
+function camM(cam, sh) { const z = cam.z * S, m = new DOMMatrix(); m.translateSelf(W / 2 + sh[0], H / 2 + sh[1]); m.rotateSelf(cam.r); m.scaleSelf(z, z); m.translateSelf(-cam.x, -cam.y); return m; }
+
+// ---------------------------------------------------------------- frame
+const ORDER = ['TA', 'ST', 'BR', 'M0', 'M1', 'M2', 'M3', 'M4', 'NJ', 'H'];
+function figsAt(tau) { const L = []; for (const id of ORDER) { const F = FIG[id], st = figState(F, tau); if (st.hide) continue; L.push({ id, F, st, J: joints(st) }); } return L; }
+let CUR_DOOR = 1;
+function withDepth(ctx, d, fn) {
+  if (d <= .001) return fn(); const s = 1 / (1 + .22 * d);
+  ctx.save(); if (d > .5) { const g = 150 * CUR_DOOR; ctx.beginPath(); ctx.rect(150 - g, DOOR.top, 2 * g, -DOOR.top + 4); ctx.clip(); }
+  ctx.translate(...VP); ctx.scale(s, s); ctx.translate(-VP[0], -VP[1]); fn(); ctx.restore();
+}
+function drawFighter(ctx, g, tau, z, sil) {
+  withDepth(ctx, g.st.d, () => {
+    const kind = sil ? 'sil' : g.F.kind;
+    if (g.st.prop && g.id !== 'NJ') drawStaff(ctx, g.J.hF, propDir(g.J, g.st.pa), sil);
+    drawFig(ctx, g.J, kind, z, { col: g.F.col, color: sil });
+    if (g.F.knife) drawKnife(ctx, g.J, sil);
+  });
+}
+const TRAILS = { H: [[4.28, 4.45], [8.3, 8.6], [9.15, 9.45], [13.8, 14.0], [14.4, 14.8], [24.62, 24.85]], TA: [[4.36, 4.7]], ST: [[8.3, 8.4], [8.9, 9.0], [9.38, 9.7]],
+  BR: [[13.85, 14.0], [14.75, 15.3]], NJ: [[23.85, 24.05], [24.4, 24.5], [24.78, 25.1]] };
+function drawTrails(ctx, g, tau, z) {
+  const W2 = (TRAILS[g.id] || []).slice(); if (g.id === 'H' || g.id[0] === 'M') for (const b of TL.beats) W2.push([b + .18, b + .45]);
+  for (const [a, b] of W2) if (tau > a && tau < b) for (let i = 4; i >= 1; i--) {
+    const st = figState(g.F, tau - i * .02); if (st.hide) continue; const J = joints(st);
+    withDepth(ctx, st.d, () => drawFig(ctx, J, 'ghost', z, { color: g.F.kind === 'hero' ? 'rgba(120,220,255,1)' : rgba(g.F.col), alpha: .2 * (1 - i / 5), lw: 9 }));
+  }
+}
+let GRAIN = [];
+function buildGrain() { for (let k = 0; k < 4; k++) { const c = mk(256, 256), x = c.getContext('2d'), im = x.createImageData(256, 256); for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); GRAIN.push(c); } }
+
+function draw(t) {
+  const tau = tauOf(t), cam = camAt(tau, t), sh = shakeAt(t), M = camM(cam, sh), light = lightAt(tau), slow = 1 - speed(tau);
+  X.globalCompositeOperation = 'source-over'; X.globalAlpha = 1; X.filter = 'none';
+  X.setTransform(1, 0, 0, 1, 0, 0); X.fillStyle = '#000'; X.fillRect(0, 0, W, H);
+  X.setTransform(M);
+  drawShaft(X, tau, light);
+  drawCarBack(X, tau, light);
+  const figs = figsAt(tau);
+  CUR_DOOR = doorAt(tau);
+  // fighters standing in the doorway are behind the door panels' plane only when the doors are shut; they are clipped to the doorway
+  carLight(X, light);
+  for (const g of figs) drawTrails(X, g, tau, cam.z);
+  for (const g of figs) if (g.st.d > .5) drawFighter(X, g, tau, cam.z);
+  drawDamage(X, tau);
+  for (const g of figs) if (g.st.d <= .5) drawFighter(X, g, tau, cam.z);
+  freeStaff(X, tau); drawDebris(X, tau);
+  drawCarFrame(X, tau, light);
+  drawSparks(X, tau);
+  // grade
+  X.setTransform(1, 0, 0, 1, 0, 0);
+  X.globalCompositeOperation = 'soft-light'; X.fillStyle = 'rgba(30,70,90,.3)'; X.fillRect(0, 0, W, H); X.globalCompositeOperation = 'source-over';
+  if (slow > .05) {
+    const k = slow / .8, fr = Math.floor(t * 30); X.save(); X.translate(W / 2, H / 2); X.strokeStyle = `rgba(255,255,255,${.2 * k})`;
+    for (let i = 0; i < 70; i++) { const a = rnd(fr * 7 + i) * Math.PI * 2, r0 = (.5 + .35 * rnd(fr + i * 3)) * H * .5, r1 = H * .7; X.lineWidth = (1 + 3 * rnd(i + fr)) * S;
+      X.beginPath(); X.moveTo(Math.cos(a) * r0 * .56, Math.sin(a) * r0); X.lineTo(Math.cos(a) * r1 * .56, Math.sin(a) * r1); X.stroke(); }
+    X.restore();
+  }
+  for (const m of TL.impacts) if (m.flash) {
+    const d = t - realOf(m.tau); if (d < 0 || d >= 2 / 30) continue; const inv = d >= 1 / 30;
+    X.setTransform(1, 0, 0, 1, 0, 0); X.fillStyle = inv ? '#000' : '#fff'; X.fillRect(0, 0, W, H);
+    X.setTransform(M); for (const g of figs) drawFighter(X, g, tau, cam.z, inv ? '#fff' : '#000'); drawSparks(X, tau, inv ? '#fff' : '#000');
+  }
+  post(t);
+  // title at the start
+  const ta = smooth((tau - .3) / .5) * (1 - smooth((tau - 2.1) / .4));
+  if (ta > 0) {
+    X.setTransform(1, 0, 0, 1, 0, 0); X.globalAlpha = ta; X.textAlign = 'center'; X.textBaseline = 'middle';
+    X.font = `300 ${Math.round(96 * S)}px Bahnschrift, Segoe UI, sans-serif`; X.fillStyle = '#f2f7ff'; X.shadowColor = 'rgba(255,190,90,.8)'; X.shadowBlur = 24 * S;
+    if ('letterSpacing' in X) X.letterSpacing = `${Math.round(30 * S)}px`; X.fillText('ELEVATOR', W / 2 + 15 * S, 230 * S);
+    if ('letterSpacing' in X) X.letterSpacing = '0px'; X.shadowBlur = 0; X.globalAlpha = 1;
+  }
+  // the last frames dip to black so the loop restarts on a cut
+  const bk = smooth((tau - 31.45) / .25); if (bk > 0) { X.setTransform(1, 0, 0, 1, 0, 0); X.fillStyle = `rgba(0,0,0,${bk})`; X.fillRect(0, 0, W, H); }
+}
+function post(t) {
+  X.setTransform(1, 0, 0, 1, 0, 0);
+  BX.setTransform(1, 0, 0, 1, 0, 0); BX.filter = 'none'; BX.clearRect(0, 0, BL.width, BL.height);
+  BX.filter = 'brightness(.7) contrast(2.4) blur(5px)'; BX.drawImage(out, 0, 0, BL.width, BL.height); BX.filter = 'none';
+  X.globalCompositeOperation = 'lighter'; X.globalAlpha = .5; X.drawImage(BL, 0, 0, W, H); X.globalAlpha = 1;
+  const v = X.createRadialGradient(W / 2, H / 2, W * .35, W / 2, H / 2, H * .62); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.65)');
+  X.globalCompositeOperation = 'source-over'; X.fillStyle = v; X.fillRect(0, 0, W, H);
+  const fr = Math.floor(t * 30); X.globalCompositeOperation = 'overlay'; X.globalAlpha = .1; X.fillStyle = X.createPattern(GRAIN[fr % 4], 'repeat');
+  X.save(); X.translate(rnd(fr) * 256, rnd(fr + 1) * 256); X.fillRect(-256, -256, W + 512, H + 512); X.restore();
+  X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
+}
+
+window.render = x => draw(RATE ? x / RATE : x);
+fetch('tl.json').then(r => r.json()).then(async j => {
+  TL = j; buildMap(); buildMontage(); buildShots(); buildGrain();
+  for (const b of TL.beats) DOOR_K.push([b - .001, 0, 'l'], [b, 1, 'l'], [b + .55, 1, 'l'], [b + .551, 0, 'l']);
+  DOOR_K.sort((a, b) => a[0] - b[0]);
+  window.DUR_REAL = realOf(TL.dur);
+  await document.fonts.ready; draw(0); window.READY = true;
+});
+</script></body></html>

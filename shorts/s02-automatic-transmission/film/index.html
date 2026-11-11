@@ -1,0 +1,418 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Automatic transmission, cut in half</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}#wrap{position:relative;width:100vw;height:100vh}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body><div id="wrap"><canvas id="gl"></canvas><canvas id="ui"></canvas></div>
+<script type="module">
+// Short 02 "Automatic transmission, cut in half" (9:16, 39 s). Axis vertical: engine side (torque converter) on top, output shaft at the bottom.
+// Static castings are half lathes with their profile as the cut face; rotating parts are whole, except converter blades and fluid (clipped at z = 0).
+// Planetary set: sun 28 T, planets 20 T x4, ring 68 T (module 2.5 mm). Low = ring held: 1 + 68/28 = 3.43 : 1. Reverse = carrier held: ring at -28/68 of the sun.
+// render(x): x is seconds, or a frame index when ?rate=<frames per second> is given.
+import * as THREE from 'three';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { makePost } from '/core/three/post.js';
+
+const q = new URLSearchParams(location.search), RATE = +q.get('rate') || 0;
+const W = innerWidth, H = innerHeight, S = W / 1080;
+const gl = document.getElementById('gl'), ui = document.getElementById('ui');
+const renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.localClippingEnabled = true;
+ui.width = W; ui.height = H; const c2 = ui.getContext('2d');
+const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, W / H, 0.05, 20);
+const loadFont = (n, u) => new FontFace(n, `url(${u})`).load().then(f => document.fonts.add(f)).catch(e => console.warn(e));
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const smooth = k => (k = clamp(k), k * k * (3 - 2 * k));
+const easeOut = k => 1 - Math.pow(1 - clamp(k), 3);
+const inOut = k => (k = clamp(k), k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+const win = (t, a, b, f = .35) => smooth((t - a) / f) * (1 - smooth((t - b) / f));
+function rnd(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+const D2R = Math.PI / 180, TAU = Math.PI * 2;
+
+// ---------------------------------------------------------------- timeline (VO starts follow voice/durations.json)
+const TL = {
+  DUR: 39,
+  VO: { h1: .25, h2: 4.45, a1: 6.6, a2: 9.05, a3: 13.3, b1: 16.3, b2: 19.5, b3: 23.3, b4: 26.0, c1: 30.0, c2: 34.2 },
+  STOP0: 13.0, STOP1: 15.4,          // turbine stops while the engine keeps turning
+  LIFT0: 15.8, LIFT1: 17.8, BACK0: 28.9, BACK1: 30.5,
+  LOW: 19.7, DIRECT: 23.3, REV: 26.0,
+  CLUTCH: [30.6, 31.4, 32.2, 33.0], TAGS: [34.5, 34.9, 35.3, 35.7], END: 37.5,
+};
+const CAPS = [
+  ['h1', 'Fewer than two in a hundred new cars in America have a clutch pedal.'], ['h2', "So what's changing the gears?"],
+  ['a1', "From a stop, the engine doesn't touch them."], ['a2', 'It spins a fan in a can of oil, and the oil spins a second fan.'],
+  ['a3', "That's why you can stop without stalling."], ['b1', 'Then comes the real trick: one set of gears.'],
+  ['b2', 'Hold the outer ring, and the output crawls. Low gear.'], ['b3', 'Lock it all together: one to one.'],
+  ['b4', 'Hold the carrier, and it turns backwards. Reverse.'], ['c1', 'Clutches do the holding, squeezed by oil and switched by a computer.'],
+  ['c2', "Ford and GM's ten-speed stacks four of these sets."]];
+const DURS = { h1: 3.977, h2: 1.508, a1: 2.262, a2: 3.928, a3: 1.853, b1: 2.716, b2: 3.219, b3: 2.151, b4: 2.956, c1: 3.805, c2: 3.21 };
+
+// ---------------------------------------------------------------- gear geometry (mm)
+const G = { S: 28, P: 20, R: 68, m: 2.5 }; G.rs = G.m * G.S / 2; G.rpl = G.m * G.P / 2; G.rr = G.m * G.R / 2; G.cd = G.rs + G.rpl;   // 35, 25, 85, 60
+const SETS = [400, 320, 240, 160];
+const PACKS = [432, 360, 280, 200];
+
+// ---------------------------------------------------------------- speeds, integrated once into tables (deg)
+const DT = 1 / 480, NT = Math.ceil(TL.DUR / DT) + 2;
+const tab = { e: new Float32Array(NT), tu: new Float32Array(NT), flow: new Float32Array(NT), hs: new Float32Array(NT), hc: new Float32Array(NT) };
+function speeds(t) {
+  const we = 360 - 60 * win(t, TL.STOP0, TL.STOP1, .5);                             // engine / pump (deg/s)
+  const wt = we * .93 * (1 - win(t, TL.STOP0, TL.STOP1 + .3, .7));                   // turbine: coupled, or held still (car stopped)
+  const slip = (we - wt) / 360;
+  const Wh = 110;                                                                     // hero set: the sun is driven at a steady speed
+  const kS = G.S / (G.S + G.R);
+  let wc = .45 * Wh;                                                                  // before the demo: free
+  wc = lerp(wc, kS * Wh, smooth((t - TL.LOW) / .6));                                  // ring held
+  wc = lerp(wc, Wh, smooth((t - TL.DIRECT) / .5));                                    // locked together
+  wc = lerp(wc, 0, smooth((t - TL.REV) / .6));                                        // carrier held
+  wc = lerp(wc, .45 * Wh, smooth((t - TL.BACK0) / .8));
+  return { we, wt, flow: .35 + 2.4 * slip, hs: Wh, hc: wc };
+}
+for (let i = 1; i < NT; i++) { const s = speeds((i - .5) * DT); tab.e[i] = tab.e[i - 1] + s.we * DT; tab.tu[i] = tab.tu[i - 1] + s.wt * DT; tab.flow[i] = tab.flow[i - 1] + s.flow * DT; tab.hs[i] = tab.hs[i - 1] + s.hs * DT; tab.hc[i] = tab.hc[i - 1] + s.hc * DT; }
+const at = (arr, t) => { const x = clamp(t, 0, TL.DUR) / DT, i = Math.floor(x), f = x - i; return lerp(arr[i], arr[Math.min(NT - 1, i + 1)], f); };
+
+// ---------------------------------------------------------------- textures, materials
+function canvasTex(w, h, fn, srgb = true) { const c = document.createElement('canvas'); c.width = w; c.height = h; fn(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; }
+const grain = canvasTex(512, 512, (x, w, h) => { x.fillStyle = '#808080'; x.fillRect(0, 0, w, h); for (let i = 0; i < 26000; i++) { const v = 90 + rnd(i) * 80 | 0; x.fillStyle = `rgba(${v},${v},${v},.5)`; x.fillRect(rnd(i * 3) * w, rnd(i * 7) * h, 1 + rnd(i * 5) * 2, 1 + rnd(i * 11) * 2); } }, false);
+grain.repeat.set(.02, .02);
+const bg = canvasTex(1080, 1920, (x, w, h) => { const g = x.createRadialGradient(w * .5, h * .58, 80, w * .5, h * .58, h * .75); g.addColorStop(0, '#3a3c41'); g.addColorStop(.55, '#1c1d21'); g.addColorStop(1, '#0a0b0d'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+const CLIP = [new THREE.Plane(new THREE.Vector3(0, 0, -1), 0)];
+const phys = (o) => new THREE.MeshPhysicalMaterial(o);
+const M = {
+  alu: phys({ color: 0xa3a7ad, metalness: .8, roughness: .5, bumpMap: grain, bumpScale: .4, side: THREE.DoubleSide }),
+  cut: phys({ color: 0x9c3e29, roughness: .5, bumpMap: grain, bumpScale: .12, clearcoat: .15, side: THREE.DoubleSide }),
+  steel: phys({ color: 0x9ba0a7, metalness: 1, roughness: .32 }),
+  polished: phys({ color: 0xc9ccd1, metalness: 1, roughness: .18 }),
+  sun: phys({ color: 0xd9a43a, metalness: .85, roughness: .3 }),
+  planet: phys({ color: 0x4f86c6, metalness: .75, roughness: .32 }),
+  carrier: phys({ color: 0x47a36b, metalness: .7, roughness: .35 }),
+  ring: phys({ color: 0xa9aeb5, metalness: 1, roughness: .34 }),
+  pump: phys({ color: 0xc77b45, metalness: .8, roughness: .35, side: THREE.DoubleSide, clippingPlanes: CLIP }),
+  turbine: phys({ color: 0x4f86c6, metalness: .75, roughness: .35, side: THREE.DoubleSide, clippingPlanes: CLIP }),
+  stator: phys({ color: 0x7c8087, metalness: .8, roughness: .4, side: THREE.DoubleSide, clippingPlanes: CLIP }),
+  friction: phys({ color: 0x6b4a2f, roughness: .8, side: THREE.DoubleSide }),
+  frictionCut: phys({ color: 0x8a5a36, roughness: .7, side: THREE.DoubleSide }),
+  steelCut: phys({ color: 0xb8bcc2, metalness: .6, roughness: .4, side: THREE.DoubleSide }),
+  oilSlot: new THREE.MeshBasicMaterial({ color: 0x8a1a14 }),
+  rubber: phys({ color: 0x1c1d20, roughness: .7 }),
+  flex: phys({ color: 0x8e939a, metalness: 1, roughness: .34, side: THREE.DoubleSide, clippingPlanes: CLIP }),
+  glowBand: new THREE.MeshBasicMaterial({ color: 0xff6b3d, transparent: true, opacity: 0 }),
+};
+
+// ---------------------------------------------------------------- builders
+const V2 = p => new THREE.Vector2(p[0], p[1]);
+function mesh(g, m, parent, cast = true) { const o = new THREE.Mesh(g, m); o.castShadow = cast; o.receiveShadow = true; parent.add(o); return o; }
+// a static axisymmetric part cut in half: back half of the lathe + its profile as the cut face on both sides
+function halfLathe(prof, side, cap, parent) {
+  const g = new THREE.Group(); parent.add(g);
+  mesh(new THREE.LatheGeometry(prof.map(V2), 96, Math.PI / 2, Math.PI), side, g);
+  const sh = new THREE.ShapeGeometry(new THREE.Shape(prof.map(V2)));
+  mesh(sh, cap, g, false);
+  const sh2 = sh.clone(); sh2.scale(-1, 1, 1); mesh(sh2, cap, g, false);
+  return g;
+}
+const ring = (r0, r1, y0, y1) => [[r0, y0], [r1, y0], [r1, y1], [r0, y1]];
+function gearPts(N, rp, internal = false, per = 12) {
+  const o = [], A = .95 * G.m;
+  for (let i = 0; i < N * per; i++) { const a = TAU * i / (N * per), c = clamp(1.7 * Math.cos(N * a), -1, 1); o.push([(internal ? rp - A * c : rp + A * c) * Math.cos(a), (internal ? rp - A * c : rp + A * c) * Math.sin(a)]); }
+  return o;
+}
+const circ = (r, n = 64) => Array.from({ length: n }, (_, i) => [r * Math.cos(TAU * i / n), r * Math.sin(TAU * i / n)]);
+function flatExtrude(outer, holes, depth, bevel = .8) {   // shape in XY -> lying flat, thickness along y, centred
+  const s = new THREE.Shape(outer.map(V2)); for (const h of holes) s.holes.push(new THREE.Path(h.map(V2)));
+  const g = new THREE.ExtrudeGeometry(s, { depth: depth - 2 * bevel, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2, curveSegments: 8 });
+  g.translate(0, 0, -(depth - 2 * bevel) / 2); g.rotateX(-Math.PI / 2); return g;
+}
+function cylY(r, y0, y1, seg = 48) { const g = new THREE.CylinderGeometry(r, r, y1 - y0, seg); g.translate(0, (y0 + y1) / 2, 0); return g; }
+
+// ---------------------------------------------------------------- scene
+const tr = new THREE.Group(); tr.scale.setScalar(.001); scene.add(tr);
+const P = { sets: [], packs: [] };
+let post;
+
+function planetarySet(y) {
+  const set = new THREE.Group(); set.position.y = y;
+  const sun = mesh(flatExtrude(gearPts(G.S, G.rs), [circ(13, 32)], 26), M.sun, set);
+  const ringM = mesh(flatExtrude(circ(97, 128), [gearPts(G.R, G.rr, true)], 26), M.ring, set);
+  const carrier = new THREE.Group(); set.add(carrier);
+  for (const yy of [17, -17]) {
+    mesh(cylY(27, yy - 3, yy + 3), M.carrier, carrier);
+    const hoop = flatExtrude(circ(74, 96), [circ(66, 96)], 5, .6); hoop.translate(0, yy, 0); mesh(hoop, M.carrier, carrier);
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, b = new THREE.BoxGeometry(46, 6, 16); b.translate(41, yy, 0); b.rotateY(a); mesh(b, M.carrier, carrier); }
+  }
+  const planets = [];
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2, pin = cylY(6, -21, 21, 20); pin.translate(G.cd * Math.cos(a), 0, -G.cd * Math.sin(a)); mesh(pin, M.polished, carrier);
+    planets.push(mesh(flatExtrude(gearPts(G.P, G.rpl), [circ(6.5, 24)], 24), M.planet, set));
+  }
+  mesh(cylY(13, -30, 30, 32), M.steel, sun);                       // a stub of the sun's shaft
+  tr.add(set); return { set, sun, ring: ringM, carrier, planets, y };
+}
+// place one set from the sun and carrier angles (degrees); the planets and the ring follow from the tooth mesh
+function poseSet(s, ths, thc) {
+  const as = ths * D2R, ac = thc * D2R;
+  s.sun.rotation.y = as; s.carrier.rotation.y = ac;
+  let phi0 = 0;
+  for (let k = 0; k < 4; k++) {
+    const a = ac + k * Math.PI / 2, u = (a - as) * G.S / TAU, phi = a + Math.PI - (.5 - u) * TAU / G.P;
+    s.planets[k].position.set(G.cd * Math.cos(a), 0, -G.cd * Math.sin(a)); s.planets[k].rotation.y = phi; if (k === 0) phi0 = phi;
+  }
+  const a0 = ac, pitch = TAU / G.P; let d = ((phi0 - a0) % pitch + pitch * 1.5) % pitch - pitch / 2;
+  s.ring.rotation.y = a0 + (G.rpl * d + G.m * Math.PI / 2) / G.rr;
+}
+
+async function build() {
+  const hdr = await new RGBELoader().loadAsync('/core/assets/polyhaven/photo_studio_loft_hall_2k.hdr'); hdr.mapping = THREE.EquirectangularReflectionMapping;
+  scene.environment = hdr; scene.environmentIntensity = .55; scene.environmentRotation = new THREE.Euler(0, 1.1, 0); scene.background = bg;
+  const key = new THREE.SpotLight(0xfff0dc, 11, 0, .45, .7, 2); key.position.set(-.8, 1.3, 1.25); key.target.position.set(0, .3, 0);
+  key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -.0002; key.shadow.normalBias = .0015; key.shadow.camera.near = .5; key.shadow.camera.far = 4;
+  scene.add(key, key.target);
+  const rim = new THREE.SpotLight(0xc8dcff, 8, 0, .55, .8, 2); rim.position.set(.8, 1.0, -1.0); rim.target.position.set(0, .3, 0); scene.add(rim, rim.target);
+  const fill = new THREE.SpotLight(0xe6ecff, 2.2, 0, .6, 1, 2); fill.position.set(1.0, .5, 1.1); fill.target.position.set(0, .3, 0); scene.add(fill, fill.target);
+  const top = new THREE.SpotLight(0xffffff, 5, 0, .4, .8, 2); top.position.set(.1, 1.4, .5); top.target.position.set(0, .46, .32); scene.add(top, top.target);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.ShadowMaterial({ opacity: .5 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -.085; floor.receiveShadow = true; scene.add(floor);
+
+  // case: tail, main case, bell housing (cut in half)
+  halfLathe([[70, -45], [70, 40], [135, 62], [135, 452], [176, 500], [184, 640], [176, 640], [168, 503], [127, 455], [127, 68], [62, 48], [62, -45]], M.alu, M.cut, tr);
+  halfLathe(ring(22, 127, 445, 466), M.alu, M.cut, tr);                         // pump wall between the converter and the gears
+  halfLathe(ring(34, 127, 130, 136), M.alu, M.cut, tr);                         // centre support
+  // torque converter shell (static, axisymmetric) with the core ring
+  const E = (cx, cy, a, b, a0, a1, n = 28) => Array.from({ length: n + 1 }, (_, i) => { const u = lerp(a0, a1, i / n); return [cx + a * Math.cos(u), cy + b * Math.sin(u)]; });
+  const shell = [[25, 609], [105, 609], ...E(105, 560, 53, 49, Math.PI / 2, -Math.PI / 2), [105, 511], [45, 511], [45, 470], [40, 470], [40, 516], [105, 516], ...E(105, 560, 48, 44, -Math.PI / 2, Math.PI / 2), [105, 604], [25, 604]];
+  halfLathe(shell, M.alu, M.cut, tr);
+  halfLathe(E(105, 560, 20, 16, 0, TAU, 40).slice(0, -1), M.alu, M.cut, tr);
+  // blades: pump (lower half, engine driven) and turbine (upper half, to the gears), clipped to the back half
+  const bladeShape = (lower) => new THREE.ShapeGeometry(new THREE.Shape([...E(105, 560 + (lower ? -2 : 2), 47, 42, lower ? Math.PI : 0, lower ? TAU : Math.PI), ...E(105, 560 + (lower ? -2 : 2), 21, 17, lower ? TAU : Math.PI, lower ? Math.PI : 0)].map(V2)));
+  for (const [key2, lower, mat] of [['pump', true, M.pump], ['turb', false, M.turbine]]) {
+    const wheel = new THREE.Group(); tr.add(wheel); P[key2] = wheel; const g = bladeShape(lower);
+    for (let k = 0; k < 30; k++) { const b = mesh(g, mat, wheel, false); b.rotation.y = k / 30 * TAU; }
+  }
+  const stat = new THREE.Group(); tr.add(stat); P.stator = stat;
+  for (let k = 0; k < 18; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(22, 12, 1.4), M.stator); b.position.set(73, 560, 0); const h = new THREE.Group(); h.rotation.y = k / 18 * TAU; b.rotation.x = .55; h.add(b); stat.add(h); }
+  // fluid: red transmission fluid circulating round the torus (out along the pump, back along the turbine)
+  const fg = new THREE.SphereGeometry(2.2, 10, 8);
+  P.fluid = new THREE.InstancedMesh(fg, new THREE.MeshBasicMaterial({ color: 0xffffff, clippingPlanes: CLIP }), 260); P.fluid.frustumCulled = false; tr.add(P.fluid);
+  // flexplate with the starter ring (whole, turns with the engine)
+  P.flex = new THREE.Group(); tr.add(P.flex);
+  { const g = flatExtrude(gearPts(118, 166), [circ(150, 96)], 8, .5); g.translate(0, 626, 0); mesh(g, M.flex, P.flex); }
+  { const g = flatExtrude(circ(152, 96), [circ(20, 24), ...[0, 1, 2, 3, 4, 5].map(k => circ(9, 16).map(p => [p[0] + 90 * Math.cos(k * Math.PI / 3), p[1] + 90 * Math.sin(k * Math.PI / 3)]))], 3, .3); g.translate(0, 624, 0); mesh(g, M.flex, P.flex); }
+  // shafts: input from the turbine, output at the tail
+  P.inShaft = mesh(cylY(14, 110, 520), M.polished, tr);
+  P.outShaft = new THREE.Group(); tr.add(P.outShaft);
+  mesh(cylY(22, -70, 140), M.polished, P.outShaft);
+  { const g = flatExtrude(circ(48, 64), [0, 1, 2, 3].map(k => circ(6, 16).map(p => [p[0] + 34 * Math.cos(k * Math.PI / 2), p[1] + 34 * Math.sin(k * Math.PI / 2)])), 10, .8); g.translate(0, -66, 0); mesh(g, M.steel, P.outShaft); }
+  // planetary sets
+  for (const y of SETS) P.sets.push(planetarySet(y));
+  // clutch packs (static half lathes; the plates close up when the clutch is applied)
+  for (const y of PACKS) {
+    const pk = { y, plates: [], piston: null };
+    for (let i = 0; i < 10; i++) { const fr = i % 2 === 0, g = halfLathe(ring(fr ? 99 : 103, fr ? 118 : 124, -1.1, 1.1), fr ? M.friction : M.steel, fr ? M.frictionCut : M.steelCut, tr); pk.plates.push(g); }
+    pk.piston = halfLathe([[100, 0], [124, 0], [124, 5], [112, 5], [112, 9], [100, 9]], M.alu, M.cut, tr);
+    pk.glow = new THREE.Mesh(new THREE.TorusGeometry(112, 2.2, 8, 96, Math.PI), M.glowBand.clone()); pk.glow.rotation.x = Math.PI / 2; pk.glow.rotation.z = Math.PI; tr.add(pk.glow);
+    P.packs.push(pk);
+  }
+  // valve body on the left side, with its oil passages, and four solenoids
+  const vb = new THREE.Group(); tr.add(vb); P.vb = vb;
+  const slots = [[-170, 150, -144, 158], [-170, 205, -150, 213], [-160, 240, -144, 330], [-170, 268, -152, 276], [-170, 330, -144, 338], [-166, 360, -150, 410], [-170, 390, -144, 397]];
+  { const s = new THREE.Shape([[-178, 110], [-136, 110], [-136, 420], [-178, 420]].map(V2)); for (const r of slots) s.holes.push(new THREE.Path([[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]].map(V2)));
+    const g = new THREE.ExtrudeGeometry(s, { depth: 100, bevelEnabled: false }); g.translate(0, 0, -100); mesh(g, [M.cut, M.alu], vb); }
+  P.slots = [];
+  for (const r of slots) { const g = new THREE.PlaneGeometry(r[2] - r[0], r[3] - r[1]); g.translate((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, -2); P.slots.push(mesh(g, M.oilSlot.clone(), vb, false)); }
+  P.sol = [];
+  for (const [i, y] of [150, 215, 280, 345].entries()) {
+    const g = new THREE.CylinderGeometry(11, 11, 34, 32); g.rotateZ(Math.PI / 2); g.translate(-195, y, -45); mesh(g, M.rubber, vb);
+    const cap = new THREE.CylinderGeometry(5, 5, 8, 20); cap.rotateZ(Math.PI / 2); cap.translate(-215, y, -45);
+    P.sol.push(mesh(cap, new THREE.MeshBasicMaterial({ color: 0x331a10 }), vb, false));
+  }
+  // hold indicators for the hero set: a band on the ring, a clutch on the sun, a brake on the carrier
+  P.band = new THREE.Mesh(new THREE.TorusGeometry(101, 3.6, 12, 128), M.glowBand.clone()); P.band.rotation.x = Math.PI / 2;
+  P.cband = new THREE.Mesh(new THREE.TorusGeometry(78, 3.2, 12, 128), M.glowBand.clone()); P.cband.rotation.x = Math.PI / 2; P.cband.position.y = 17;
+  P.lock = new THREE.Group(); for (let i = 0; i < 6; i++) { const g = flatExtrude(circ(23, 48), [circ(14.5, 24)], 2.2, .3); mesh(g, i % 2 ? M.steel : M.friction, P.lock).position.y = 24 + i * 3.6; }
+  P.lockGlow = new THREE.Mesh(new THREE.TorusGeometry(24, 1.6, 8, 64), M.glowBand.clone()); P.lockGlow.rotation.x = Math.PI / 2; P.lockGlow.position.y = 33; P.lock.add(P.lockGlow);
+  P.sets[0].set.add(P.band, P.cband, P.lock);
+
+  post = makePost(renderer, scene, cam, W, H, { ssaa: 1, ao: true, aoRadius: .03, aoScale: 1.6 });
+  post.dof.aper = 14; post.dof.maxCoc = 16; post.dof.aoAmt = .6; post.bloom.strength = .4; post.bloom.radius = .55; post.bloom.threshold = 2.2; post.vig.uniforms.amt.value = .38;
+}
+
+// ---------------------------------------------------------------- pose everything at time t
+const tmpM = new THREE.Object3D(), col = new THREE.Color();
+function pose(t) {
+  const e = at(tab.e, t), tu = at(tab.tu, t), fl = at(tab.flow, t);
+  P.flex.rotation.y = -e * D2R; P.pump.rotation.y = -e * D2R; P.turb.rotation.y = -tu * D2R; P.inShaft.rotation.y = -tu * D2R;
+  // fluid particles: round the torus section, carried round the axis between pump and turbine speed
+  for (let i = 0; i < 260; i++) {
+    const psi = rnd(i) * TAU + fl * D2R * 1.0, jr = (rnd(i + 7) - .5) * 14, a = 30 + jr * .6, b = 26 + jr * .5;
+    const r = 105 + a * Math.cos(psi), y = 560 + b * Math.sin(psi), ph = -(rnd(i + 3) * TAU + lerp(e, tu, .5 + .5 * Math.sin(psi)) * D2R);
+    tmpM.position.set(r * Math.cos(ph), y, -r * Math.sin(ph)); tmpM.scale.setScalar(.7 + .6 * rnd(i + 11)); tmpM.updateMatrix(); P.fluid.setMatrixAt(i, tmpM.matrix);
+    const hot = .6 + .4 * rnd(i + 5); col.setRGB(1.6 * hot, .25 * hot, .18 * hot); P.fluid.setColorAt(i, col);
+  }
+  P.fluid.instanceMatrix.needsUpdate = true; P.fluid.instanceColor.needsUpdate = true;
+  // sets: the hero set A has the demo; the others turn at fixed, consistent speeds
+  const hs = at(tab.hs, t), hc = at(tab.hc, t);
+  const sA = P.sets[0];
+  if (t < TL.LIFT0 - .2 || t > TL.BACK1 + .2) poseSet(sA, -tu, -tu * .45);   // in the case: driven by the input shaft
+  else poseSet(sA, -hs, -hc);
+  const base = -tu;
+  poseSet(P.sets[1], base * .8, base * .35); poseSet(P.sets[2], base * .5, base * .62); poseSet(P.sets[3], base * .62, base * .3);
+  P.outShaft.rotation.y = base * .3 * D2R;
+  // lift the hero set out of the case (forward and up) and back
+  const lift = smooth((t - TL.LIFT0) / (TL.LIFT1 - TL.LIFT0)) * (1 - inOut((t - TL.BACK0) / (TL.BACK1 - TL.BACK0)));
+  sA.set.position.set(0, SETS[0] + 60 * inOut(lift), 330 * inOut(lift));
+  // hold indicators
+  const low = win(t, TL.LOW - .2, TL.DIRECT - .1, .3), dir = win(t, TL.DIRECT, TL.REV - .1, .3), rev = win(t, TL.REV, TL.BACK0, .3);
+  P.band.material.opacity = low; P.band.scale.setScalar(1.06 - .06 * smooth((t - TL.LOW + .2) / .4)); P.band.material.color.setRGB(2.4, .55, .12);
+  P.cband.material.opacity = rev; P.cband.scale.setScalar(1.08 - .08 * smooth((t - TL.REV) / .4)); P.cband.material.color.setRGB(2.4, .55, .12);
+  P.lock.visible = lift > .02; P.lock.rotation.y = -hs * D2R;
+  P.lock.children.forEach((c, i) => { if (c !== P.lockGlow) c.position.y = 24 + i * lerp(3.6, 2.4, dir); });
+  P.lockGlow.material.opacity = dir; P.lockGlow.material.color.setRGB(2.4, .55, .12);
+  P.band.visible = P.cband.visible = lift > .02;
+  // clutch packs: applied one after another during "clutches do the holding"
+  P.packs.forEach((pk, i) => {
+    const on = win(t, TL.CLUTCH[i], TL.CLUTCH[i] + 1.1, .25), gap = lerp(1.6, .15, on);
+    pk.plates.forEach((pl, j) => pl.position.y = pk.y - 12 + j * (2.2 + gap));
+    pk.piston.position.y = pk.y - 12 + 10 * (2.2 + gap) + 1;
+    pk.glow.position.y = pk.y; pk.glow.material.opacity = on * .9; pk.glow.material.color.setRGB(2.4, .55, .12);
+  });
+  P.sol.forEach((s, i) => { const on = win(t, TL.CLUTCH[i] - .15, TL.CLUTCH[i] + 1.0, .15); s.material.color.setRGB(.2 + 3 * on, .1 + 1.2 * on, .06 + .4 * on); });
+  const pulse = win(t, TL.CLUTCH[0] - .3, TL.CLUTCH[3] + 1.2, .3);
+  P.slots.forEach((s, i) => { const k = .5 + .5 * Math.sin(t * 9 - i * .9); s.material.color.setRGB(.55 + 1.6 * pulse * k, .1 + .25 * pulse * k, .08); });
+  return { e, tu, hs, hc, lift, low, dir, rev };
+}
+
+// ---------------------------------------------------------------- camera keys {t, x, y, z (target, m), az, el (deg), d (m)}
+const K = [
+  [0, 0, .41, 0, 20, 12, 2.15], [5.6, 0, .41, 0, 27, 12, 2.08],
+  [7.2, .085, .545, 0, 14, 18, .8], [12.9, .085, .545, 0, 22, 16, .76], [15.5, .085, .545, 0, 25, 16, .76],
+  [18.0, 0, .455, .33, 4, 74, .98], [28.7, 0, .455, .33, 12, 76, .95],
+  [30.7, 0, .30, 0, -30, 10, 1.42], [33.9, 0, .30, 0, -22, 10, 1.38],
+  [35.3, 0, .30, 0, 12, 10, 1.55], [37.4, 0, .36, 0, 17, 11, 1.85], [39, 0, .41, 0, 20, 12, 2.15]];
+function camAt(t) {
+  let i = 0; while (i < K.length - 2 && t > K[i + 1][0]) i++;
+  const a = K[i], b = K[i + 1], k = inOut((t - a[0]) / (b[0] - a[0]));
+  const v = a.map((x, j) => lerp(x, b[j], k));
+  const tg = new THREE.Vector3(v[1], v[2], v[3]), az = v[4] * D2R, el = v[5] * D2R, d = v[6];
+  cam.position.set(tg.x + d * Math.sin(az) * Math.cos(el), tg.y + d * Math.sin(el), tg.z + d * Math.cos(az) * Math.cos(el));
+  cam.lookAt(tg);
+  post.dof.focus = d; post.dof.aper = d < 1.1 ? 18 : 10;
+}
+
+// ---------------------------------------------------------------- overlay
+function font(px, w = 800) { c2.font = `${w} ${px * S}px "Mona Sans", system-ui, sans-serif`; }
+function txt(s, x, y, px, color, w = 800, align = 'left', track = 0) { font(px, w); c2.fillStyle = color; c2.textAlign = align; c2.letterSpacing = (track * S) + 'px'; c2.fillText(s, x * S, y * S); c2.letterSpacing = '0px'; }
+function shadowed(fn) { c2.save(); c2.shadowColor = 'rgba(0,0,0,.65)'; c2.shadowBlur = 20 * S; c2.shadowOffsetY = 3 * S; fn(); c2.restore(); }
+const ACC = '#ff6b3d', HUE = { sun: '#e6b44a', planet: '#6aa3e0', carrier: '#5cc483', ring: '#d6dade' };
+const v3 = (x, y, z = 0) => new THREE.Vector3(x * .001, y * .001, z * .001);
+function proj(v) { const p = v.clone().project(cam); return [(p.x + 1) / 2 * 1080, (1 - p.y) / 2 * 1920]; }
+function wrapLines(s, maxW, px, w) { font(px, w); const words = s.split(' '), out = []; let line = ''; for (const wd of words) { const tst = line ? line + ' ' + wd : wd; if (c2.measureText(tst).width > maxW * S && line) { out.push(line); line = wd; } else line = tst; } out.push(line); return out; }
+function leader(p3, lx, ly, title, k, color = '#fff') {
+  if (k <= 0) return; const [px, py] = proj(p3); font(40, 750); const tw = c2.measureText(title).width / S + 8;
+  const ex = Math.abs(px - lx) < Math.abs(px - (lx + tw)) ? lx : lx + tw, e = easeOut(k);
+  c2.save(); c2.globalAlpha = clamp(k * 3); c2.strokeStyle = 'rgba(255,255,255,.92)'; c2.lineWidth = 3 * S; c2.lineCap = 'round';
+  c2.beginPath(); c2.moveTo(px * S, py * S); c2.lineTo(lerp(px, ex, e) * S, lerp(py, ly, e) * S); c2.stroke();
+  if (e > .5) { const u = easeOut((e - .5) / .5); c2.beginPath(); c2.moveTo(ex * S, ly * S); c2.lineTo(lerp(ex, ex === lx ? lx + tw : lx, u) * S, ly * S); c2.stroke(); }
+  c2.fillStyle = color; c2.beginPath(); c2.arc(px * S, py * S, 7 * S, 0, 6.283); c2.fill();
+  c2.strokeStyle = ACC; c2.beginPath(); c2.arc(px * S, py * S, 14 * S, -1.57, -1.57 + 6.283 * e); c2.stroke();
+  if (e > .7) { c2.globalAlpha = clamp((e - .7) / .3); shadowed(() => txt(title, lx + 4, ly - 14, 40, color, 750)); }
+  c2.restore();
+}
+// a curved arrow riding on a member: arc of the member's circle, pointing the way it turns
+function spinArrow(y, z, r, angle, w, color, alpha) {
+  if (alpha <= 0 || Math.abs(w) < 4) return;
+  const dir = Math.sign(w), span = .9, n = 24, pts = [];
+  for (let i = 0; i <= n; i++) { const a = angle + dir * (-span / 2 + span * i / n); pts.push(proj(v3(r * Math.cos(a), y, z - r * Math.sin(a)))); }
+  c2.save(); c2.globalAlpha = alpha; c2.strokeStyle = color; c2.fillStyle = color; c2.lineWidth = 9 * S; c2.lineCap = 'round';
+  c2.shadowColor = 'rgba(0,0,0,.6)'; c2.shadowBlur = 10 * S;
+  c2.beginPath(); pts.slice(0, -3).forEach((p, i) => i ? c2.lineTo(p[0] * S, p[1] * S) : c2.moveTo(p[0] * S, p[1] * S)); c2.stroke();
+  const p1 = pts[n], p0 = pts[n - 4], dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+  c2.beginPath(); c2.moveTo(p1[0] * S, p1[1] * S); c2.lineTo((p1[0] - ux * 30 - uy * 17) * S, (p1[1] - uy * 30 + ux * 17) * S); c2.lineTo((p1[0] - ux * 30 + uy * 17) * S, (p1[1] - uy * 30 - ux * 17) * S); c2.closePath(); c2.fill();
+  c2.restore();
+}
+function chip(x, y, dot, name, state, stateColor, a = 1) {
+  c2.save(); c2.globalAlpha = a; c2.fillStyle = dot; c2.beginPath(); c2.arc((x + 12) * S, (y - 12) * S, 12 * S, 0, 6.283); c2.fill();
+  txt(name, x + 36, y, 34, '#fff', 800, 'left', 2); font(34, 800); c2.letterSpacing = 2 * S + 'px'; const w = c2.measureText(name).width / S; c2.letterSpacing = '0px';
+  txt(state, x + 36 + w + 16, y, 34, stateColor, 650); c2.restore();
+}
+function captions(t) {
+  for (const [id, text] of CAPS) {
+    if (id === 'h1' || id === 'h2') continue;
+    const t0 = TL.VO[id], d = DURS[id]; if (t < t0 - .05 || t > t0 + d + .15) continue;
+    // split long lines into two timed halves
+    const words = text.split(' '), parts = words.length > 9 ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')] : [text];
+    const idx = parts.length > 1 && t > t0 + d * parts[0].length / text.length ? 1 : 0;
+    const lines = wrapLines(parts[idx], 900, 52, 750);
+    shadowed(() => lines.forEach((ln, i) => {
+      font(52, 750); const w = c2.measureText(ln).width / S; c2.fillStyle = 'rgba(8,9,11,.62)'; c2.beginPath(); c2.roundRect((540 - w / 2 - 20) * S, (1418 + i * 68 - 50) * S, (w + 40) * S, 66 * S, 14 * S); c2.fill();
+      txt(ln, 540, 1418 + i * 68, 52, '#fff', 750, 'center'); }));
+  }
+}
+
+function overlay(t, st) {
+  c2.clearRect(0, 0, W, H);
+  { const g = c2.createLinearGradient(0, 0, 0, 640 * S); g.addColorStop(0, 'rgba(6,7,9,.86)'); g.addColorStop(.72, 'rgba(6,7,9,.4)'); g.addColorStop(1, 'rgba(6,7,9,0)'); c2.fillStyle = g; c2.fillRect(0, 0, W, 640 * S); }
+  // hook (also the loop's end)
+  const hookA = t < 5.7 ? 1 - smooth((t - 5.6) / .3) : smooth((t - TL.END - .4) / .6);
+  if (hookA > 0) shadowed(() => { c2.globalAlpha = hookA;
+    txt('AUTOMATIC TRANSMISSION, CUT IN HALF', 72, 168, 34, ACC, 800, 'left', 4);
+    const q2 = t > TL.VO.h2 - .1 && t < 6, k = smooth((t - TL.VO.h2 + .1) / .3);
+    if (!q2 || k < 1) { c2.globalAlpha = hookA * (q2 ? 1 - k : 1); txt('Under 2% of new', 68, 280, 100, '#fff', 900); txt('US cars have a', 68, 385, 100, '#fff', 900); txt('clutch pedal.', 68, 490, 100, ACC, 900); }
+    if (q2) { c2.globalAlpha = hookA * k; txt("So what's", 68, 300, 118, '#fff', 900); txt('changing the gears?', 68, 420, 104, '#fff', 900); }
+    c2.globalAlpha = 1; });
+  // section header: 1/3 torque converter, 2/3 planetary gears, 3/3 clutches
+  const SEC = [[6.2, 15.7, 'TORQUE CONVERTER'], [16.0, 29.4, 'PLANETARY GEARS'], [29.7, TL.END, 'CLUTCHES']];
+  SEC.forEach(([a, b, name], i) => { const k = win(t, a, b, .3); if (k <= 0) return;
+    shadowed(() => { c2.globalAlpha = k; txt(`${i + 1} / 3`, 72, 168, 36, ACC, 800, 'left', 4); txt(name, 68 - (1 - easeOut((t - a) / .5)) * 40, 262, i === 2 ? 96 : 84, '#fff', 900); c2.globalAlpha = 1; }); });
+  // converter callouts
+  const kc = win(t, 8.9, 15.5, .3);
+  if (kc > 0) {
+    leader(v3(132, 532, -30), 560, 1220, 'pump · driven by engine', clamp((t - 9.0) / .5) * kc, '#e9a26e');
+    leader(v3(132, 588, -30), 560, 690, 'turbine · drives the gears', clamp((t - 10.3) / .5) * kc, '#8fbcf0');
+    leader(v3(74, 562, -25), 120, 1060, 'fluid', clamp((t - 11.4) / .5) * kc * (1 - win(t, 13.1, 16, .3)));
+  }
+  const ks = win(t, 13.2, 15.6, .3);
+  if (ks > 0) shadowed(() => { c2.globalAlpha = ks;
+    chip(72, 360, '#e9a26e', 'ENGINE', 'turning', '#fff'); chip(72, 420, '#8fbcf0', 'WHEELS', st.tu !== undefined && t > TL.STOP0 + .6 ? 'stopped' : 'slowing', ACC); c2.globalAlpha = 1; });
+  // hero set: what is held, what goes in, what comes out
+  const kh = clamp(st.lift * 1.4 - .3);
+  if (kh > 0) {
+    const sA = P.sets[0], y = SETS[0] + 60 * inOut(st.lift), z = 330 * inOut(st.lift);
+    const ws = -110, wc = -(speeds(t).hc), wr = wc - (ws - wc) * G.S / G.R;
+    const mode = st.rev > .5 ? 2 : st.dir > .5 ? 1 : st.low > .5 ? 0 : -1;
+    const names = ['LOW GEAR', 'DIRECT', 'REVERSE'], ratio = ['3.4 : 1', '1 : 1', 'output turns backwards'];
+    if (t > TL.VO.b1 && mode < 0) shadowed(() => { c2.globalAlpha = kh; chip(72, 360, HUE.sun, 'SUN', '', '#fff'); chip(300, 360, HUE.planet, 'PLANETS', '', '#fff'); chip(72, 420, HUE.carrier, 'CARRIER', '', '#fff'); chip(360, 420, HUE.ring, 'RING', '', '#fff'); c2.globalAlpha = 1; });
+    if (mode >= 0) { const mk = mode === 0 ? st.low : mode === 1 ? st.dir : st.rev;
+      shadowed(() => { c2.globalAlpha = kh * mk;
+        txt(names[mode], 1010, 372, 36, ACC, 800, 'right', 4); txt(ratio[mode], 1010, mode === 2 ? 440 : 470, mode === 2 ? 44 : 92, '#fff', 900, 'right');
+        const st3 = mode === 0 ? ['in', 'out', 'HELD'] : mode === 1 ? ['in', 'out', 'locked'] : ['in', 'HELD', 'out'];
+        chip(72, 360, HUE.sun, 'SUN', st3[0], '#fff'); chip(72, 420, HUE.carrier, 'CARRIER', st3[1], st3[1] === 'HELD' ? ACC : '#fff'); chip(72, 480, HUE.ring, 'RING', st3[2], st3[2] === 'HELD' ? ACC : '#fff'); c2.globalAlpha = 1; }); }
+    // arrows riding on each member
+    const am = kh * clamp((t - TL.VO.b1) / .4);
+    spinArrow(y + 14, z, 43, sA.sun.rotation.y + .6, ws, HUE.sun, am);
+    spinArrow(y + 22, z, 60, sA.carrier.rotation.y + .78, wc, HUE.carrier, am);
+    spinArrow(y + 14, z, 108, sA.ring.rotation.y + 2.4, wr, HUE.ring, am);
+  }
+  // numbered gear sets for "four of these sets"
+  SETS.forEach((y, i) => { const k = clamp((t - TL.TAGS[i]) / .45) * (1 - smooth((t - TL.END) / .4)); if (k > 0) leader(v3(98, y, 40), 870, 720 + i * 150, `set ${i + 1}`, k, ['#e6b44a', '#6aa3e0', '#5cc483', '#d6dade'][i]); });
+  const kt = win(t, 35.9, TL.END + .3, .3);
+  if (kt > 0) shadowed(() => { c2.globalAlpha = kt; txt('10 speeds', 68, 380, 64, '#fff', 900); txt('4 gear sets · 6 clutches', 70, 445, 40, 'rgba(255,255,255,.9)', 650); c2.globalAlpha = 1; });
+  const kv = win(t, 30.3, 34.0, .3);
+  if (kv > 0) { leader(v3(-200, 280, -45), 90, 760, 'solenoids', clamp((t - 30.4) / .5) * kv); leader(v3(-112, PACKS[1] - 4, 0), 300, 1240, 'clutch pack', clamp((t - 30.9) / .5) * kv); }
+  captions(t);
+  // sources line on the last beat
+  const ks2 = win(t, TL.END - .2, TL.DUR + 1, .4);
+  if (ks2 > 0) { c2.globalAlpha = ks2 * .8; txt('Sources: EPA Automotive Trends · Ford/GM 10R80 · gear math in description', 540, 1560, 24, '#fff', 500, 'center'); c2.globalAlpha = 1; }
+}
+
+const CLEAN = q.has('clean');   // ?clean: no overlay (thumbnails)
+function draw(t) { camAt(t); const st = pose(t); post.composer.render(); if (CLEAN) c2.clearRect(0, 0, W, H); else overlay(t, st); }
+
+(async () => {
+  await loadFont('Mona Sans', 'https://cdn.jsdelivr.net/npm/@fontsource-variable/mona-sans@5.3.0/files/mona-sans-latin-standard-normal.woff2');
+  await build();
+  window.DUR = TL.DUR; window.render = x => draw(RATE ? x / RATE : x); draw(0); window.READY = true;
+})();
+</script></body></html>

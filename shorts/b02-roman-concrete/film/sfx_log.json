@@ -1,0 +1,97 @@
+{
+ "n_sfx": 18,
+ "per_min": 18.7,
+ "events": [
+  {
+   "t": 0.0,
+   "name": "bubbling mix (hook)",
+   "gain_db": -13.2
+  },
+  {
+   "t": 3.13,
+   "name": "steam hiss burst (boil)",
+   "gain_db": -15.9
+  },
+  {
+   "t": 6.806,
+   "name": "whoosh (cut to the wide)",
+   "gain_db": -20.9
+  },
+  {
+   "t": 11.239,
+   "name": "water poured on lime",
+   "gain_db": -18.4
+  },
+  {
+   "t": 13.469,
+   "name": "powder shake (quicklime)",
+   "gain_db": -23.1
+  },
+  {
+   "t": 17.101,
+   "name": "ding (lumps)",
+   "gain_db": -20.9
+  },
+  {
+   "t": 18.138,
+   "name": "pop (master jabs a lump)",
+   "gain_db": -14.0
+  },
+  {
+   "t": 24.389,
+   "name": "thunder + wave slam (storm)",
+   "gain_db": -10.5
+  },
+  {
+   "t": 24.979,
+   "name": "crack (wall)",
+   "gain_db": -10.5
+  },
+  {
+   "t": 26.232,
+   "name": "whoosh dive into the crack",
+   "gain_db": -20.9
+  },
+  {
+   "t": 27.312,
+   "name": "drip hits the lump",
+   "gain_db": -15.9
+  },
+  {
+   "t": 29.561,
+   "name": "fizz (lump dissolving)",
+   "gain_db": -15.9
+  },
+  {
+   "t": 34.319,
+   "name": "crystal tinkle (sealed)",
+   "gain_db": -18.4
+  },
+  {
+   "t": 37.096,
+   "name": "soft ding (made up)",
+   "gain_db": -23.1
+  },
+  {
+   "t": 39.552,
+   "name": "whoosh to the lab",
+   "gain_db": -21.9
+  },
+  {
+   "t": 44.772,
+   "name": "crack snap (cylinder)",
+   "gain_db": -13.2
+  },
+  {
+   "t": 47.454,
+   "name": "lab drips slowing",
+   "gain_db": -14.0
+  },
+  {
+   "t": 49.793,
+   "name": "water pouring through (no quicklime)",
+   "gain_db": -20.0
+  }
+ ],
+ "rt_note": "room tone per location, about -50 dBFS"
+}

@@ -1,0 +1,5 @@
+- [Absolute file links](absolute-file-links.md) — relative links don't open in the user's VS Code; always use C:/... paths
+- [YouTube price-history channel](youtube-channel-price-history.md) — English channel on economic history of everyday things; Ep01 pipeline + af_heart voice
+- [Greek myth channel direction](youtube-greek-myth-channel-direction.md) — 2026-11-10 niche chosen: Greek myths from real artifacts, long-form, vase style; plan + script guide written
+- [lemo-plus skill](lemo-plus-skill.md) — add-on to lemo-opuscar (ideas/writing/camera/type); never edit ~/lemo-opuscar, it self-resets
+- [3D story Shorts competitors](youtube-3d-story-shorts-competitors.md) — RicksClips/Jessica/afterhourtheories formulas; Otis script; nvidia pilot paused

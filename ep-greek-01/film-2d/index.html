@@ -1,0 +1,178 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Clay and Myth - 2D map test</title>
+<style>
+html,body{margin:0;background:#000;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+#cap{position:absolute;left:0;right:0;bottom:7%;text-align:center;font:800 56px/1.15 "Segoe UI","Arial Black",Arial,sans-serif;color:#fff;letter-spacing:.5px;
+  text-shadow:0 3px 0 #000,0 0 14px rgba(0,0,0,.85),3px 0 0 #000,-3px 0 0 #000,0 -3px 0 #000;pointer-events:none}
+#cap span{display:inline-block;margin:0 .16em}
+#cap span.on{color:#ffb347;transform:scale(1.08)}
+#bub{position:absolute;display:none;padding:12px 20px 8px;background:#fff;color:#2a1a10;border-radius:24px;font:700 32px/1.1 "Segoe UI",Arial,sans-serif;box-shadow:0 5px 14px rgba(0,0,0,.3);text-align:center;pointer-events:none}
+#bub:after{content:"";position:absolute;left:30px;bottom:-16px;border:11px solid transparent;border-top:18px solid #fff;border-bottom:0}
+#bub small{display:block;font:600 14px/1 "Segoe UI",Arial,sans-serif;color:#8a7a6a;letter-spacing:2px;margin-top:4px;text-transform:uppercase}
+</style></head><body><canvas id="c"></canvas><div id="cap"></div><div id="bub"></div>
+<script>
+// 2D map-style explainer test (GeoGlobeTales-like): small flat cartoon characters on a map. render(t) seconds.
+const W = innerWidth, H = innerHeight, cv = document.getElementById('c'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
+const OL = '#2a1810';
+let seed = 11; const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const sm = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+const K = (t, keys) => { if (t <= keys[0][0]) return keys[0][1]; for (let i = 1; i < keys.length; i++) if (t <= keys[i][0]) { const a = keys[i - 1], b = keys[i]; return a[1] + (b[1] - a[1]) * sm((t - a[0]) / (b[0] - a[0])); } return keys[keys.length - 1][1]; };
+
+// ------------------------------------------------------------ map
+function spline(P) { const n = P.length; ctx.moveTo(P[0][0], P[0][1]);
+  for (let i = 0; i < n; i++) { const g = k => P[(k + n) % n], p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2);
+    ctx.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]); } }
+const ISLE = [[-1200, -120], [-1050, -230], [-800, -262], [-600, -205], [-350, -250], [-100, -222], [150, -272], [450, -255], [750, -232], [1000, -205], [1190, -170], [1235, -100], [1050, -55], [800, -28], [600, 45], [350, 12], [100, 75], [-150, 122], [-400, 165], [-650, 212], [-900, 232], [-1100, 170], [-1185, 40]];
+const CEN = ISLE.reduce((a, p) => [a[0] + p[0] / ISLE.length, a[1] + p[1] / ISLE.length], [0, 0]);
+const scaled = k => ISLE.map(p => [CEN[0] + (p[0] - CEN[0]) * k, CEN[1] + (p[1] - CEN[1]) * k]);
+const WAVES = Array.from({ length: 700 }, () => [rnd() * 5200 - 2600, rnd() * 3000 - 1500, rnd() * 40 + 20]);
+ctx.beginPath(); spline(scaled(0.86));
+const TREES = Array.from({ length: 160 }, () => [rnd() * 2300 - 1150, rnd() * 520 - 280, rnd() * 10 + 12]).filter(([x, y]) => ctx.isPointInPath(x, y) && Math.abs(y + 10) > 75 && !(x > 380 && x < 1100 && y < -40));
+function drawMap(z, cx, cy, t) {
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#2f86b5'); g.addColorStop(1, '#1d5f8c'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-cx, -cy);
+  ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2 / z; for (let x = -2800; x <= 2800; x += 400) { ctx.beginPath(); ctx.moveTo(x, -1600); ctx.lineTo(x, 1600); ctx.stroke(); } for (let y = -1600; y <= 1600; y += 400) { ctx.beginPath(); ctx.moveTo(-2800, y); ctx.lineTo(2800, y); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 4 / z; ctx.lineCap = 'round';
+  for (const [x, y, l] of WAVES) { const w = Math.sin(t * 1.3 + x * .01) * 4; ctx.beginPath(); ctx.moveTo(x, y + w); ctx.quadraticCurveTo(x + l / 2, y - 10 + w, x + l, y + w); ctx.stroke(); }
+  // shallow halo + shadow
+  ctx.fillStyle = 'rgba(120,200,225,.35)'; ctx.beginPath(); spline(scaled(1.08)); ctx.fill();
+  ctx.fillStyle = 'rgba(10,40,70,.35)'; ctx.save(); ctx.translate(14, 22); ctx.beginPath(); spline(ISLE); ctx.fill(); ctx.restore();
+  ctx.fillStyle = '#e3cf94'; ctx.strokeStyle = '#6a5530'; ctx.lineWidth = 5 / z; ctx.beginPath(); spline(ISLE); ctx.fill(); ctx.stroke();
+  [['#a9c070', .94], ['#92b062', .83], ['#7c9d55', .66], ['#8a8f5a', .44]].forEach(([c, k]) => { ctx.fillStyle = c; ctx.beginPath(); spline(scaled(k)); ctx.fill(); });
+  for (const [x, y, r] of TREES) { ctx.fillStyle = '#4c7a3c'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = '#5f9248'; ctx.beginPath(); ctx.arc(x - r * .25, y - r * .3, r * .6, 0, 7); ctx.fill(); }
+  // mountain with the cave
+  const mt = (x, y, s, c = '#8d7a66') => { ctx.fillStyle = c; ctx.strokeStyle = OL; ctx.lineWidth = 3 / z; ctx.beginPath(); ctx.moveTo(x - s, y); ctx.lineTo(x - s * .1, y - s * 1.2); ctx.lineTo(x + s * .25, y - s * 1.05); ctx.lineTo(x + s, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f4f1ea'; ctx.beginPath(); ctx.moveTo(x - s * .1, y - s * 1.2); ctx.lineTo(x + s * .25, y - s * 1.05); ctx.lineTo(x + s * .2, y - s * .8); ctx.lineTo(x + s * .05, y - s * .9); ctx.lineTo(x - s * .15, y - s * .78); ctx.lineTo(x - s * .28, y - s * .86); ctx.closePath(); ctx.fill(); };
+  mt(300, -120, 150, '#7c6a58'); mt(780, -130, 200); mt(1000, -120, 120, '#85715d'); mt(530, -120, 250, '#8d7a66');
+  ctx.fillStyle = '#1a0f0a'; ctx.beginPath(); ctx.moveTo(500, -62); ctx.quadraticCurveTo(502, -140, 540, -144); ctx.quadraticCurveTo(580, -140, 582, -62); ctx.closePath(); ctx.fill(); ctx.strokeStyle = OL; ctx.lineWidth = 3 / z; ctx.stroke();
+  ctx.restore();
+}
+
+// ------------------------------------------------------------ characters (local units: height = 1, +x = facing)
+const arm2 = (a, b) => { const L1 = 0.17, L2 = 0.16; const x1 = Math.sin(a) * L1, y1 = Math.cos(a) * L1; return [[x1, y1], [x1 + Math.sin(a + b) * L2, y1 + Math.cos(a + b) * L2]]; };
+function line(P, w, col) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(...P[0]); for (let i = 1; i < P.length; i++) ctx.lineTo(...P[i]); ctx.stroke(); }
+function drawChar(c, P) {
+  const { x, y, s, d } = c, o = c.o, hands = [];
+  const bob = (P.walk || 0) * Math.abs(Math.sin(P.ph || 0)) * 0.02;
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(0, 0, s * .3, s * .06, 0, 0, 7); ctx.fill();
+  ctx.scale(s * d, s); ctx.translate(0, -bob);
+  const LW = 0.016, SH = -0.60;
+  const limb = (pts, w, col) => { line(pts, w + LW * 2, OL); line(pts, w, col); };
+  // back arm
+  const A = arm2(P.arm.a + (P.walk ? Math.sin(P.ph) * .5 : 0), P.arm.b);
+  const back = A.map(p => [p[0] - 0.0, SH + p[1]]); const bsx = -0.10; const bp = [[bsx, SH], [bsx + A[0][0], SH + A[0][1]], [bsx + A[1][0], SH + A[1][1]]];
+  limb(bp, 0.065, o.skin); ctx.fillStyle = o.skin; ctx.strokeStyle = OL; ctx.lineWidth = LW; ctx.beginPath(); ctx.arc(bp[2][0], bp[2][1], 0.042, 0, 7); ctx.fill(); ctx.stroke();
+  // legs
+  for (const sg of [-1, 1]) { const sw = (P.walk || 0) * Math.sin(P.ph || 0) * 0.5 * sg; const hx = sg * 0.06, fx = hx + Math.sin(sw) * 0.2, fy = -0.30 + Math.cos(sw) * 0.28 + (sw > 0 ? -Math.abs(sw) * 0.05 : 0);
+    limb([[hx, -0.30], [fx, fy]], 0.07, o.skin); ctx.fillStyle = '#5a3a22'; ctx.strokeStyle = OL; ctx.lineWidth = LW; ctx.beginPath(); ctx.ellipse(fx + 0.03, fy + 0.012, 0.062, 0.032, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+  // body
+  ctx.save(); const puff = P.puff || 0; ctx.translate(0, -0.4); ctx.scale(1 + 0.13 * puff, 1 + 0.03 * puff); ctx.translate(0, 0.4);
+  ctx.fillStyle = o.robe; ctx.strokeStyle = OL; ctx.lineWidth = LW; ctx.beginPath();
+  if (o.long) { ctx.moveTo(-0.115, -0.64); ctx.bezierCurveTo(-0.14, -0.45, -0.31, -0.22, -0.32, -0.015); ctx.lineTo(0.32, -0.015); ctx.bezierCurveTo(0.31, -0.22, 0.14, -0.45, 0.115, -0.64); }
+  else { ctx.moveTo(-0.115, -0.64); ctx.bezierCurveTo(-0.14, -0.42, -0.2, -0.25, -0.215, -0.15); ctx.lineTo(0.215, -0.15); ctx.bezierCurveTo(0.2, -0.25, 0.14, -0.42, 0.115, -0.64); }
+  ctx.quadraticCurveTo(0, -0.7, -0.115, -0.64); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = o.trim; ctx.lineWidth = 0.028; ctx.beginPath(); const hy = o.long ? -0.04 : -0.17, hw = o.long ? 0.3 : 0.2; ctx.moveTo(-hw, hy); ctx.lineTo(hw, hy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-0.14, -0.43); ctx.lineTo(0.14, -0.43); ctx.stroke();
+  if (P.gulp > 0 && P.gulp < 1) { ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.beginPath(); ctx.arc(0.02, -0.62 + 0.24 * P.gulp, 0.045 * (1 - 0.4 * P.gulp), 0, 7); ctx.fill(); }
+  ctx.restore();
+  // neck
+  ctx.fillStyle = o.skin; ctx.fillRect(-0.04, -0.7, 0.08, 0.06);
+  // head
+  ctx.save(); ctx.translate(0, -0.68); ctx.rotate((P.tilt || 0)); ctx.translate(0, 0.68);
+  const hc = [0, -0.80], R = 0.165, fxs = 0.045 * (1 - (P.front || 0));
+  if (o.long) { ctx.fillStyle = o.hair; ctx.strokeStyle = OL; ctx.lineWidth = LW; ctx.beginPath(); ctx.moveTo(-0.17, -0.84); ctx.bezierCurveTo(-0.26, -0.6, -0.2, -0.46, -0.1, -0.46); ctx.lineTo(0.12, -0.5); ctx.bezierCurveTo(0.22, -0.55, 0.22, -0.72, 0.17, -0.84); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  ctx.fillStyle = o.skin; ctx.strokeStyle = OL; ctx.lineWidth = LW;
+  for (const sg of [-1, 1]) { ctx.beginPath(); ctx.arc(hc[0] + sg * R * 0.97, hc[1] + 0.02, 0.035, 0, 7); ctx.fill(); ctx.stroke(); }
+  ctx.beginPath(); ctx.arc(hc[0], hc[1], R, 0, 7); ctx.fill(); ctx.stroke();
+  // hair top
+  ctx.fillStyle = o.hair; ctx.beginPath(); ctx.arc(hc[0], hc[1], R + 0.004, Math.PI * 1.04, Math.PI * 1.96); ctx.quadraticCurveTo(hc[0] + 0.08, hc[1] - 0.1, hc[0] - 0.02, hc[1] - 0.115); ctx.quadraticCurveTo(hc[0] - 0.12, hc[1] - 0.09, hc[0] - R * 0.97, hc[1] - 0.04); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (o.wreath) for (let i = 0; i < 9; i++) { const a = Math.PI * (1.08 + i * 0.105); ctx.fillStyle = i % 2 ? '#5f9a3e' : '#7fbd4a'; ctx.strokeStyle = OL; ctx.lineWidth = 0.008; ctx.beginPath(); ctx.ellipse(hc[0] + Math.cos(a) * (R + 0.003), hc[1] + Math.sin(a) * (R + 0.003), 0.026, 0.014, a + Math.PI / 2, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (o.beard) { ctx.fillStyle = o.hair; ctx.strokeStyle = OL; ctx.lineWidth = LW; ctx.beginPath(); ctx.moveTo(-0.15, -0.78); ctx.bezierCurveTo(-0.17, -0.58, 0.19, -0.56, 0.15, -0.78); ctx.quadraticCurveTo(0.08, -0.7, 0, -0.7); ctx.quadraticCurveTo(-0.08, -0.7, -0.15, -0.78); ctx.fill(); ctx.stroke(); }
+  // face
+  const look = P.look ?? 0.4;
+  for (const sg of [-1, 1]) { const ex = fxs + sg * 0.066, ey = -0.81; const bl = P.blink ? 0.15 : 1;
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = OL; ctx.lineWidth = 0.008; ctx.beginPath(); ctx.ellipse(ex, ey, 0.036, 0.04 * bl, 0, 0, 7); ctx.fill(); ctx.stroke();
+    if (bl > 0.5) { ctx.fillStyle = '#1b0f0a'; ctx.beginPath(); ctx.arc(ex + look * 0.014, ey + 0.004, 0.019, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = o.beard ? '#8a857a' : '#2a1710'; ctx.lineWidth = 0.014; ctx.beginPath(); const by = -0.865 - (P.rise || 0) * 0.012 * (sg === 1 ? 1 : 0.3), tl = (P.brow || 0) * sg * -0.05; ctx.moveTo(ex - 0.03, by - tl); ctx.lineTo(ex + 0.03, by + tl); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(230,110,100,.38)'; for (const sg of [-1, 1]) { ctx.beginPath(); ctx.ellipse(fxs + sg * 0.1, -0.745, 0.026, 0.016, 0, 0, 7); ctx.fill(); }
+  ctx.fillStyle = o.skin === '#e6b48f' ? '#d89d78' : '#c08560'; ctx.beginPath(); ctx.ellipse(fxs + 0.014, -0.77, 0.014, 0.02, 0, 0, 7); ctx.fill();
+  if (o.beard) { ctx.strokeStyle = OL; ctx.fillStyle = o.hair; ctx.lineWidth = 0.008; ctx.beginPath(); ctx.ellipse(fxs, -0.738, 0.055, 0.016, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+  const my = o.beard ? -0.708 : -0.725, op = P.mouth || 0;
+  if (op > 0.25) { ctx.fillStyle = '#4a1510'; ctx.strokeStyle = OL; ctx.lineWidth = 0.008; ctx.beginPath(); ctx.ellipse(fxs, my, 0.036 + op * 0.012, 0.012 + op * 0.045, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+  else { const sml = P.smile || 0; ctx.strokeStyle = OL; ctx.lineWidth = 0.011; ctx.beginPath(); ctx.moveTo(fxs - 0.036, my - 0.004 * sml); ctx.quadraticCurveTo(fxs, my + 0.012 + 0.03 * sml, fxs + 0.036, my - 0.004 * sml); ctx.stroke(); }
+  ctx.restore();
+  // front arm (drawn last so it passes over the body)
+  const fpts = [[0.10, SH], [0.10 + A[0][0], SH + A[0][1]], [0.10 + A[1][0], SH + A[1][1]]];
+  limb(fpts, 0.065, o.skin); ctx.fillStyle = o.skin; ctx.strokeStyle = OL; ctx.lineWidth = LW; for (const q of [fpts[2]]) { ctx.beginPath(); ctx.arc(q[0], q[1], 0.042, 0, 7); ctx.fill(); ctx.stroke(); }
+  ctx.restore();
+  const w = q => [x + q[0] * s * d, y + (q[1] - bob) * s];
+  return { hands: w([(bp[2][0] + fpts[2][0]) / 2, (bp[2][1] + fpts[2][1]) / 2]), mouth: w([fxs, -0.72]), head: w([0, -1.0]) };
+}
+
+// ------------------------------------------------------------ props
+function drawBaby(p, sc, face = 1) { ctx.save(); ctx.translate(p[0], p[1]); ctx.scale(sc, sc);
+  ctx.fillStyle = '#f0e4c6'; ctx.strokeStyle = OL; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(-8, 4, 32, 20, 0, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#c9b27a'; ctx.lineWidth = 3; for (const x of [-22, -10, 2]) { ctx.beginPath(); ctx.moveTo(x, -12); ctx.lineTo(x + 5, 22); ctx.stroke(); }
+  ctx.fillStyle = '#e9b894'; ctx.strokeStyle = OL; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(28, -2, 17, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#1b0f0a'; ctx.beginPath(); ctx.arc(24, -4, 2.4, 0, 7); ctx.arc(34, -4, 2.4, 0, 7); ctx.fill(); ctx.strokeStyle = OL; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(29, 3, 4, .1 * Math.PI, .9 * Math.PI); ctx.stroke(); ctx.restore(); }
+function drawStone(p, sc) { ctx.save(); ctx.translate(p[0], p[1]); ctx.scale(sc, sc);
+  ctx.fillStyle = '#f0e4c6'; ctx.strokeStyle = OL; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 4, 26, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#c9b27a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 4, 17, .1 * Math.PI, .9 * Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 4, 17, 1.1 * Math.PI, 1.9 * Math.PI); ctx.stroke();
+  ctx.fillStyle = '#8d877d'; ctx.strokeStyle = OL; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, -16); ctx.lineTo(-6, -32); ctx.lineTo(10, -30); ctx.lineTo(17, -17); ctx.lineTo(6, -9); ctx.lineTo(-8, -8); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+
+// ------------------------------------------------------------ timeline
+const DOWN = { a: 0.08, b: 0.1 }, HOLD = { a: 0.95, b: 1.3 }, OFFER = { a: 1.45, b: 0.1 }, MOUTH = { a: 1.25, b: 1.9 }, PAT = { a: 0.35, b: 1.5 }, FOLD = { a: 0.6, b: 1.65 }, PLACE = { a: 1.3, b: 0.4 };
+const mix = (A, B, k) => ({ a: A.a + (B.a - A.a) * k, b: A.b + (B.b - A.b) * k });
+const seq = (t, list) => { if (t <= list[0][0]) return list[0][1]; for (let i = 1; i < list.length; i++) if (t <= list[i][0]) return mix(list[i - 1][1], list[i][1], sm((t - list[i - 1][0]) / (list[i][0] - list[i - 1][0]))); return list[list.length - 1][1]; };
+const CAPS = [[0.2, 3.4, 'In a cave on a mountain, Gaia takes the baby from her, and hides him.'], [3.5, 6.2, 'To Cronos, Gaia gives a great stone, wrapped in baby clothes.'], [6.3, 7.1, 'He takes it.'], [7.2, 9.0, 'He swallows it.'], [9.4, 12.4, 'And he never notices.']];
+const capEl = document.getElementById('cap'), bub = document.getElementById('bub'); let capKey = '';
+function chunks(a, b, text) { const w = text.split(' '), out = []; let cur = []; for (const x of w) { cur.push(x); if (cur.length >= 4 || /[,.]$/.test(x)) { out.push(cur); cur = []; } } if (cur.length) out.push(cur); let k = 0; return out.map(ws => { const s = a + (b - a) * k / w.length; k += ws.length; return { s, e: a + (b - a) * k / w.length, ws }; }); }
+const CH = CAPS.flatMap(([a, b, t]) => chunks(a, b, t));
+function caption(t) { const c = CH.find(c => t >= c.s && t < c.e + 1e-4); if (!c) { capEl.innerHTML = ''; capKey = ''; return; }
+  const per = (c.e - c.s) / c.ws.length, on = Math.min(c.ws.length - 1, Math.floor((t - c.s) / per)), k = c.s + '|' + on; if (k === capKey) return; capKey = k;
+  capEl.innerHTML = c.ws.map((w, i) => `<span class="${i === on ? 'on' : ''}">${w}</span>`).join(''); }
+
+const GAIA = { skin: '#e6b48f', robe: '#4f9a4a', trim: '#f4e6b0', hair: '#2a1710', long: true, wreath: true };
+const CRON = { skin: '#d49a74', robe: '#8e3f56', trim: '#f0cf7a', hair: '#a9a398', beard: true };
+const CAVE = [541, -76];
+
+function frame(t) {
+  const z = K(t, [[0, 0.62], [2.2, 1.55], [4.2, 1.6], [6.6, 2.3], [9.4, 2.3], [10.6, 1.85], [14, 2.2]]);
+  const cx = K(t, [[0, 120], [2.2, 380], [4.2, 300], [6.6, 190], [9.4, 190], [10.6, 210], [14, 245]]);
+  const cy = K(t, [[0, -60], [2.2, -70], [6.6, -105], [9.4, -105], [14, -105]]);
+  drawMap(z, cx, cy, t);
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-cx, -cy);
+  // label
+  const la = 1 - sm((z - 0.62) / 0.4); if (la > 0.01) { ctx.globalAlpha = la; ctx.font = '800 150px "Segoe UI",Arial'; ctx.textAlign = 'center'; ctx.lineWidth = 12; ctx.strokeStyle = 'rgba(20,50,80,.8)'; ctx.fillStyle = '#fff'; ctx.strokeText('CRETE', -150, 40); ctx.fillText('CRETE', -150, 40); ctx.globalAlpha = 1; }
+  // ---- Gaia
+  const gx = K(t, [[0, 250], [0.3, 250], [2.0, 470], [3.3, 470], [4.2, 262], [14, 262]]);
+  const gwalk = (t > 0.3 && t < 2.0) || (t > 3.3 && t < 4.2) ? 1 : 0;
+  const gArm = seq(t, [[0, HOLD], [2.0, HOLD], [2.35, PLACE], [3.0, PLACE], [3.4, DOWN], [4.0, DOWN], [4.6, HOLD], [5.3, HOLD], [5.9, OFFER], [6.3, OFFER], [6.9, DOWN], [10.2, DOWN], [10.8, FOLD]]);
+  const talk = t > 5.1 && t < 6.2 ? 1 : 0;
+  const gaia = drawChar({ x: gx, y: -8, s: 190, d: t < 3.3 ? 1 : -1, o: GAIA }, { arm: gArm, walk: gwalk, ph: t * 8, look: t > 11.9 ? 0 : 0.5, front: K(t, [[11.4, 0], [11.9, 1]]), blink: (t % 3.3) < 0.13, mouth: talk && Math.sin(t * 17) > -0.2 ? 0.6 : 0, smile: K(t, [[0, 0.7], [4.8, 0.7], [5.1, 0], [6.4, 0], [7, 0.5], [11.4, 0.5], [11.9, 1]]), tilt: t > 2.0 && t < 3 ? 0.12 : 0, brow: 0, rise: t > 11.8 ? 1 : 0 });
+  // ---- Cronos
+  const cX = K(t, [[0, -950], [3.0, -950], [5.6, 150], [14, 150]]), cw = t > 3.0 && t < 5.6 ? 1 : 0;
+  const cArm = seq(t, [[0, DOWN], [5.2, DOWN], [5.8, OFFER], [6.3, OFFER], [7.2, MOUTH], [7.9, MOUTH], [8.8, DOWN], [9.3, DOWN], [9.7, PAT], [12, PAT]]);
+  const pat = t > 9.8 && t < 11.5 ? Math.sin(t * 9) * 0.07 : 0;
+  const open = K(t, [[0, 0], [6.9, 0], [7.4, 1], [7.9, 1], [8.35, 0], [14, 0]]);
+  const cron = drawChar({ x: cX, y: -4, s: 168, d: 1, o: CRON }, { arm: { a: cArm.a + pat, b: cArm.b }, walk: cw, ph: t * 7.2, look: 0.6, blink: ((t + 1.3) % 3.3) < 0.13, mouth: open, smile: K(t, [[9.2, 0], [9.7, 1]]), tilt: K(t, [[6.6, 0], [7.2, -0.22], [8.0, -0.22], [8.6, 0]]), puff: K(t, [[8.4, 0], [9.1, 1], [9.7, 0.55]]), gulp: (t - 8.1) / 0.8, brow: t > 9.3 ? -0.5 : 0, rise: t > 9.3 ? 1 : 0 });
+  // ---- cave rock + baby + stone
+  const rk = sm((t - 2.9) / 0.5);
+  const babyP = t < 2.7 ? gaia.hands : [gaia.hands[0] + (CAVE[0] - gaia.hands[0]) * sm((t - 2.4) / 0.5), gaia.hands[1] + (CAVE[1] + 20 - gaia.hands[1]) * sm((t - 2.4) / 0.5)];
+  if (t < 2.4) drawBaby([gaia.hands[0] + 6, gaia.hands[1] - 8], 0.9);
+  else drawBaby([babyP[0], babyP[1]], 0.8);
+  if (rk > 0) { ctx.save(); ctx.translate(CAVE[0], CAVE[1] - 60 * (1 - rk) - 4); ctx.fillStyle = '#7a6a5a'; ctx.strokeStyle = OL; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-50, 70); ctx.quadraticCurveTo(-60, -10, -10, -30); ctx.quadraticCurveTo(40, -42, 56, 12); ctx.quadraticCurveTo(62, 60, 50, 70); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.ellipse(-8, -6, 22, 10, -0.3, 0, 7); ctx.fill(); ctx.restore(); }
+  if (t >= 4.2 && t < 8.15) {
+    let p = [gaia.hands[0], gaia.hands[1]]; const tr = sm((t - 5.9) / 0.5); p = [p[0] + (cron.hands[0] - p[0]) * tr, p[1] + (cron.hands[1] - p[1]) * tr];
+    if (t > 7.3) { const m = sm((t - 7.3) / 0.6); p = [p[0] + (cron.mouth[0] - p[0]) * m, p[1] + (cron.mouth[1] - p[1]) * m]; }
+    const sc = sm((t - 4.2) / 0.4) * (t > 7.8 ? 1 - sm((t - 7.8) / 0.35) : 1); drawStone([p[0], p[1] - 6], Math.max(0.001, 0.8 * sc)); }
+  ctx.restore();
+  // bubble (imagined dialogue)
+  if (t > 5.0 && t < 6.5) { const sx = (gaia.head[0] - cx) * z + W / 2, sy = (gaia.head[1] - cy) * z + H / 2; bub.style.display = 'block'; bub.innerHTML = 'A gift for you.<small>imagined</small>';
+    bub.style.left = (sx - 30) + 'px'; bub.style.top = Math.max(20, sy - bub.offsetHeight - 20) + 'px'; bub.style.opacity = Math.min(1, (t - 5) / 0.2, (6.5 - t) / 0.2); } else bub.style.display = 'none';
+  caption(t);
+}
+window.DUR = 14; window.render = t => frame(t); window.READY = true; frame(0);
+</script></body></html>

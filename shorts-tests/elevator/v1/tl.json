@@ -1,0 +1,23 @@
+{
+  "note": "Story time (tau, s). Slow-motion windows [a, b, speed]. The page and tools/build.py both read this file.",
+  "dur": 31.75,
+  "ramp": 0.07,
+  "slow": [[8.86, 9.02, 0.2], [14.55, 14.72, 0.2], [24.36, 24.56, 0.2]],
+  "beats": [16.5, 17.3, 18.1, 18.9, 19.7],
+  "arrive": [2.6, 7.2, 12.0, 22.0, 27.45],
+  "dark": [22.25, 25.3],
+  "impacts": [
+    {"tau": 4.36, "fig": "H", "j": "fF", "size": 1.0, "shake": 12},
+    {"tau": 9.38, "fig": "H", "j": "fB", "size": 1.1, "shake": 16},
+    {"tau": 13.36, "fig": "H", "j": "hF", "size": 0.7, "shake": 8, "snap": 1},
+    {"tau": 13.95, "pt": [-290, -255], "size": 0.9, "shake": 18, "wall": 1},
+    {"tau": 14.75, "fig": "H", "j": "fF", "size": 1.6, "shake": 26, "flash": 1},
+    {"tau": 15.45, "pt": [160, -20], "size": 0, "shake": 22, "nospark": 1},
+    {"tau": 16.78, "fig": "H", "j": "hF", "size": 1.1, "shake": 14, "flash": 1},
+    {"tau": 17.58, "fig": "H", "j": "kF", "size": 1.0, "shake": 14},
+    {"tau": 18.38, "fig": "H", "j": "fF", "size": 1.2, "shake": 16, "flash": 1},
+    {"tau": 19.18, "fig": "H", "j": "eF", "size": 1.0, "shake": 14},
+    {"tau": 19.98, "fig": "H", "j": "hF", "size": 1.3, "shake": 18, "flash": 1},
+    {"tau": 24.8, "fig": "H", "j": "hF", "size": 1.5, "shake": 24, "flash": 1}
+  ]
+}

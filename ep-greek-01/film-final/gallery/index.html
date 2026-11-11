@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><title>gallery</title>
+<style>@font-face{font-family:"Playfair Display SC";font-weight:900;src:url(fonts/PlayfairDisplaySC-Black.ttf)}html,body{margin:0;background:#000}canvas{display:block}</style></head><body><canvas id="c"></canvas>
+<script src="chars.js"></script><script>
+const W=innerWidth,H=innerHeight,cv=document.getElementById('c');cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
+const names=Object.keys(CHAR); const props=['stoneBare','babyZ','babyT','unborn','tree','bowl','wool','cloud','bull','lion','puppy','snake','bubble','bars','chainBroken','rope','jug','puddle','rings','cross','arrowR'];
+function draw(){ctx.fillStyle='#e6d3a4';ctx.fillRect(0,0,W,H);ctx.font='16px Arial';ctx.fillStyle='#000';
+ names.forEach((n,i)=>{const x=110+(i%9)*210,y=210+Math.floor(i/9)*300; bust({kind:n,x,y,s:110,t:1,expr:n==='typhoeus'?'angry':'neutral'}); ctx.fillStyle='#000'; ctx.fillText(n,x-40,y+95);});
+ props.forEach((n,i)=>{const x=80+i*90,y=1010; prop({n,x,y,s:70,t:1,icon:'crown',crackIcon:true,pour:true,burn:i%2});});}
+window.render=()=>draw();window.DUR=1;document.fonts.load('900 40px "Playfair Display SC"').then(()=>{window.READY=true;draw();});
+</script></body></html>

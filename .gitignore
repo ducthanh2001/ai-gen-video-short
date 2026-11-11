@@ -17,3 +17,14 @@ Thumbs.db
 .DS_Store
 desktop.ini
 .vscode/
+
+# Rendered frames and review stills: rebuild from each film's source (added 2026-11-11)
+**/frames/
+**/frames_*/
+**/sub/
+**/review/p/
+**/audit/
+*.wav
+
+# Third-party clone (JuneYaooo/rea-video): re-clone instead of committing
+research/rea-video-src/repo/

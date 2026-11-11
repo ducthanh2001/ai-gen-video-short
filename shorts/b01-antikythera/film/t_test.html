@@ -1,0 +1,14 @@
+<!doctype html><html><body><canvas id=c></canvas><script src="three.js"></script><script>
+const T=THREE;const W=540,H=960;
+const r=new T.WebGLRenderer({canvas:document.getElementById('c'),antialias:false,preserveDrawingBuffer:true});r.setSize(W,H,false);r.setPixelRatio(1);
+const dt=new T.DepthTexture(W,H);
+const rt=new T.WebGLRenderTarget(W,H,{type:T.HalfFloatType,samples:4,depthTexture:dt});
+const s=new T.Scene();const m=new T.Mesh(new T.SphereGeometry(1,32,16),new T.MeshStandardMaterial({color:0xffffff}));s.add(m);s.add(new T.DirectionalLight(0xffffff,3));
+const cam=new T.PerspectiveCamera(50,W/H,.1,100);cam.position.z=4;
+r.setRenderTarget(rt);r.render(s,cam);
+const mat=new T.ShaderMaterial({uniforms:{d:{value:dt},c:{value:rt.texture}},vertexShader:'varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:'uniform sampler2D d,c;varying vec2 v;void main(){gl_FragColor=vec4(vec3(texture2D(d,v).r)*0.5+texture2D(c,v).rgb*0.5,1.);}'});
+const q=new T.Mesh(new T.PlaneGeometry(2,2),mat);const qs=new T.Scene();qs.add(q);const qc=new T.OrthographicCamera(-1,1,1,-1,0,1);
+r.setRenderTarget(null);r.render(qs,qc);
+window.READY=Promise.resolve({frames:1,fps:30,width:W,height:H,renderer:r.getContext().getParameter(r.getContext().VERSION)+' '+(r.info.programs.length)});
+window.captureFrame=i=>document.getElementById('c').toDataURL('image/png');
+</script></body></html>

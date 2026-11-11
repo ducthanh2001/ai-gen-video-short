@@ -1,0 +1,8 @@
+import sys, os
+from PIL import Image, ImageDraw
+src, a, b, st, outp = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5]
+idx = list(range(a, b + 1, st)); w, h = 180, 320; cols = 12; rows = (len(idx) + cols - 1) // cols
+sh = Image.new('RGB', (cols * w, rows * h))
+for i, k in enumerate(idx):
+    im = Image.open(os.path.join(src, f'p_{k}.00.jpg')).resize((w, h)); ImageDraw.Draw(im).text((3, 3), f'{k/30:.1f}', fill=(255, 255, 0)); sh.paste(im, ((i % cols) * w, (i // cols) * h))
+sh.save(outp, quality=82)

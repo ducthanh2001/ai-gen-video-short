@@ -1,0 +1,97 @@
+{
+ "n_sfx": 18,
+ "per_min": 17.7,
+ "events": [
+  {
+   "t": 0.05,
+   "name": "gear ticks (box, hook)",
+   "gain_db": -17.7
+  },
+  {
+   "t": 0.65,
+   "name": "whip whoosh (box to king)",
+   "gain_db": -20.0
+  },
+  {
+   "t": 5.22,
+   "name": "throne arm slap",
+   "gain_db": -11.7
+  },
+  {
+   "t": 10.264,
+   "name": "ding (gods)",
+   "gain_db": -20.9
+  },
+  {
+   "t": 11.109,
+   "name": "whoosh (cut to king)",
+   "gain_db": -20.9
+  },
+  {
+   "t": 14.589,
+   "name": "thud (head)",
+   "gain_db": -10.5
+  },
+  {
+   "t": 15.63,
+   "name": "file scrape",
+   "gain_db": -18.4
+  },
+  {
+   "t": 21.768,
+   "name": "ding (forty)",
+   "gain_db": -20.0
+  },
+  {
+   "t": 28.709,
+   "name": "rumble swell + low thud (eclipse, dark)",
+   "gain_db": -12.4
+  },
+  {
+   "t": 32.159,
+   "name": "boom + sub thud (nobody laughed)",
+   "gain_db": -9.4
+  },
+  {
+   "t": 35.272,
+   "name": "whoosh (cut to sea)",
+   "gain_db": -21.9
+  },
+  {
+   "t": 41.072,
+   "name": "pop (gear spotted)",
+   "gain_db": -13.2
+  },
+  {
+   "t": 41.671,
+   "name": "zap (x-ray)",
+   "gain_db": -17.7
+  },
+  {
+   "t": 43.841,
+   "name": "counter ticks 0-30",
+   "gain_db": -20.0
+  },
+  {
+   "t": 46.591,
+   "name": "ding (19 years label)",
+   "gain_db": -20.0
+  },
+  {
+   "t": 49.931,
+   "name": "ding (223 months label)",
+   "gain_db": -20.0
+  },
+  {
+   "t": 53.022,
+   "name": "whoosh (cut to mechanism)",
+   "gain_db": -20.9
+  },
+  {
+   "t": 56.847,
+   "name": "low whoosh (pull-out)",
+   "gain_db": -20.0
+  }
+ ],
+ "rt_note": "room tone per location, about -50 dBFS"
+}
