@@ -92,6 +92,11 @@ function faceTex(expr, gaze = 0, base = '#fff8ee', fl = '') {
       E(-1, { rx: 70, ry: 82, pr: 38, gy: -2 }); E(1, { rx: 70, ry: 82, pr: 38, gy: -2 }); browA(-1, -140, -12); browA(1, -140, -12);
       x.fillStyle = '#4a0f22'; x.strokeStyle = INK; x.lineWidth = 16; x.beginPath(); x.ellipse(cx, my + 10, 36, 44, 0, 0, 7); x.fill(); x.stroke();
     }
+    else if (kind === 'half') {
+      E(-1, { pr: 24, gx: 4 }); E(1, { pr: 24, gx: 4 }); browA(-1, -104, -6); browA(1, -128, -14);
+      x.strokeStyle = INK; x.lineWidth = 18; x.beginPath(); x.moveTo(cx - 58, my + 8); x.quadraticCurveTo(cx + 10, my + 22, cx + 66, my - 22); x.stroke();
+      x.lineWidth = 9; x.beginPath(); x.moveTo(cx + 60, my - 34); x.quadraticCurveTo(cx + 74, my - 20, cx + 70, my - 6); x.stroke();
+    }
     else if (kind === 'shout') {
       E(-1, { ry: 50, pr: 18, gy: 10 }); E(1, { ry: 50, pr: 18, gy: 10 });
       browA(-1, -70, 30, 82, 26); browA(1, -70, 30, 82, 26);

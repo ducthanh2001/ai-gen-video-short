@@ -43,13 +43,25 @@ function crackTex(seed, o = {}) {
   const seg = (a, b, p0, p1, wd) => { const n = 8; for (let k = 0; k < n; k++) { const t0 = k / n, t1 = (k + 1) / n; g.strokeStyle = `rgb(${Math.round(lerp(p0, p1, t0) * 255)},0,0)`; g.lineWidth = wd; g.beginPath(); g.moveTo(lerp(a[0], b[0], t0), lerp(a[1], b[1], t0)); g.lineTo(lerp(a[0], b[0], t1), lerp(a[1], b[1], t1)); g.stroke(); } };
   for (let i = 0; i < pts.length - 1; i++) seg(pts[i], pts[i + 1], i / (pts.length - 1), (i + 1) / (pts.length - 1), (o.w ?? 16) * (1 - i / pts.length * .5));
   for (let i = 2; i < pts.length - 2; i += 3) { const a = pts[i], b = [a[0] + (r() - .5) * 220, a[1] - 40 - r() * 90]; seg(a, b, i / (pts.length - 1), Math.min(1, i / (pts.length - 1) + .1), (o.w ?? 16) * .45); }
-  const t = new T.CanvasTexture(c); t.colorSpace = T.NoColorSpace; t.anisotropy = 8; return t;
+  const t = new T.CanvasTexture(c); t.colorSpace = T.NoColorSpace; t.anisotropy = 8; t.userData.pts = pts.map(p => [p[0] / N, p[1] / N]); return t;
 }
 function crackMat(tex, col, glow = 0) {
   return new T.ShaderMaterial({ transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2,
     uniforms: { map: { value: tex }, reveal: { value: 0 }, col: { value: new T.Color(col) }, glow: { value: glow }, op: { value: 1 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
     fragmentShader: 'uniform sampler2D map; uniform float reveal, glow, op; uniform vec3 col; varying vec2 vUv; void main(){ vec4 c = texture2D(map, vUv); if (c.a < .35 || c.r > reveal + .001) discard; gl_FragColor = vec4(col * (1. + glow), op * smoothstep(.35, .7, c.a)); }' });
+}
+// filled seam: matte cream stone with a crystalline speckle, lit like the wall, revealed along the crack progress (no glow)
+let CREAM_T = null;
+function creamTex() { return CREAM_T || (CREAM_T = ctex(256, 256, (x) => { x.fillStyle = '#f6f0de'; x.fillRect(0, 0, 256, 256); const r = rng(61);
+  for (let i = 0; i < 520; i++) { const c = 196 + r() * 50 | 0; x.fillStyle = `rgba(${c},${c - 6},${c - 22},.85)`; const a = r() * 256, b = r() * 256, s = 2 + r() * 6; x.beginPath(); x.moveTo(a, b - s); x.lineTo(a + s * .8, b); x.lineTo(a, b + s); x.lineTo(a - s * .8, b); x.closePath(); x.fill(); }
+  for (let i = 0; i < 160; i++) { x.fillStyle = `rgba(150,140,120,${.15 + r() * .2})`; x.fillRect(r() * 256, r() * 256, 1 + r() * 3, 1 + r() * 3); } }, { repeat: [6, 6] })); }
+function seamMat(tex) {
+  const m = new T.MeshStandardMaterial({ map: creamTex(), roughness: .95, metalness: 0, emissive: 0x4a463c, emissiveIntensity: 1, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 });
+  m.userData.reveal = { value: 0 }; m.userData.ck = { value: tex };
+  m.onBeforeCompile = sh => { sh.uniforms.reveal = m.userData.reveal; sh.uniforms.ckMap = m.userData.ck;
+    sh.fragmentShader = 'uniform float reveal; uniform sampler2D ckMap;\n' + sh.fragmentShader.replace('void main() {', 'void main() {\n vec4 ck = texture2D(ckMap, vMapUv / 6.0); if (ck.a < .3 || ck.r > reveal + .001) discard;'); };
+  m.customProgramCacheKey = () => 'seamMat'; return m;
 }
 // ---------- water: displaced faceted plane; amp/chop are per-material uniforms, calm inside the harbour (z < 0) ----------
 function waterMat(col, o = {}) {
@@ -141,6 +153,15 @@ function buildSite() {
   for (let k = 0; k < 2; k++) mesh(roundedBox(6.8, 0.1, 1.2, .03), plank, { parent: S.scaf, pos: [-2.6, 1.1 + k * 1.6, 2.2], ol: .012 });
   for (let i = 0; i < 5; i++) mesh(new T.CylinderGeometry(0.04, 0.04, 1.4, 6), pole, { parent: S.scaf, pos: [-5.8 + i * 1.6, 2.6, 2.2], rot: [Math.PI / 2, 0, 0] });
   const lad = group(S.scaf, [0.2, 0, 2.4], [0.25, 0, 0]); for (const s of [-1, 1]) mesh(new T.CylinderGeometry(0.04, 0.04, 3.6, 6), pole, { parent: lad, pos: [s * .25, 1.6, 0] }); for (let k = 0; k < 8; k++) mesh(new T.CylinderGeometry(0.03, 0.03, 0.5, 6), pole, { parent: lad, pos: [0, 0.2 + k * .42, 0], rot: [0, 0, Math.PI / 2] });
+  for (let i = 0; i < 4; i++) mesh(new T.CylinderGeometry(0.05, 0.05, 2.3, 6), pole, { parent: S.scaf, pos: [-5.0 + i * 1.6, 1.9, 2.7], rot: [0, 0, (i % 2 ? 1 : -1) * 0.6], ol: .01 });
+  for (let k = 0; k < 2; k++) mesh(roundedBox(6.8, 0.1, 0.9, .03), plank, { parent: S.scaf, pos: [-2.6, 1.95 + k * 0.01 + (k ? 1.6 : 0) * 0, 3.0], ol: .012 });
+  const lad2 = group(S.scaf, [-5.4, 0, 3.2], [0.22, 0, 0]); for (const s of [-1, 1]) mesh(new T.CylinderGeometry(0.04, 0.04, 3.2, 6), pole, { parent: lad2, pos: [s * .25, 1.4, 0] }); for (let k = 0; k < 7; k++) mesh(new T.CylinderGeometry(0.03, 0.03, 0.5, 6), pole, { parent: lad2, pos: [0, 0.2 + k * .42, 0], rot: [0, 0, Math.PI / 2] });
+  const rope = std(0xd8c49a, .9);
+  for (const pts of [[[-5.8, 3.5, 2.7], [-4.2, 2.9, 2.75], [-2.6, 3.5, 2.7]], [[-1.0, 3.5, 2.7], [0.2, 2.95, 2.75], [0.6, 3.5, 2.7]], [[-5.8, 3.5, 1.7], [-6.6, 1.2, 2.4], [-7.2, -0.5, 3.0]]])
+    mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(p => V3(...p))), 16, 0.025, 5), rope, { parent: S.scaf, cast: false });
+  const hoist = group(S.scaf, [-2.6, 3.5, 1.9]); mesh(new T.CylinderGeometry(0.06, 0.06, 1.6, 8), pole, { parent: hoist, pos: [0, 0.8, 0] }); mesh(new T.CylinderGeometry(0.05, 0.05, 1.8, 8), pole, { parent: hoist, pos: [0, 1.55, -0.7], rot: [Math.PI / 2, 0, 0] });
+  mesh(new T.CylinderGeometry(0.015, 0.015, 2.2, 4), rope, { parent: hoist, pos: [0, 0.45, -1.55] }); mesh(new T.CylinderGeometry(0.3, 0.22, 0.35, 12), std(0x9a6a3a, .9), { parent: hoist, pos: [0, -0.7, -1.55], ol: .01 });
+  for (let i = 0; i < 7; i++) { const q = rng(i + 900); mesh(roundedBox(0.7, 0.4, 0.5, .05), std([0xc9bfa8, 0xb8ad95, 0xd4cab3][i % 3], .9), { parent: S.scaf, pos: [-5.3 + i * .8, 1.42 + (i % 2) * .4 * 0, -0.4 + q() * .8], rot: [0, q() * .5, 0], ol: .012 }); }
   // wooden crane (A-frame with rope and a stone)
   const cr = group(L, [5.8, 0, -3.2]); for (const s of [-1, 1]) mesh(new T.CylinderGeometry(0.09, 0.11, 5.2, 8), pole, { parent: cr, pos: [s * .9, 2.45, 0], rot: [0, 0, s * .2], ol: .015 });
   mesh(new T.CylinderGeometry(0.08, 0.08, 3.2, 8), pole, { parent: cr, pos: [-1.2, 4.6, 0], rot: [0, 0, 1.25], ol: .015 }); mesh(new T.CylinderGeometry(0.015, 0.015, 3.0, 4), std(0xd8c49a, .9), { parent: cr, pos: [-2.6, 3.4, 0] });
@@ -183,18 +204,28 @@ function buildSite() {
   // sea spray (waves hitting the wall face) + rain + storm wave (hidden in fair weather)
   S.spray = points(L, 520, 0.28, [[0, 'rgba(255,255,255,.95)'], [.5, 'rgba(235,248,255,.5)'], [1, 'rgba(255,255,255,0)']], { add: false });
   S.rain = new T.LineSegments(new T.BufferGeometry().setAttribute('position', new T.BufferAttribute(new Float32Array(900 * 6), 3)), new T.LineBasicMaterial({ color: 0xbfd0ea, transparent: true, opacity: .55 })); S.rain.frustumCulled = false; L.add(S.rain);
-  S.bigWave = group(L); { const wv = new T.Mesh(new T.BoxGeometry(10, 5, 1.6, 30, 12, 2), waterMat(0x2a6f86, { amp: .35, chop: 1.4, op: .93 })); wv.position.y = -2.5; S.bigWave.add(wv);
-    const cap = new T.Mesh(new T.CylinderGeometry(0.55, 0.55, 10, 16), std(0xf2f8ff, .5)); cap.rotation.z = Math.PI / 2; cap.position.set(0, 0, 0.3); S.bigWave.add(cap); }
+  S.bigWave = group(L); {
+    const P = [[-4.5, 0], [-3, 0.45], [-1.8, 1.4], [-0.8, 2.5], [0.1, 3.15], [0.9, 3.2], [1.5, 2.9], [1.85, 2.35], [1.75, 1.95], [1.45, 2.25], [1.05, 2.45], [0.65, 2.3], [0.45, 1.8], [0.5, 1.1], [0.85, 0.45], [1.3, 0]];
+    const sh = new T.Shape(); P.forEach(([x, y], i) => i ? sh.lineTo(x, y) : sh.moveTo(x, y)); sh.closePath();
+    const g = new T.ExtrudeGeometry(sh, { depth: 8, bevelEnabled: false, curveSegments: 4 }); g.translate(0, 0, -4);
+    const wm = new T.MeshStandardMaterial({ color: 0x2a7f96, roughness: .15, metalness: .05, flatShading: true, transparent: true, opacity: .95 });
+    const wv = new T.Mesh(g, wm); wv.rotation.y = Math.PI / 2; S.bigWave.add(wv); addOutline(wv, 0.03);
+    const lip = new T.CatmullRomCurve3([V3(-4, 2.95, -1.0), V3(-1.5, 3.1, -1.25), V3(1.2, 3.0, -1.1), V3(4, 2.9, -1.2)]);
+    const foamM = std(0xf4fbff, .7); S.waveFoam = mesh(new T.TubeGeometry(lip, 40, 0.42, 10), foamM, { parent: S.bigWave, cast: false, ol: 0.02 });
+    for (let i = 0; i < 18; i++) { const q = rng(i + 70); mesh(new T.SphereGeometry(0.16 + q() * .2, 10, 8), foamM, { parent: S.bigWave, pos: [-3.8 + i * .44, 2.75 + q() * .6, -1.35 - q() * .5], cast: false }); }
+    for (let i = 0; i < 10; i++) { const q = rng(i + 170); mesh(new T.SphereGeometry(0.2 + q() * .2, 10, 8), foamM, { parent: S.bigWave, pos: [-3.8 + i * .8, 0.1 + q() * .3, -1.6 - q() * .5], cast: false }); }
+    S.waveSpray = points(L, 360, 0.3, [[0, 'rgba(255,255,255,.95)'], [.5, 'rgba(235,248,255,.5)'], [1, 'rgba(255,255,255,0)']], { add: false }); }
   // crack decal on the sea face of the finished wall + white seam version
   S.crackT = crackTex(17, { x0: .48, y0: .97, len: .9, steps: 15, w: 18 });
   S.crack = new T.Mesh(new T.PlaneGeometry(3.4, 2.9), crackMat(S.crackT, 0x161218)); S.crack.position.set(-9, 1.15, 1.215); L.add(S.crack);
-  S.seam = new T.Mesh(new T.PlaneGeometry(3.4, 2.9), crackMat(S.crackT, 0xfffbf0, 0.6)); S.seam.position.set(-9, 1.15, 1.22); L.add(S.seam);
+  S.seamT = crackTex(17, { x0: .48, y0: .97, len: .9, steps: 15, w: 72 });
+  S.seam = new T.Mesh(new T.PlaneGeometry(3.4, 2.9), seamMat(S.seamT)); S.seam.position.set(-9, 1.15, 1.222); S.seam.receiveShadow = true; L.add(S.seam);
   L.visible = false;
 }
 // per-frame site animation. o: {storm (0..1), finished (bool), mix (bubbling 0..1), steam (0..1), crack reveal, seam reveal}
 function siteUpdate(t, o = {}) {
   const S = OBJ.site, st = o.storm ?? 0;
-  S.seaMat.userData.u.uAmp.value = lerp(.35, 1.2, st); S.seaMat.userData.u.uChop.value = lerp(.7, 1.6, st); S.seaMat.color.setHex(st > .5 ? 0x24596a : 0x2f9fb8);
+  S.seaMat.userData.u.uAmp.value = lerp(.35, 1.2, st) * (o.seaK ?? 1); S.seaMat.userData.u.uChop.value = lerp(.7, 1.6, st); S.seaMat.color.setHex(st > .5 ? 0x24596a : 0x2f9fb8);
   S.sky.material.uniforms.top.value.setHex(st > .5 ? 0x1c2533 : 0x4f9be8); S.sky.material.uniforms.hor.value.setHex(st > .5 ? 0x4b5868 : 0xd4ecff);
   const fin = !!o.finished; S.wallLowTop.visible = fin; S.form.visible = !fin; S.scaf.visible = !fin;
   S.boats.forEach((b, i) => { b.position.y = -0.55 + nzf(t, i + 50, .5) * .08; b.rotation.z = nzf(t, i + 60, .4) * .05; b.visible = st < .5; });
@@ -209,14 +240,16 @@ function siteUpdate(t, o = {}) {
     const burst = o.burst ?? 0; const up = ph * (1.6 + burst * 2.4); sp.setXYZ(i, (hash2(k, i) - .5) * 2.0 + nzf(t, i, .7) * .2 + (hash2(i, k) - .5) * burst * 2, 0.6 + up, (hash2(k + 1, i) - .5) * 1.0 + burst * ph * 2.2 * hash2(k, i + 2)); }
   sp.needsUpdate = true; S.steam.material.opacity = stK; S.steam.visible = stK > .01; S.steam.material.size = (o.steamSize ?? 0.9) + (o.burst ?? 0) * 1.4;
   // spray at the wall's sea face: aperiodic slams
-  const ssp = S.spray.geometry.attributes.position, sK = lerp(1, 3.2, st);
+  const ssp = S.spray.geometry.attributes.position, sK = lerp(1, 3.2, st) * (o.sprayK ?? 1);
   for (let i = 0; i < 520; i++) { const e = i % 13; const [k, ph] = evClock(t, e + 200, 1.6 - st * .6, .7); const x = -19 + hash2(k, e) * 18; const v = (1 + hash(i) * 1.5) * sK, a = hash(i + 5) * 6.28;
     const tt = ph * 1.6; ssp.setXYZ(i, x + Math.cos(a) * hash(i + 2) * 1.2 * sK * .4 + tt * (hash(i + 8) - .5), Math.max(-0.5, -0.4 + v * tt * 1.8 - 4.9 * tt * tt), 1.4 + tt * hash(i + 9) * 1.5 * sK * .5); }
-  ssp.needsUpdate = true; S.spray.material.size = .2 + st * .14;
+  ssp.needsUpdate = true; S.spray.material.size = (.2 + st * .14) * (o.spraySize ?? 1);
   S.rain.visible = st > .3; if (S.rain.visible) { const rp = S.rain.geometry.attributes.position; for (let i = 0; i < 900; i++) { const x = -26 + hash(i) * 40, z = -6 + hash(i + 1) * 30, f = ((t * (1.3 + hash(i + 2) * .4) + hash(i + 3)) % 1), y = 14 - f * 16; rp.setXYZ(i * 2, x, y, z); rp.setXYZ(i * 2 + 1, x - .25, y - .9, z + .1); } rp.needsUpdate = true; }
-  S.bigWave.visible = (o.wave ?? 0) > 0.01 && (o.wave ?? 0) < 0.98; if (S.bigWave.visible) { const w = o.wave; S.bigWave.position.set(-9, lerp(-0.8, 3.4, Math.sin(clamp(w * 1.15) * Math.PI)) - (w > .7 ? (w - .7) * 6 : 0), lerp(8, 1.8, eout(w))); S.bigWave.rotation.set(lerp(-0.2, 0.55, w), 0, 0); }
+  { const w = o.wave ?? 0; S.bigWave.visible = w > 0.01 && w < 0.97; S.waveSpray.visible = w > 0.55 && w < 1.0;
+    if (S.bigWave.visible) { const rise = eout(clamp(w / 0.6)), fall = clamp((w - 0.62) / 0.35); S.bigWave.position.set(-9, lerp(-2.6, -0.2, rise) - fall * 3.2, lerp(4.8, 2.9, eio(clamp(w / 0.66)))); S.bigWave.scale.set(1, lerp(.55, 1.0, rise) * (1 - fall * .5), 1); S.bigWave.rotation.set(fall * 0.5, 0, 0); }
+    if (S.waveSpray.visible) { const k = clamp((w - 0.55) / 0.45), sp = S.waveSpray.geometry.attributes.position; for (let i = 0; i < 360; i++) { const a = hash(i) * 3.14, v = 2 + hash(i + 1) * 5, tt = k * 1.1; sp.setXYZ(i, -9.5 + (hash(i + 2) - .5) * 7.5 + Math.cos(a) * v * tt * .25, 0.5 + Math.sin(a) * v * tt * 1.4 - 4.9 * tt * tt, 1.6 + hash(i + 3) * v * tt * .6); } sp.needsUpdate = true; S.waveSpray.material.opacity = 1 - k * .6; } }
   S.crack.material.uniforms.reveal.value = o.crack ?? 0; S.crack.visible = (o.crack ?? 0) > 0;
-  S.seam.material.uniforms.reveal.value = o.seam ?? 0; S.seam.visible = (o.seam ?? 0) > 0; S.seam.material.uniforms.glow.value = o.seamGlow ?? .6;
+  S.seam.material.userData.reveal.value = o.seam ?? 0; S.seam.visible = (o.seam ?? 0) > 0;
 }
 
 // =====================================================================================================
@@ -253,10 +286,10 @@ function buildXS() {
   X.milk = points(L, 260, 0.24, [[0, 'rgba(255,255,255,1)'], [.5, 'rgba(245,245,240,.6)'], [1, 'rgba(255,255,255,0)']], { add: false });
   X.fizz = points(L, 90, 0.12, [[0, 'rgba(255,255,255,.1)'], [.7, 'rgba(255,255,255,.7)'], [.85, 'rgba(255,255,255,1)'], [1, 'rgba(255,255,255,0)']], { add: false });
   const cg = new T.OctahedronGeometry(0.12, 0); cg.scale(0.6, 1.6, 0.6);
-  X.cry = new T.InstancedMesh(cg, std(0xffffff, .25, 0, { emissive: 0xdff4ff, ei: .35 }), 360); X.cry.instanceMatrix.setUsage(T.DynamicDrawUsage); L.add(X.cry);
+  X.cry = new T.InstancedMesh(cg, std(0xece5d2, .55, 0), 360); X.cry.instanceMatrix.setUsage(T.DynamicDrawUsage); L.add(X.cry);
   X.cryData = []; for (let i = 0; i < 360; i++) { const y = 4.9 - r() * 9.8, side = i % 2 ? 1 : -1; X.cryData.push({ y, side, z: D - 0.05 - r() * 1.6, a: (r() - .5) * 1.2, s: .7 + r() * .7 }); }
   X.seamCurve = new T.CatmullRomCurve3(X.path.map(p => new T.Vector3(p.x, p.y, D + 0.01)));
-  X.seam = new T.Mesh(new T.TubeGeometry(X.seamCurve, 160, 0.09, 6), new T.MeshBasicMaterial({ color: new T.Color(2.2, 2.2, 2.0), transparent: true, opacity: 0 })); L.add(X.seam);
+  X.seam = new T.Mesh(new T.TubeGeometry(X.seamCurve, 160, 0.22, 8), new T.MeshStandardMaterial({ map: creamTex(), roughness: .95 })); X.seam.scale.z = 0.35; X.seam.position.z = (D + 0.01) * 0.65; L.add(X.seam); X.seamF = (5 - X.lumpY) / 10;
   L.visible = false;
 }
 // p: {water 0..1, hit (0..1 splash), dissolve 0..1, crystals 0..1 (zip progress), seam 0..1}
@@ -276,7 +309,7 @@ function xsUpdate(t, p) {
   for (const c of X.cryData) { const d = Math.abs(c.y - X.lumpY) / 5.6; const g = clamp((cz * 1.25 - d) / .25); if (g <= 0.001) { _s4.set(0, 0, 0); } else _s4.setScalar(g * c.s);
     const x = X.cx(c.y) + c.side * (0.18 - g * .1); _e4.set(0, 0, c.side * (Math.PI / 2 - .35) + c.a * .4); _q4.setFromEuler(_e4); _m4.compose(_v4.set(x, c.y, c.z), _q4, _s4); X.cry.setMatrixAt(n++, _m4); }
   X.cry.instanceMatrix.needsUpdate = true; X.cry.visible = cz > 0.001;
-  X.seam.material.opacity = clamp(p.seam ?? 0);  X.seam.visible = (p.seam ?? 0) > .01;
+  { const sp = clamp(p.seam ?? 0), a = Math.max(0, Math.floor((X.seamF - sp) * 160)), b = Math.min(160, Math.ceil((X.seamF + sp) * 160)); X.seam.geometry.setDrawRange(a * 48, Math.max(0, b - a) * 48); X.seam.visible = sp > .01; }
 }
 
 // =====================================================================================================
@@ -292,27 +325,29 @@ function buildLab() {
   mesh(roundedBox(5.4, 0.12, 1.6, .04), std(0xf6f7f8, .4), { parent: L, pos: [0, 1.0, -1.2], ol: .015 }); mesh(roundedBox(5.2, 0.9, 1.4, .04), std(0x7f97ab, .6), { parent: L, pos: [0, 0.45, -1.2], ol: .015 });
   // cylinders
   const lt = concreteTex({ seed: 21, lumps: true, n: 34, repeat: [1, 1] }), pt = concreteTex({ seed: 22 });
-  B.cylA = group(L, [-0.8, 1.06, -1.0]); B.cylB = group(L, [1.1, 1.06, -1.0]);
+  B.cylA = group(L, [-0.55, 1.06, -1.0]); B.cylB = group(L, [0.55, 1.06, -1.0]);
   for (const [g, tx, cr] of [[B.cylA, lt, 23], [B.cylB, pt, 29]]) {
     mesh(new T.CylinderGeometry(0.38, 0.38, 1.0, 40), std(0xffffff, .9, 0, { map: tx }), { parent: g, pos: [0, 0.5, 0], ol: .015 });
     const crT = crackTex(cr, { x0: .5, y0: .99, len: .98, steps: 12, w: 22 });
+    g.userData.path = crT.userData.pts.map(([u, v]) => { const th = -0.55 + u * 1.1; return V3(g.position.x - 200 * 0 + 0.395 * Math.sin(th), 1.06 + (1 - v), -1.0 + 0.395 * Math.cos(th)); });
     g.userData.crack = new T.Mesh(new T.CylinderGeometry(0.385, 0.385, 1.0, 40, 1, true, -0.55, 1.1), crackMat(crT, 0x141214)); g.userData.crack.position.y = 0.5; g.add(g.userData.crack);
-    g.userData.seam = new T.Mesh(new T.CylinderGeometry(0.388, 0.388, 1.0, 40, 1, true, -0.55, 1.1), crackMat(crT, 0xfffbf0, .5)); g.userData.seam.position.y = 0.5; g.add(g.userData.seam);
+    const sT = crackTex(cr, { x0: .5, y0: .99, len: .98, steps: 12, w: 46 }); g.userData.seam = new T.Mesh(new T.CylinderGeometry(0.389, 0.389, 1.0, 40, 1, true, -0.55, 1.1), seamMat(sT)); g.userData.seam.position.y = 0.5; g.add(g.userData.seam);
     mesh(new T.CylinderGeometry(0.42, 0.42, 0.06, 40), std(0x9aa3ad, .3, .8), { parent: g, pos: [0, -0.03, 0], ol: .01 });
   }
   for (let i = 0; i < 9; i++) { const q = rng(i + 7); const a = q() * 6.28, y = .1 + q() * .8; mesh(blobGeo(i, 0.05 + q() * .03, .3, 2), std(0xf6f2e6, .75), { parent: B.cylA, pos: [Math.sin(a) * .38, y, Math.cos(a) * .38], scl: [1, 1, .6], ol: .005 }); }
   // water rig: bottles on a stand, tubes down to each cylinder top, beakers below
   const glass = new T.MeshPhysicalMaterial({ color: 0xdff4ff, roughness: .05, transparent: true, opacity: .35, depthWrite: false, envMapIntensity: 1.5 });
-  for (const [g, x] of [[B.cylA, -0.8], [B.cylB, 1.1]]) {
-    mesh(new T.CylinderGeometry(0.02, 0.02, 2.2, 8), std(0x5a6470, .4, .7), { parent: L, pos: [x - 0.55, 2.2, -1.25] });
-    mesh(new T.BoxGeometry(0.7, 0.04, 0.06), std(0x5a6470, .4, .7), { parent: L, pos: [x - 0.25, 3.1, -1.25] });
+  for (const [g, x] of [[B.cylA, -0.55], [B.cylB, 0.55]]) {
+    mesh(new T.CylinderGeometry(0.02, 0.02, 2.2, 8), std(0x5a6470, .4, .7), { parent: L, pos: [x - 0.3 * Math.sign(x), 2.2, -1.45] });
+    mesh(new T.BoxGeometry(0.4, 0.04, 0.06), std(0x5a6470, .4, .7), { parent: L, pos: [x - 0.15 * Math.sign(x), 3.1, -1.45] });
     mesh(lathe([[0, 0], [.18, 0], [.2, .05], [.2, .5], [.08, .62], [.08, .7], [0, .7]], 20), glass, { parent: L, pos: [x, 3.15, -1.2], cast: false });
     mesh(new T.CylinderGeometry(.17, .17, .38, 20), new T.MeshStandardMaterial({ color: 0x4fb6ff, transparent: true, opacity: .7, roughness: .1 }), { parent: L, pos: [x, 3.37, -1.2], cast: false });
-    mesh(new T.TubeGeometry(new T.CatmullRomCurve3([V3(x, 3.15, -1.2), V3(x + .05, 2.8, -1.1), V3(x, 2.3, -1.0), V3(x, 2.1, -1.0)]), 20, .025, 6), glass, { parent: L, cast: false });
-    mesh(lathe([[0, 0], [.25, 0], [.27, .3], [.25, .3], [.23, .02], [0, .02]], 20), glass, { parent: L, pos: [x + .55, 1.06, -0.6], cast: false });
+    const pt0 = g.userData.path[0]; mesh(new T.TubeGeometry(new T.CatmullRomCurve3([V3(x, 3.15, -1.2), V3(x + .05, 2.8, -1.1), V3(pt0.x, 2.4, pt0.z - .1), V3(pt0.x, pt0.y + .12, pt0.z)]), 20, .025, 6), glass, { parent: L, cast: false });
+    
   }
-  B.dripA = points(L, 50, .13, [[0, 'rgba(120,200,255,1)'], [1, 'rgba(90,170,255,0)']], { add: false });
-  B.dripB = points(L, 80, .13, [[0, 'rgba(120,200,255,1)'], [1, 'rgba(90,170,255,0)']], { add: false });
+  B.dripA = points(L, 90, .075, [[0, 'rgba(120,200,255,1)'], [1, 'rgba(90,170,255,0)']], { add: false });
+  B.dripB = points(L, 180, .09, [[0, 'rgba(120,200,255,1)'], [1, 'rgba(90,170,255,0)']], { add: false });
+  B.puddle = mesh(new T.CircleGeometry(0.5, 32), new T.MeshStandardMaterial({ color: 0x4fb6ff, roughness: .05, transparent: true, opacity: .75 }), { parent: L, pos: [0.62, 1.065, -0.55], rot: [-Math.PI / 2, 0, 0], cast: false });
   // calendar with 14 day pages, shelves, a screen with a falling curve
   B.cal = new T.Mesh(new T.PlaneGeometry(1.2, 1.4), new T.MeshStandardMaterial({ roughness: .8 })); B.cal.position.set(-0.2, 3.1, -3.45); L.add(B.cal);
   B.calT = []; for (let d = 1; d <= 15; d++) B.calT.push(ctex(256, 300, (x) => { x.fillStyle = '#fff'; x.fillRect(0, 0, 256, 300); x.fillStyle = '#d6341f'; x.fillRect(0, 0, 256, 70); x.fillStyle = '#fff'; x.font = 'bold 40px Impact'; x.textAlign = 'center'; x.fillText('DAY', 128, 52); x.fillStyle = '#222'; x.font = '150px Impact'; x.fillText(String(d), 128, 245); x.strokeStyle = '#999'; x.lineWidth = 4; x.strokeRect(2, 2, 252, 296); }));
@@ -329,10 +364,11 @@ function buildLab() {
 }
 function labUpdate(t, o = {}) {
   const B = OBJ.lab;
-  for (const [g, k] of [[B.cylA, 'A'], [B.cylB, 'B']]) { g.userData.crack.material.uniforms.reveal.value = o['crack' + k] ?? 0; g.userData.crack.visible = (o['crack' + k] ?? 0) > 0; g.userData.seam.material.uniforms.reveal.value = o['seam' + k] ?? 0; g.userData.seam.visible = (o['seam' + k] ?? 0) > 0; }
-  const drip = (pts, x, rate, n) => { const p = pts.geometry.attributes.position; for (let i = 0; i < n; i++) { const per = .5 + hash(i) * .25, ph = ((t + hash(i + 4) * per) % per) / per, on = hash2(Math.floor((t + hash(i + 4) * per) / per), i) < rate;
-      const y = ph < .5 ? lerp(2.08, 1.62, ph * 2) : lerp(1.05, 1.06, 0) + 0.02 - (ph - .5) * 2 * 0; p.setXYZ(i, on ? x + (hash(i + 1) - .5) * .04 + (ph < .5 ? 0 : .38 + (ph - .5) * .3) : 9999, on ? (ph < .5 ? y : lerp(1.5, 1.1, (ph - .5) * 2)) : 0, -1.0 + (ph < .5 ? 0 : .32)); } p.needsUpdate = true; };
-  drip(B.dripA, 200 - 0.8, o.rateA ?? 0, 50); drip(B.dripB, 200 + 1.1, o.rateB ?? 0, 80);
+  for (const [g, k] of [[B.cylA, 'A'], [B.cylB, 'B']]) { g.userData.crack.material.uniforms.reveal.value = o['crack' + k] ?? 0; g.userData.crack.visible = (o['crack' + k] ?? 0) > 0; g.userData.seam.material.userData.reveal.value = o['seam' + k] ?? 0; g.userData.seam.visible = (o['seam' + k] ?? 0) > 0; }
+  const drip = (pts, cyl, rate, n) => { const P = cyl.userData.path, M = P.length - 1, p = pts.geometry.attributes.position; for (let i = 0; i < n; i++) { const per = 1.1 + hash(i) * .4, tt = t + hash(i + 4) * per, ph = (tt % per) / per, on = hash2(Math.floor(tt / per), i) < rate;
+      let q; if (ph < .08) { q = P[0].clone(); q.y += .12 * (1 - ph / .08); } else if (ph < .88) { const f = (ph - .08) / .8 * M, k = Math.min(M - 1, Math.floor(f)); q = P[k].clone().lerp(P[k + 1], f - k); } else { const f = (ph - .88) / .12; q = P[M].clone(); q.y = lerp(1.08, 1.065, f); q.z += .04 + f * .12; }
+      q.x += (hash(i + 1) - .5) * .012; q.z += .012; p.setXYZ(i, on ? q.x : 9999, q.y, q.z); } p.needsUpdate = true; };
+  drip(B.dripA, B.cylA, o.rateA ?? 0, 90); drip(B.dripB, B.cylB, o.rateB ?? 0, 180); B.puddle.scale.setScalar(Math.max(1e-3, o.puddle ?? 0)); B.puddle.visible = (o.puddle ?? 0) > .01;
   const day = clamp(Math.floor(o.day ?? 1), 1, 15); B.cal.material.map = B.calT[day - 1]; B.page.material.map = B.calT[Math.max(0, day - 2)]; const fl = o.flip ?? 0; B.page.visible = fl > 0 && fl < 1; B.page.rotation.x = -fl * Math.PI * .9;
   B.screen.material.map = B.screenT[clamp(Math.round((o.curve ?? 0) * 10), 0, 10)];
 }
@@ -345,13 +381,17 @@ function buildRuins() {
   R.sky = skyDome(L, 0x3f8fe0, 0xe2f2ff); for (const [x, y, z, s] of [[-50, 40, -150, 8], [60, 46, -120, 7], [20, 30, -200, 9]]) cloud(L, x, y, z, s);
   R.seaMat = waterMat(0x1f8db0, { amp: .25, chop: .8 }); waterPlane(L, 300, 300, R.seaMat, -0.4, .45);
   const ot = concreteTex({ seed: 41, old: true, lumps: true, n: 18, repeat: [2, 1] }); const om = std(0xffffff, .95, 0, { map: ot });
-  // broken pier blocks and arches
-  for (const [x, z, w, h, ry] of [[-6, -8, 4, 3.4, .1], [-1, -10, 3.2, 2.6, -.05], [4, -9, 4.5, 3.0, .08], [9.5, -11, 3, 2.2, .15], [-11, -12, 3.5, 2.0, -.1]]) {
-    const g = group(L, [x, -1.0, z], [0, ry, 0]); const q = rng(Math.round(x * 13));
-    mesh(roundedBox(w, h, 3, .25), om, { parent: g, pos: [0, h / 2, 0], ol: .03 }); for (let k = 0; k < 4; k++) mesh(blobGeo(k + x, .5 + q() * .5, .35, 1), om, { parent: g, pos: [(q() - .5) * w, h - .2 + q() * .3, (q() - .5) * 2], ol: .02 });
-    mesh(new T.BoxGeometry(w + .05, .35, 3.05), std(0x3f6a4a, .9), { parent: g, pos: [0, 1.05, 0], cast: false }); }
-  const ar = group(L, [2, -1, -16]); const sh = new T.Shape(); sh.moveTo(-4, 0); sh.lineTo(-4, 5); sh.lineTo(4, 5); sh.lineTo(4, 0); sh.lineTo(2.2, 0); sh.absarc(0, 0.6, 2.2, 0, Math.PI, false); sh.lineTo(-2.2, 0); sh.closePath();
-  mesh(new T.ExtrudeGeometry(sh, { depth: 3, bevelEnabled: true, bevelSize: .1, bevelThickness: .1, bevelSegments: 1 }), om, { parent: ar, pos: [0, 0, -1.5], ol: .03 }); mesh(blobGeo(9, 1.4, .4, 1), om, { parent: ar, pos: [3.2, 5.0, 0], ol: .02 });
+  // weathered Roman pier remains: arcades with broken tops, an algae line at the waterline, a dark wet band, rubble
+  const algae = std(0x3f6b3a, .95), wet = std(0x5f5a50, .95);
+  const arcade = (n, span, h, seed) => { const q = rng(seed), sh = new T.Shape(), W2 = n * span; sh.moveTo(0, -1.2); sh.lineTo(W2, -1.2);
+    for (let i = 0; i <= 12; i++) { const x = W2 - i * W2 / 12; sh.lineTo(x, h - q() * h * (i % 3 === 1 ? .55 : .2)); } sh.closePath();
+    for (let i = 0; i < n; i++) { const c = (i + .5) * span, r = span * .3, hp = new T.Path(); hp.moveTo(c - r, -1.2); hp.lineTo(c - r, h * .35); hp.absarc(c, h * .35, r, Math.PI, 0, true); hp.lineTo(c + r, -1.2); hp.closePath(); sh.holes.push(hp); }
+    return new T.ExtrudeGeometry(sh, { depth: 2.4, bevelEnabled: true, bevelSize: .12, bevelThickness: .12, bevelSegments: 1, curveSegments: 6 }); };
+  for (const [x, z, ry, n, span, h, seed] of [[-13, -12, .12, 3, 3.4, 5.2, 3], [-1.5, -14, -.04, 2, 3.8, 4.4, 5], [7.5, -11.5, .2, 2, 3.2, 3.6, 7]]) {
+    const g = group(L, [x, -0.4, z], [0, ry, 0]); const m = mesh(arcade(n, span, h, seed), om, { parent: g, ol: .03 }); m.position.z = -1.2;
+    const wdt = n * span; mesh(new T.BoxGeometry(wdt + .14, .36, 2.8), algae, { parent: g, pos: [wdt / 2, 0.42, 0], cast: false }); mesh(new T.BoxGeometry(wdt + .1, .5, 2.76), wet, { parent: g, pos: [wdt / 2, 0.82, 0], cast: false });
+    const q = rng(seed + 50); for (let k = 0; k < 5; k++) mesh(blobGeo(k + seed, .4 + q() * .5, .35, 1), om, { parent: g, pos: [q() * wdt, -0.1 + q() * .3, 1.6 + q() * 1.2], ol: .02 }); }
+  for (let i = 0; i < 10; i++) { const q = rng(i + 640); const g = mesh(blobGeo(i * 2.1, .5 + q() * .7, .35, 1), om, { parent: L, pos: [-16 + q() * 30, -0.35, -7 - q() * 4], rot: [q(), q(), q()], ol: .02 }); }
   // distant modern shore
   mesh(new T.BoxGeometry(200, 3, 10), std(0xc9b48a, .95), { parent: L, pos: [0, -0.5, -70], cast: false });
   for (let i = 0; i < 26; i++) { const q = rng(i + 300); const h = 3 + q() * 9; mesh(roundedBox(4 + q() * 4, h, 4, .2), std([0xf4f4f0, 0xe8e2d8, 0xdfe6ec][i % 3], .9), { parent: L, pos: [-70 + i * 5.5, h / 2, -72 - q() * 6], ol: .05, cast: false }); }

@@ -63,9 +63,9 @@ sh({ id: 's2', t0: C_.s2, locs: ['site'], light: dayLight([11.6, 1.5, -0.2], { s
 // 3: wide: the half-built sea wall, waves slam its base, harbour and town behind (crane up)
 sh({ id: 's3', t0: C_.s3, locs: ['site'], light: dayLight([-4, 1, -2], { sun: { col: 0xfff2dc, int: 3.0, pos: [-10, 16, 14], target: [-4, 1, -2], ext: 20, far: 70 } }),
   cam: (u) => { const e = eio(u); return { p: lerp3([-2.5, 1.6, 17.5], [-5.5, 6.2, 15.5], e), l: lerp3([-3.5, 1.8, -3], [-4.5, 1.0, -8], e), fov: lerp(50, 54, e), ap: 0.6, focus: 20 }; },
-  update: (u, t) => { for (const [i, x, z] of [[0, 8, -2], [1, 10.5, 0.5], [2, 14.6, 3.0], [4, 7.2, 3.5]]) { const w = OBJ.workers[i]; w.root.position.set(x, 0, z); w.root.rotation.y = -1.2 + i; poseChar(w, POSE.stand(t, i, 'calm')); }
+  update: (u, t) => { for (const [i, x, y, z, ry] of [[0, -4.4, 1.15, 2.25, 0.3], [1, -1.4, 1.15, 2.2, -0.4], [2, 8.5, 0, 2.0, -1.0], [4, -2.9, 2.0, 3.0, 0.1], [3, 6.2, 0, -2.4, 1.2]]) { const w = OBJ.workers[i]; w.root.position.set(x, y, z); w.root.rotation.y = ry; const p = POSE.stand(t, i, 'calm'); if (i < 2) { p.lean = [0.5, 0, 0]; p.handL = [0.25, 0.35, 0.55]; p.handR = [-0.25, 0.4, 0.55]; } poseChar(w, p); }
     const c = OBJ.yb; c.root.position.set(...YB); c.root.rotation.y = Math.PI; poseChar(c, POSE.stand(t, 4, 'calm')); const m = OBJ.master; m.root.position.set(11.6, 0, -0.2); m.root.rotation.y = -0.68; poseChar(m, POSE.stand(t, 5, 'angry'));
-    siteUpdate(t, { mix: 1, steam: .6, patch: 1 }); } });
+    siteUpdate(t, { mix: 1, steam: .6, patch: 1, seaK: 1.9, sprayK: 2.0, spraySize: 2.4 }); } });
 // 4a: the others soak their lime first: calm troughs, water poured from a bucket (lateral truck)
 sh({ id: 's4a', t0: C_.s4a, locs: ['site'], light: dayLight([15.5, 0.8, 3]),
   cam: (u) => { const e = eio(u); return { p: lerp3([13.5, 1.5, 1.2], [15.4, 1.55, 1.1], e), l: lerp3([14.4, 1.05, 4.3], [15.8, 1.05, 3.6], e), fov: 46, ap: 1.6, focus: 3.4 }; },
@@ -89,23 +89,23 @@ sh({ id: 's5', t0: C_.s5, locs: ['site'], light: dayLight([4.1, 1.2, 0], { sun: 
   update: (u, t) => { siteUpdate(t, { mix: .3, steam: 0, patch: 1 }); } });
 // 6a: "Sloppy": the master jabs a lump, workers laugh (orbit)
 sh({ id: 's6a', t0: C_.s6a, locs: ['site'], light: dayLight([5, 1.2, 0.6]),
-  cam: (u) => { const e = eio(u); return { p: lerp3([7.1, 1.8, 2.5], [6.3, 1.7, 3.3], e), l: lerp3([4.5, 1.35, -0.1], [4.6, 1.3, 0.0], e), fov: 46, ap: 1.4, focus: 3.6 }; },
+  cam: (u) => { const e = eio(u); return { p: lerp3([7.4, 1.85, 2.9], [6.7, 1.75, 3.5], e), l: lerp3([4.95, 1.25, -0.8], [5.05, 1.25, -0.7], e), fov: 52, ap: 1.0, focus: 4.4 }; },
   update: (u, t) => { const m = OBJ.master; m.root.position.set(4.6, 0, -0.6); m.root.rotation.y = 0.57; m.root.updateMatrixWorld(true);
     const lp = new T.Vector3(); OBJ.site.jabLump.getWorldPosition(lp); const jab = bump(t, C_.sloppy - 0.1, 0.45); const tgt = lp.clone().add(V3(0.32 - jab * 0.14, -0.02, 0));
     poseChar(m, { face: 'smug', handR: holdAt(m, tgt), point: 1, lean: [0.04, 0, 0], head: [0.05, 0.1, -0.06], handL: [0.45, 0.6, 0.15] });
-    const W = OBJ.workers; [[1, 5.45, -1.9, 0.5], [3, 6.15, -1.35, 0.2], [0, 6.9, -0.4, -0.3]].forEach(([i, x, z, ry], k) => { const w = W[i]; w.root.position.set(x, 0, z); w.root.rotation.y = ry; const p = POSE.laugh(t + k * .3, k * 2.1, 1.1); p.face = ['laugh_1', 'grin', 'laugh_0'][k]; poseChar(w, p); });
+    const W = OBJ.workers; [[1, 5.25, -2.2, 0.55], [3, 6.05, -1.85, 0.45], [0, 6.55, -0.75, 0.2]].forEach(([i, x, z, ry], k) => { const w = W[i]; w.root.position.set(x, 0, z); w.root.rotation.y = ry; const p = POSE.laugh(t * 1.15 + k * .3, k * 2.1, 1.6); p.face = ['laugh_1', 'laugh_1', 'laugh_1'][k]; p.head = [-.35 + p.head[0] * .5, 0.15 * (k - 1), p.head[2]]; if (k === 1) { p.handR = [-0.45, 1.0, 0.5]; p.point = 1; } poseChar(w, p); });
     siteUpdate(t, { mix: .2, steam: 0, patch: 1 }); } });
 // 6b: the young builder shrugs, half smile, "Give it time" (slow push on a close-up)
 sh({ id: 's6b', t0: C_.s6b, locs: ['site'], light: dayLight([7, 1.6, 2.6]),
-  cam: (u) => { const e = eio(u); return { p: lerp3([4.9, 1.8, 4.1], [5.25, 1.76, 3.75], e), l: lerp3([7.0, 1.45, 2.5], [7.0, 1.5, 2.5], e), fov: lerp(36, 31, e), ap: 2.2, focus: 2.2 }; },
-  update: (u, t) => { const c = OBJ.yb; c.root.position.set(7.0, 0, 2.5); c.root.rotation.y = -1.0; const s = bump(t, C_.shrugged - 0.05, 0.7);
-    const face = t < C_.give6 - 0.15 ? 'calm' : 'smug';
-    poseChar(c, { face, gaze: t < C_.shrugged ? -1 : 0, handL: [0.42 + s * .2, 0.68 + s * .32, 0.06 + s * .25], handR: [-0.42 - s * .2, 0.68 + s * .32, 0.06 + s * .25], lean: [-0.04 * s, 0, 0], head: [-0.06 * s + nzf(t, 21, .8) * .02, 0.1, s * .12 + nzf(t, 22, .7) * .03], bob: s * .03 });
+  cam: (u) => { const e = eio(u); return { p: lerp3([4.6, 1.75, 4.4], [4.9, 1.72, 4.1], e), l: lerp3([7.0, 1.3, 2.5], [7.0, 1.35, 2.5], e), fov: lerp(46, 41, e), ap: 2.2, focus: 2.2 }; },
+  update: (u, t) => { const c = OBJ.yb; c.root.position.set(7.0, 0, 2.5); c.root.rotation.y = -1.0; const t0 = C_.shrugged - 0.1, s = eio(clamp((t - t0) / 0.3)) * (1 - eio(clamp((t - t0 - 0.65) / 0.35)));
+    const face = t < C_.shrugged - 0.15 ? 'calm' : 'half';
+    poseChar(c, { face, gaze: t < C_.shrugged ? -1 : 0, handL: [0.42 + s * .3, 0.66 + s * .42, 0.06 + s * .32], handR: [-0.42 - s * .3, 0.66 + s * .42, 0.06 + s * .32], lean: [-0.06 * s, 0, 0], head: [-0.08 * s + nzf(t, 21, .8) * .02, 0.1, s * .22 + nzf(t, 22, .7) * .03], bob: s * .09, drop: -s * .02 });
     const m = OBJ.master; m.root.position.set(5.0, 0, 0.55); m.root.rotation.y = 0.9; poseChar(m, POSE.stand(t, 5, 'angry'));
     siteUpdate(t, { mix: .2, steam: 0, patch: 1 }); } });
 // 7: years later, a storm: a huge wave hits, a crack zig-zags up the wall (handheld shake + zoom)
 sh({ id: 's7', t0: C_.s7, locs: ['site'], light: stormLight([-9, 1.5, 1.2]),
-  cam: (u, t) => { const k = Math.exp(-Math.max(0, t - C_.storm - .5) * 3) * (t > C_.storm + .5 ? 1 : 0); return { p: lerp3([-7.2, 1.25, 7.6], [-7.9, 1.4, 6.0], eio(u)), l: [-9, 1.45, 1.2], fov: lerp(48, 42, eio(u)), ap: 0.8, focus: 8.5, shk: 0.04 + 0.22 * k }; },
+  cam: (u, t) => { const k = Math.exp(-Math.max(0, t - C_.storm - .5) * 3) * (t > C_.storm + .5 ? 1 : 0); const sw = eio(clamp((t - C_.storm - 0.12) / 0.55)); return { p: lerp3([0.6, 4.0, 6.8], [-8.4, 1.6, 6.6], sw), l: lerp3([-9.6, 1.4, 3.2], [-9.0, 1.45, 1.2], sw), fov: lerp(52, 44, sw), ap: 0.8, focus: 8.5, shk: 0.04 + 0.22 * k }; },
   post: (u, t) => { const f = Math.max(0, 1 - Math.abs(t - C_.storm) * 5) + Math.max(0, 1 - Math.abs(t - C_.storm - 0.5) * 7) * .6; U.flash.value = clamp(f) * .55; U.flashCol.value.set(.9, .95, 1.1); },
   update: (u, t) => { siteUpdate(t, { storm: 1, finished: true, wave: clamp((t - C_.storm + 0.55) / 0.95), crack: eout(clamp((t - C_.cracked7) / 0.35)) }); } });
 // 8: dive into the crack: the water thread runs down and touches the white lump (forward dive)
@@ -117,13 +117,9 @@ sh({ id: 's9', t0: C_.s9, locs: ['xs'], light: xsLight({ pts: [{ p: add3(XS_O, [
   cam: (u) => { const X = OBJ.xs, a = lerp(-0.45, 0.4, eio(u)); const c = add3(XS_O, [X.lumpX + 0.1, X.lumpY - 0.2, 1.8]); return { p: [c[0] + Math.sin(a) * 3.2, c[1] + 0.6 - u * .3, c[2] + Math.cos(a) * 3.2], l: c, fov: 40, ap: 1.8, focus: 3.2 }; },
   update: (u, t) => { xsUpdate(t, { water: 1, fizz: sstep(C_.s9 + .3, C_.never, t), dissolve: eio(clamp((t - C_.never) / (C_.hardened - C_.never + 0.4))), crystals: 0.5 * eout(clamp((t - C_.hardened) / 1.2)) }); } });
 // 10: crystals zip the crack shut, then a fast pull back out to the wall: a thin white seam, waves still hitting
-sh({ id: 's10', t0: C_.s10, locs: ['xs', 'site'], light: (u) => u < 0.5 ? xsLight() : stormLight([-9, 1.5, 1.2], { bg: [0.32, 0.38, 0.46], hemi: [0xb8c8e0, 0x3a3e46, 0.85], fog: [0x6a7888, 0.012], grade: { tint: [0.92, 0.98, 1.08], sat: 1.0, vig: 0.4, bloom: 0.35 } }),
-  cam: (u) => { const X = OBJ.xs; if (u < 0.5) { const e = ein(u / 0.5); return { p: lerp3(add3(XS_O, [X.lumpX + 0.4, X.lumpY, 4.2]), add3(XS_O, [0.2, 0.4, 16]), e), l: add3(XS_O, [X.lumpX * (1 - e), X.lumpY * (1 - e), 1.5]), fov: lerp(42, 50, e), ap: 1.2, focus: lerp(2.5, 14, e) }; }
-    const e = eout((u - 0.5) / 0.5); return { p: lerp3([-9.0, 1.4, 3.0], [-8.2, 2.0, 10.0], e), l: [-9.0, 1.3, 1.2], fov: lerp(40, 48, e), ap: 0.8, focus: lerp(2, 8.8, e), shk: 0.02 }; },
-  post: (u) => { U.flash.value = Math.max(0, 1 - Math.abs(u - 0.5) * 9) * 0.9; U.flashCol.value.set(1, 1, 1); },
-  update: (u, t) => { const inside = u < 0.5; LOC.xs.visible = inside; LOC.site.visible = !inside;
-    xsUpdate(t, { water: 1, dissolve: 1, crystals: lerp(0.5, 1, eout(clamp((t - C_.s10) / (C_.sealed - C_.s10 + 0.35)))), seam: sstep(C_.sealed, C_.sealed + 0.4, t) });
-    siteUpdate(t, { storm: 1, finished: true, crack: 0, seam: 1, seamGlow: 0.8 }); } });
+sh({ id: 's10', t0: C_.s10, locs: ['site'], light: stormLight([-9, 1.5, 1.2], { bg: [0.32, 0.38, 0.46], hemi: [0xb8c8e0, 0x3a3e46, 0.85], fog: [0x6a7888, 0.012], grade: { tint: [0.92, 0.98, 1.08], sat: 1.0, vig: 0.4, bloom: 0.3 } }),
+  cam: (u) => { const e = eio(u); return { p: lerp3([-8.6, 1.75, 6.6], [-8.85, 1.35, 4.3], e), l: lerp3([-9.0, 1.3, 1.2], [-9.0, 1.15, 1.2], e), fov: lerp(44, 40, e), ap: 0.8, focus: lerp(5.4, 3.1, e), shk: 0.012 }; },
+  update: (u, t) => { siteUpdate(t, { storm: 1, finished: true, crack: 1, seam: eout(clamp((t - 33.95) / 0.75)), sprayK: 0.6 }); } });
 // 11: "that builder's made up": he fades; the camera slides onto one white lump (lateral slide)
 sh({ id: 's11', t0: C_.s11, locs: ['site'], light: dayLight([4.6, 1.3, 0.6], { grade: { tint: [1.02, 1.0, 0.97], sat: 1.05, vig: 0.34, bloom: 0.25 } }),
   cam: (u) => { const e = eio(u); return { p: lerp3([7.9, 1.65, 3.0], [6.0, 1.45, 0.75], e), l: lerp3([5.6, 1.5, 1.6], [4.15, 1.2, 0.05], e), fov: lerp(42, 36, e), ap: lerp(1.4, 2.2, e), focus: lerp(2.6, 1.9, e) }; },
@@ -131,10 +127,10 @@ sh({ id: 's11', t0: C_.s11, locs: ['site'], light: dayLight([4.6, 1.3, 0.6], { g
     setOpacity(c, 1 - sstep(C_.madeup - 0.1, C_.madeup + 0.6, t)); siteUpdate(t, { mix: 0, steam: 0, patch: 0, finished: true, seam: 0 }); } });
 // 12: the lab: a cylinder made the Roman way, then cracked (orbit)
 sh({ id: 's12', t0: C_.s12, locs: ['lab'], light: labLight(),
-  cam: (u) => { const a = lerp(-0.75, 0.35, eio(u)), r = lerp(3.4, 2.5, eio(u)), c = add3(LAB_O, [-0.5, 1.45, -1.0]); return { p: [c[0] + Math.sin(a) * r, 1.85, c[2] + Math.cos(a) * r], l: c, fov: 42, ap: 1.4, focus: r, shk: 0.01 }; },
+  cam: (u) => { const a = lerp(-0.75, 0.35, eio(u)), r = lerp(3.4, 2.5, eio(u)), c = add3(LAB_O, [-0.3, 1.45, -1.0]); return { p: [c[0] + Math.sin(a) * r, 1.85, c[2] + Math.cos(a) * r], l: c, fov: 44, ap: 1.4, focus: r, shk: 0.01 }; },
   update: (u, t) => { const s = OBJ.sci; s.root.position.set(200 - 1.9, 0, -0.35); s.root.rotation.y = 0.85; const tap = bump(t, C_.cracked12 - 0.25, 0.4);
     poseChar(s, { face: t > C_.cracked12 ? 'awe' : 'focus', lean: [0.15 + tap * .1, 0, 0], head: [0.15, 0.2, 0], handR: [-0.1, 1.0 + tap * .15, 0.55 - tap * .1], handL: [0.4, 0.7, 0.2], bob: 0 });
-    labUpdate(t, { crackA: eout(clamp((t - C_.cracked12) / 0.3)), rateA: 0, day: 1, curve: 0 }); } });
+    labUpdate(t, { crackA: 0.55 * eout(clamp((t - C_.s12 - 1.3) / 0.35)) + 0.45 * eout(clamp((t - C_.cracked12) / 0.3)), rateA: 0, day: 1, curve: 0 }); } });
 // 13: water runs through; 14 days on the calendar; the drip slows to nothing; a white seam fills (push in + tilt)
 sh({ id: 's13', t0: C_.s13, locs: ['lab'], light: labLight(),
   cam: (u) => { const e = eio(u); return { p: lerp3(add3(LAB_O, [-0.2, 1.7, 1.6]), add3(LAB_O, [-0.5, 1.95, 0.6]), e), l: lerp3(add3(LAB_O, [-0.6, 1.6, -1.0]), add3(LAB_O, [-0.5, 2.45, -1.8]), e), fov: lerp(46, 40, e), ap: 0.8, focus: lerp(2.7, 2.6, e) }; },
@@ -143,8 +139,8 @@ sh({ id: 's13', t0: C_.s13, locs: ['lab'], light: labLight(),
     const s = OBJ.sci; s.root.position.set(200 - 1.9, 0, -0.35); s.root.rotation.y = 0.85; poseChar(s, Object.assign(POSE.stand(t, 6, k > .9 ? 'awe' : 'focus'), { head: [0.1, 0.25, 0] })); } });
 // 14: without quicklime: water keeps pouring through the second cylinder (lateral truck)
 sh({ id: 's14', t0: C_.s14, locs: ['lab'], light: labLight(),
-  cam: (u) => { const e = eio(u); return { p: lerp3(add3(LAB_O, [-0.4, 1.55, 2.2]), add3(LAB_O, [1.6, 1.6, 2.1]), e), l: lerp3(add3(LAB_O, [-0.2, 1.45, -1.0]), add3(LAB_O, [1.2, 1.45, -1.0]), e), fov: 40, ap: 1.0, focus: 3.2 }; },
-  update: (u, t) => { labUpdate(t, { crackA: 1, seamA: 1, crackB: 1, rateA: 0, rateB: 1, day: 14, curve: 1 });
+  cam: (u) => { const e = eio(u); return { p: lerp3(add3(LAB_O, [-0.15, 1.8, 3.5]), add3(LAB_O, [0.15, 1.75, 3.2]), e), l: add3(LAB_O, [0, 1.5, -1.0]), fov: 46, ap: 0.6, focus: 4.1 }; },
+  update: (u, t) => { labUpdate(t, { crackA: 1, seamA: 1, crackB: 1, rateA: 0, rateB: 1, day: 14, curve: 1, puddle: 0.35 + 0.65 * eout(clamp((t - C_.s14) / 2.5)) });
     const s = OBJ.sci; s.root.position.set(200 + 2.6, 0, -0.2); s.root.rotation.y = -0.6; poseChar(s, Object.assign(POSE.stand(t, 7, 'worry'), { head: [0.15, -0.2, 0] })); } });
 // 15a: Roman harbour ruins in today's sea, a motorboat passing (crane drift)
 sh({ id: 's15a', t0: C_.s15a, locs: ['ruins'], light: ruinsLight(add3(RU_O, [0, 1, -10])),

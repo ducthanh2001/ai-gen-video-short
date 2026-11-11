@@ -10,7 +10,7 @@ $FF -y -loglevel error -i film/voice_raw.wav -i film/sfx_raw.wav -i film/room_ra
 measure() { $FF -hide_banner -nostats -i audio_mix.wav -af ebur128=peak=true -f null - 2>&1 | sed -n '/Summary/,$p' | grep -E " I:" | awk '{print $2}'; }
 G=0; pass $G; I=$(measure)
 G=$(python -c "print(round(-14 - ($I), 2))"); pass $G; I=$(measure)
-G2=$(python -c "print(round($G + (-14 - ($I)), 2))"); pass $G2
+G2=$(python -c "print(round($G + (-13.8 - ($I)), 2))"); pass $G2
 $FF -hide_banner -nostats -i audio_mix.wav -af ebur128=peak=true -f null - 2>&1 | sed -n '/Summary/,$p' | grep -E " I:|Peak:|LRA:"
 $FF -hide_banner -nostats -i audio_mix.wav -af astats -f null - 2>&1 | grep -E "RMS level dB|Peak level dB" | head -2
 echo "gain $G2"

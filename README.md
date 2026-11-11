@@ -7,7 +7,14 @@ Source for the YouTube channel **Ink & Ages** ("History, told in ink"), which pu
 | `ep01-price-of-light/` | Ep 01 "The Price of Light": script, verified facts, scene code, edit plan, score, assembly, Shorts, thumbnails. See its `BUILD.md`. |
 | `brand/` | Channel banner (`make_banner.py` builds `banner.png` from the AI-generated objects in `banner-ai.png`) |
 | `tools/` | Shared tools: Kokoro narration (`narrate.py`), Whisper checks (`asr_lines.py`, `asr_mix.py`), encoder (`encode_h.py`), voice audition |
+| `ep-greek-01/`, `ep-greek-02/` | Clay & Myth Greek myth episodes: research, scripts, film source |
+| `shorts/` | 3D story Shorts: `b01-antikythera`, `b02-roman-concrete`, `s01`, `s02` (script, facts, review, upload text, thumbnails, film source) |
+| `shorts-tests/` | Script lists (underdog, ancient engineering) and format tests |
+| `research/` | Competitor and data research |
+| `claude-memory/`, `claude-skills/` | Claude Code memory notes and the lemo-plus skill, to restore on a new machine |
 | `*.md` | Channel research and script format notes (Vietnamese) |
+
+New machine: see `SETUP.md`.
 
 Not in git: rendered frames, MP4s, WAVs and the Python venv. They are rebuilt from this source; the finished videos live on YouTube and in cloud storage.
 

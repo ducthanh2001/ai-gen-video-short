@@ -33,3 +33,22 @@ Outputs (renders\): b02-roman-concrete-final.mp4 (1080x1920, 30 fps, 57.87 s), b
 - The two lab cylinders sit far apart, so the thumbnail and shot 14 show them at the frame edges.
 - Ruins today: eroded blocks plus one arch; no seaweed detail; the motorboat is simple.
 - SFX are synthesised.
+
+## Revision 2 (final-v2): picture fixes only (same voice files, timeline, captions)
+Files: renders\b02-roman-concrete-final-v2.mp4, -final-v2-contact-sheet.png, -final-v2.srt (identical text and timing to v1); thumbs in renders\thumb\ remade. v1 kept.
+- Sealed crack: no glow. The seam is a wide matte cream band of new stone with a crystalline speckle (seamMat in world.js), flush with the wall and lit like it; it grows along the crack over the dark crack after the pull-out in shot 10. Inside the cutaway the crystals are matte cream and the crack fills with a matte stone band that grows out from the lump. Same seam in the lab cylinder.
+- 6a: three workers stand behind and beside the master, laughing with tears, bodies shaking, one pointing, while he jabs a lump.
+- 6b: wider framing; a single shrug (shoulders and hands up, hold, down) on "shrugged", new half-smile face ('half' in chars.js).
+- Lab: cylinders moved together (x = -0.55 and +0.55) and framed centrally; crack in shot 12 appears half-way through the orbit and runs full height on "cracked it"; shot 14 shows both side by side, left sealed and dry, right with a water stream running down the crack into a growing puddle.
+- Shot 3: workers on the scaffold, braces, a second ladder, ropes, a hoist with a bucket, stone blocks on the wall; bigger sea and spray against the base.
+- Storm: the wave is a curling breaker (extruded curl profile, foam lip, foam balls, spray burst on impact); camera starts side-on to see the curl, then swings to face the wall for the crack.
+- Ruins: three arcade piers with arched openings and jagged broken tops, green algae line and a dark wet band at the waterline, rubble, small waves, the motorboat.
+- Mastering: mix.sh targets -13.8 LUFS on the WAV so the AAC in the mp4 measures -14.0 LUFS.
+Measured on final-v2: 57.87 s, -14.0 LUFS integrated, true peak -3.5 dBFS, 19 cuts (19.7 per minute), caption centre 0.758, no black frames.
+Still weak: the wave is stylised (flat-shaded slab with a curl and foam, readable but not rich); the lab water in shot 13 is a falling stream in front of the cylinder; the master thumbnail shows only the master (workers out of frame); the ruins have no seaweed detail and the boat is simple.
+
+## Revision 3 (final-v3): two timing/picture fixes, everything else as v2
+Files: renders\b02-roman-concrete-final-v3.mp4, -final-v3-contact-sheet.png, -final-v3.srt (same as v2). v2 kept.
+- Shot 10 ("The crack sealed itself") is now the storm wall only, with a gentle push-in on the crack: the cream seam starts on "THE CRACK" (33.95 s), covers the whole crack by 34.7 s ("SEALED") and stays sealed to the cut. The seam is wider (72 px band) and brighter (lighter cream plus a small matte lift so it reads in the dark storm light; no bloom, no glow). The cutaway interior now ends at the cut into shot 10.
+- Shots 13 and 14: lab water now follows each cylinder's own crack path: it enters from the feed tube at the top of the crack, runs down inside the crack and drips out at the bottom into the tray (the puddle in 14). Feed tubes end at the crack top.
+Measured: 57.87 s, -14.0 LUFS, true peak -3.5 dBFS, 19 cuts (19.7 per minute), no black frames, captions unchanged (centre 0.758).
