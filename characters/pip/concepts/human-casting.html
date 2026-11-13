@@ -1,0 +1,288 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chibi Human Casting</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap">
+<style>
+/* Layout: casting board. Shared controls on top, three head-style cards side by side, comparison notes below */
+:root{
+  --bg:#EEF1F5; --card:#FFFFFF; --stage:#E3E9F1; --fg:#1C2230; --muted:#5B6477; --line:#D2D9E4;
+  --accent:#2F55D4; --accent-fg:#F4F6FD; --pick:#F2B134; --pick-fg:#2B1D00; --dot:#C9D1DE;
+  --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161E; --card:#1A1F2A; --stage:#232A38; --fg:#E7EAF1; --muted:#9AA3B6; --line:#2E3646;
+  --accent:#7C98F5; --accent-fg:#0E1426; --pick:#F2B134; --pick-fg:#2B1D00; --dot:#3A4356; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161E; --card:#1A1F2A; --stage:#232A38; --fg:#E7EAF1; --muted:#9AA3B6; --line:#2E3646;
+  --accent:#7C98F5; --accent-fg:#0E1426; --pick:#F2B134; --pick-fg:#2B1D00; --dot:#3A4356; color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+body{font:15px/1.55 var(--body)}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:26px}
+header h1{font:800 40px/1.05 var(--display);margin:0;text-wrap:balance}
+header p{margin:8px 0 0;color:var(--muted);max-width:70ch}
+.controls{display:flex;flex-wrap:wrap;gap:18px 32px}
+.ctl{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ctl h2{font:600 12px/1 var(--body);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 14px/1 var(--body);padding:9px 13px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+.chip:hover{border-color:var(--accent)}
+.chip:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0;position:relative}
+.card.rec{border-color:var(--pick);box-shadow:0 0 0 3px color-mix(in srgb,var(--pick) 35%,transparent)}
+.badge{position:absolute;top:14px;right:14px;background:var(--pick);color:var(--pick-fg);font:700 12px/1 var(--body);padding:7px 10px;border-radius:999px;letter-spacing:.04em;z-index:1}
+.hero{background:var(--stage);border-radius:12px;aspect-ratio:1/1;max-width:100%;overflow:hidden}
+.hero svg{width:100%;height:100%;display:block}
+.name{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.name h3{font:800 32px/1 var(--display);margin:0}
+.name span{color:var(--muted);font-weight:500}
+.desc{margin:0;font-size:14.5px}
+.thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.thumb{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.thumb svg{width:100%;aspect-ratio:1/1;background:var(--stage);border-radius:8px;display:block}
+.thumb small{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.2}
+.scores{display:flex;flex-direction:column;gap:6px;border-top:1.5px solid var(--line);padding-top:12px;margin:0;padding-left:0;list-style:none}
+.scores li{display:flex;justify-content:space-between;gap:10px;font-size:13.5px}
+.dots{display:flex;gap:4px;flex:none;align-items:center}
+.dots i{width:10px;height:10px;border-radius:50%;background:var(--dot)}
+.dots i.on{background:var(--accent)}
+.notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.note{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px 20px;min-width:0}
+.note h2{font:800 22px/1.15 var(--display);margin:0 0 10px}
+.note ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.note p{margin:0 0 8px}
+@media (max-width:980px){.cards{grid-template-columns:minmax(0,1fr)}.hero{aspect-ratio:4/3}.notes{grid-template-columns:minmax(0,1fr)}}
+.bob{animation:bob 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.eyes{animation:blink 4.4s infinite;transform-box:fill-box;transform-origin:center}
+.ahoge{animation:sway 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:20% 100%}
+.sil{filter:brightness(0)}
+@keyframes bob{0%,100%{transform:scale(1,1)}50%{transform:scale(1.025,.975)}}
+@keyframes blink{0%,91%,97%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+@keyframes sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(8deg)}}
+@media (prefers-reduced-motion: reduce){.bob,.eyes,.ahoge{animation:none}}
+</style>
+
+<div class="wrap" lang="vi">
+  <header>
+    <h1>Nhân vật người kiểu chibi</h1>
+    <p>Cùng thể loại với Historically: đầu to bằng nửa người, viền dày, màu phẳng, cả dàn nhân vật dùng chung một khuôn. Ba kiểu đầu dưới đây đều là thiết kế gốc. Điểm khác với họ nằm ở hình đầu, màu da thật, kiểu mắt, và một sợi tóc dựng làm dấu hiệu riêng của nhân vật chính.</p>
+  </header>
+
+  <div class="controls">
+    <div class="ctl"><h2>Thử trang phục</h2>
+      <div class="chips" id="cosChips">
+        <button class="chip" data-cos="none" aria-pressed="true">Đồ thường</button>
+        <button class="chip" data-cos="soldier" aria-pressed="false">Lính 1916</button>
+        <button class="chip" data-cos="roman" aria-pressed="false">Lính La Mã</button>
+        <button class="chip" data-cos="king" aria-pressed="false">Nhà vua</button>
+        <button class="chip" data-cos="officer" aria-pressed="false">Sĩ quan 1800</button>
+      </div></div>
+    <div class="ctl"><h2>Biểu cảm</h2>
+      <div class="chips" id="exChips">
+        <button class="chip" data-ex="auto" aria-pressed="true">Tự đổi</button>
+        <button class="chip" data-ex="neutral" aria-pressed="false">Bình thường</button>
+        <button class="chip" data-ex="happy" aria-pressed="false">Vui</button>
+        <button class="chip" data-ex="shocked" aria-pressed="false">Sốc</button>
+        <button class="chip" data-ex="smug" aria-pressed="false">Đắc ý</button>
+      </div></div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="notes">
+    <div class="note">
+      <h2>Giống và khác Historically ở đâu</h2>
+      <ul>
+        <li><b>Giống (thuộc thể loại chung):</b> tỉ lệ chibi, viền đen dày, màu phẳng, mặt đơn giản, một khuôn cho cả dàn diễn viên, đổi trang phục theo thời đại.</li>
+        <li><b>Khác:</b> họ dùng đầu tròn trắng cho tất cả mọi người. Ở đây đầu có hình riêng (trứng, mochi hoặc đậu phụ), da có màu thật và mỗi nhân vật một tông, mắt đặt thấp có điểm sáng, má hồng.</li>
+        <li><b>Dấu hiệu nhân vật chính:</b> sợi tóc dựng (ahoge) luôn chĩa lên, xuyên qua cả mũ sắt lẫn vương miện. Xem bất kỳ cảnh nào cũng biết đâu là nhân vật chính.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h2>Gợi ý của tôi: đầu trứng</h2>
+      <p>Đầu trứng (đáy rộng hơn đỉnh) làm mặt tròn bầu như em bé nên dễ thương nhất, và vẫn đọc rõ trên màn hình điện thoại. Nó cũng gần với chú lính Pip đã dựng, nên dùng lại được toàn bộ rig: tay bám súng, chân bám đất, bắn có giật.</p>
+      <ul>
+        <li>Thích mặt nhiều biểu cảm kiểu meme thì chọn <b>mochi</b>: mắt trắng có con ngươi, lông mày dày, phóng đại cảm xúc tốt nhất.</li>
+        <li>Muốn bóng dáng lạ nhất, khác hẳn mọi kênh thì chọn <b>đậu phụ</b>: đầu vuông bo góc.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+const OL='#2A2226';
+let uid=0;
+const C={blush:'#F28C8C',mouth:'#7A2E3A',tongue:'#E46D6D',gold:'#F2C14E',goldSh:'#C99A2A',iron:'#A9B1B8',hair:'#4A3326'};
+
+/* ---------- face ---------- */
+function eye(cx,cy,rx,ry,o){
+  const ex=o.expr;
+  if(ex==='happy')return `<path d="M${cx-rx},${cy+ry*.25} Q${cx},${cy-ry*1.15} ${cx+rx},${cy+ry*.25}" fill="none" stroke="${OL}" stroke-width="6" stroke-linecap="round"/>`;
+  let lid=0; if(ex==='smug')lid=.5;
+  const sc=ex==='shocked'?1.16:1; rx*=sc; ry*=sc;
+  const lidY=cy-ry+2*ry*lid, id='ec'+(uid++);
+  let shape,hw=rx;
+  if(lid<=0.001)shape=a=>`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" ${a}/>`;
+  else{const t=(lidY-cy)/ry;hw=rx*Math.sqrt(Math.max(0,1-t*t));const lg=lidY<cy?1:0;
+    shape=a=>`<path d="M${(cx-hw).toFixed(1)},${lidY.toFixed(1)} A${rx},${ry} 0 ${lg} 0 ${(cx+hw).toFixed(1)},${lidY.toFixed(1)} Z" ${a}/>`}
+  const bg=`<rect x="${cx-rx-2}" y="${cy-ry-2}" width="${2*rx+4}" height="${2*ry+4}"`;
+  const hiY=Math.max(cy-ry*.38,lidY+rx*.42);
+  let inner;
+  if(o.style==='sclera'){
+    const pr=rx*(ex==='shocked'?.3:.52), py=lid?((lidY+cy+ry)/2):cy+ry*.1, px=cx+rx*.28;
+    inner=`${bg} fill="#fff"/><circle cx="${px}" cy="${py}" r="${pr}" fill="${OL}"/><circle cx="${px+pr*.35}" cy="${py-pr*.4}" r="${pr*.34}" fill="#fff"/>`;
+  }else if(ex==='shocked'){
+    inner=`${bg} fill="#fff"/><circle cx="${cx+rx*.12}" cy="${cy+ry*.08}" r="${rx*.36}" fill="${OL}"/>`;
+  }else{
+    inner=`${bg} fill="${OL}"/><circle cx="${cx+rx*.3}" cy="${hiY}" r="${rx*.34}" fill="#fff"/><circle cx="${cx-rx*.3}" cy="${cy+ry*.45}" r="${rx*.16}" fill="#fff"/>`;
+  }
+  let s=`<defs><clipPath id="${id}">${shape('')}</clipPath></defs><g clip-path="url(#${id})">${inner}</g>${shape(`fill="none" stroke="${OL}" stroke-width="4.5"`)}`;
+  if(lid>0.001)s+=`<path d="M${(cx-hw-3).toFixed(1)},${lidY.toFixed(1)} L${(cx+hw+3).toFixed(1)},${lidY.toFixed(1)}" stroke="${OL}" stroke-width="5.5" stroke-linecap="round"/>`;
+  return s;
+}
+function brows(E,ex,always){
+  const w=always?7:5.5;
+  if(ex==='shocked')return E.map(([cx,cy,rx,ry])=>`<path d="M${cx-rx},${cy-ry-13} Q${cx},${cy-ry-25} ${cx+rx},${cy-ry-13}" fill="none" stroke="${OL}" stroke-width="${w}" stroke-linecap="round"/>`).join('');
+  if(ex==='smug'){const [cx,cy,rx,ry]=E[1];const a=always?`<path d="M${E[0][0]-E[0][2]},${E[0][1]-E[0][3]-8} L${E[0][0]+E[0][2]},${E[0][1]-E[0][3]-6}" stroke="${OL}" stroke-width="${w}" stroke-linecap="round"/>`:'';
+    return a+`<path d="M${cx-rx},${cy-ry-8} L${cx+rx},${cy-ry-17}" stroke="${OL}" stroke-width="${w}" stroke-linecap="round"/>`}
+  if(!always)return '';
+  const dy=ex==='happy'?-12:-8;
+  return E.map(([cx,cy,rx,ry])=>`<path d="M${cx-rx},${cy-ry+dy} Q${cx},${cy-ry+dy-(ex==='happy'?7:3)} ${cx+rx},${cy-ry+dy}" fill="none" stroke="${OL}" stroke-width="${w}" stroke-linecap="round"/>`).join('');
+}
+function mouth(mx,my,ex){
+  if(ex==='happy')return `<path d="M${mx-14},${my-3} Q${mx},${my+22} ${mx+14},${my-3} Z" fill="${C.mouth}" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/><path d="M${mx-6},${my+9} Q${mx},${my+4} ${mx+6},${my+9}" stroke="${C.tongue}" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+  if(ex==='shocked')return `<ellipse cx="${mx}" cy="${my+4}" rx="9" ry="12" fill="${C.mouth}" stroke="${OL}" stroke-width="4.5"/>`;
+  if(ex==='smug')return `<path d="M${mx-10},${my+1} Q${mx+2},${my+8} ${mx+14},${my-6}" fill="none" stroke="${OL}" stroke-width="4.5" stroke-linecap="round"/>`;
+  return `<path d="M${mx-8},${my} Q${mx},${my+7} ${mx+8},${my}" fill="none" stroke="${OL}" stroke-width="4.5" stroke-linecap="round"/>`;
+}
+
+/* ---------- hats & props ---------- */
+function hatTop(cos,A){const by=A.top.y+A.drop,w=A.w;return cos==='soldier'?by-w*.47:cos==='roman'?by-w*.66:cos==='king'?by-w*.38:cos==='officer'?by-w*.56:A.top.y+4}
+function hat(cos,A){
+  const bx=A.top.x,by=A.top.y+A.drop,w=A.w,st=`stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"`;
+  if(cos==='soldier')return `<path d="M${bx-w*.40},${by} Q${bx-w*.40},${by-w*.46} ${bx},${by-w*.47} Q${bx+w*.40},${by-w*.46} ${bx+w*.40},${by} Z" fill="#62703E" ${st}/>
+    <path d="M${bx-w*.2},${by-w*.33} Q${bx},${by-w*.42} ${bx+w*.18},${by-w*.39}" stroke="#86965A" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <ellipse cx="${bx}" cy="${by}" rx="${w*.62}" ry="${w*.085}" fill="#62703E" ${st}/>`;
+  if(cos==='roman')return `<path d="M${bx-w*.30},${by-w*.34} Q${bx-w*.05},${by-w*.95} ${bx+w*.32},${by-w*.36} Q${bx},${by-w*.50} ${bx-w*.30},${by-w*.34} Z" fill="#C8372D" ${st}/>
+    <path d="M${bx-w*.40},${by} Q${bx-w*.40},${by-w*.46} ${bx},${by-w*.47} Q${bx+w*.40},${by-w*.46} ${bx+w*.40},${by} Z" fill="${C.iron}" ${st}/>
+    <path d="M${bx-w*.38},${by-w*.1} Q${bx},${by-w*.16} ${bx+w*.38},${by-w*.1}" stroke="${C.gold}" stroke-width="7" fill="none"/>
+    <ellipse cx="${bx}" cy="${by}" rx="${w*.48}" ry="${w*.06}" fill="${C.iron}" ${st}/>`;
+  if(cos==='king'){const L=bx-w*.36,R=bx+w*.36,t=by-w*.14,p=by-w*.38,s=(R-L)/4;
+    let d=`M${L},${by} L${L},${t}`;for(let i=0;i<4;i++){d+=` L${L+s*i+s/2},${i%2?p+8:p} L${L+s*(i+1)},${t}`}d+=` L${R},${by} Z`;
+    return `<path d="${d}" fill="${C.gold}" ${st}/><path d="M${L},${by-w*.07} L${R},${by-w*.07}" stroke="${C.goldSh}" stroke-width="4"/>
+    <circle cx="${bx-w*.18}" cy="${by-w*.07}" r="6" fill="#D43A4A" stroke="${OL}" stroke-width="3"/><circle cx="${bx}" cy="${by-w*.07}" r="7" fill="#3A6FD4" stroke="${OL}" stroke-width="3"/><circle cx="${bx+w*.18}" cy="${by-w*.07}" r="6" fill="#D43A4A" stroke="${OL}" stroke-width="3"/>`}
+  if(cos==='officer')return `<path d="M${bx-w*.62},${by-w*.02} Q${bx-w*.3},${by-w*.62} ${bx},${by-w*.56} Q${bx+w*.3},${by-w*.62} ${bx+w*.62},${by-w*.02} Q${bx},${by-w*.2} ${bx-w*.62},${by-w*.02} Z" fill="#2E2B35" ${st}/>
+    <path d="M${bx-w*.54},${by-w*.05} Q${bx},${by-w*.22} ${bx+w*.54},${by-w*.05}" stroke="${C.gold}" stroke-width="4" fill="none"/>
+    <circle cx="${bx+w*.08}" cy="${by-w*.3}" r="${w*.07}" fill="${C.gold}" stroke="${OL}" stroke-width="4"/><circle cx="${bx+w*.08}" cy="${by-w*.3}" r="${w*.03}" fill="#C8372D"/>`;
+  return '';
+}
+function prop(cos,h){
+  if(cos==='soldier')return `<g transform="translate(${h.x},${h.y}) rotate(-58) scale(.62)">
+    <path d="M-76,-13 Q-40,-11 -6,-8 L150,-7 L150,3 L24,4 Q12,6 7,15 L-5,15 Q-7,8 -14,6 L-76,16 Z" fill="#94592E" stroke="${OL}" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M18,-14 L180,-13 L180,-6 L18,-6 Z" fill="#3A3F45" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M-8,-17 L26,-17 L26,-6 L-8,-6 Z" fill="#3A3F45" stroke="${OL}" stroke-width="6"/></g>`;
+  if(cos==='roman')return `<g transform="translate(${h.x+4},${h.y+14}) rotate(5)"><rect x="-32" y="-62" width="66" height="116" rx="16" fill="#B8392E" stroke="${OL}" stroke-width="5.5"/>
+    <rect x="-24" y="-54" width="50" height="100" rx="11" fill="none" stroke="${C.gold}" stroke-width="4"/><path d="M1,-54 L1,46 M-24,-4 L26,-4" stroke="${C.gold}" stroke-width="4"/>
+    <circle cx="1" cy="-4" r="14" fill="${C.gold}" stroke="${OL}" stroke-width="4.5"/></g>`;
+  if(cos==='king')return `<path d="M${h.x+2},${h.y+46} L${h.x+14},${h.y-82}" stroke="${OL}" stroke-width="15" stroke-linecap="round"/><path d="M${h.x+2},${h.y+46} L${h.x+14},${h.y-82}" stroke="${C.gold}" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="${h.x+15}" cy="${h.y-96}" r="15" fill="${C.gold}" stroke="${OL}" stroke-width="5"/><path d="M${h.x+16},${h.y-112} l0,-16 M${h.x+9},${h.y-121} l14,0" stroke="${OL}" stroke-width="5" stroke-linecap="round"/>`;
+  if(cos==='officer')return `<path d="M${h.x},${h.y} Q${h.x+40},${h.y-62} ${h.x+16},${h.y-132}" stroke="${OL}" stroke-width="15" fill="none" stroke-linecap="round"/><path d="M${h.x},${h.y} Q${h.x+40},${h.y-62} ${h.x+16},${h.y-132}" stroke="#DCE2E8" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M${h.x-14},${h.y-6} Q${h.x+2},${h.y-20} ${h.x+18},${h.y-8}" stroke="${C.gold}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
+  return '';
+}
+
+/* ---------- outfits ---------- */
+function outfit(cos,skin){
+  const st=`stroke="${OL}" stroke-width="4"`;
+  if(cos==='soldier')return{shirt:'#8B8752',pants:'#77733F',shoe:'#4A3020',
+    detail:`<rect x="-60" y="-88" width="120" height="13" fill="#5A3B22"/><path d="M-60,-88 L60,-88 M-60,-75 L60,-75" stroke="${OL}" stroke-width="3.5"/><rect x="24" y="-90" width="13" height="17" rx="2" fill="${C.gold}" ${st}/><rect x="-6" y="-136" width="22" height="20" rx="3" fill="#76723F" ${st}/>`};
+  if(cos==='roman'){let p='';for(let x=-50;x<=50;x+=13)p+=`<path d="M${x},-78 L${x},-50" stroke="#86251D" stroke-width="3.5"/>`;
+    return{shirt:'#B8392E',pants:skin,shoe:'#7A4E2D',
+    detail:`<rect x="-60" y="-170" width="120" height="66" fill="${C.iron}"/><path d="M-60,-148 L60,-148 M-60,-126 L60,-126 M-60,-104 L60,-104" stroke="${OL}" stroke-width="3.5"/>${p}`}}
+  if(cos==='king'){let d='';for(let y=-150;y<=-66;y+=16)d+=`<path d="M27,${y} l0,7 M24,${y+3} l6,0" stroke="${OL}" stroke-width="2.5"/>`;
+    return{shirt:'#A3263A',pants:'#A3263A',shoe:'#3A2C24',
+    behind:`<path d="M-40,-150 Q-84,-70 -76,-6 L66,-6 Q74,-70 40,-150 Z" fill="#7E1A2B" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/><path d="M-76,-10 L66,-10" stroke="#F7F3EA" stroke-width="9"/>`,
+    detail:`<rect x="16" y="-170" width="22" height="120" fill="#F7F3EA"/><path d="M16,-170 L16,-50 M38,-170 L38,-50" stroke="${OL}" stroke-width="3.5"/>${d}<path d="M-30,-146 Q4,-112 40,-146" stroke="${C.gold}" stroke-width="6" fill="none"/>`}}
+  if(cos==='officer')return{shirt:'#2C3E6B',pants:'#EDE8DA',shoe:'#1F1E24',
+    detail:`<path d="M-40,-152 L48,-66 M40,-152 L-44,-66" stroke="#EDE8DA" stroke-width="11"/><path d="M-40,-152 L48,-66 M40,-152 L-44,-66" stroke="${OL}" stroke-width="2" opacity=".35"/><circle cx="4" cy="-108" r="7" fill="${C.gold}" ${st}/><rect x="-60" y="-160" width="120" height="10" fill="#B8392E"/>`,
+    after:`<ellipse cx="38" cy="-146" rx="17" ry="9" fill="${C.gold}" stroke="${OL}" stroke-width="4"/><path d="M24,-140 l0,10 M32,-139 l0,11 M40,-139 l0,11 M48,-140 l0,10" stroke="${C.goldSh}" stroke-width="3"/>`};
+  return{shirt:'#4F86B8',pants:'#6B5A48',shoe:'#3A2C24',
+    detail:`<path d="M-38,-154 L52,-64" stroke="#7A4E2D" stroke-width="10"/><path d="M-38,-154 L52,-64" stroke="${OL}" stroke-width="2" opacity=".35"/><rect x="-30" y="-120" width="22" height="18" rx="3" fill="#3F6F9B" stroke="${OL}" stroke-width="3.5"/>`,
+    after:`<rect x="40" y="-84" width="30" height="26" rx="6" fill="#8A5A34" stroke="${OL}" stroke-width="4.5"/><path d="M40,-74 L70,-74" stroke="${OL}" stroke-width="3"/>`};
+}
+
+/* ---------- head styles ---------- */
+function rrect(x,y,w,h,r){return `M${x+r},${y} L${x+w-r},${y} Q${x+w},${y} ${x+w},${y+r} L${x+w},${y+h-r} Q${x+w},${y+h} ${x+w-r},${y+h} L${x+r},${y+h} Q${x},${y+h} ${x},${y+h-r} L${x},${y+r} Q${x},${y} ${x+r},${y} Z`}
+const STYLES={
+  egg:{name:'Đầu trứng',kind:'mặt bầu như em bé',rec:true,skin:'#F6CFA6',skinSh:'#E6B385',eye:'bead',nose:true,
+    head:'M6,-322 C52,-322 78,-284 82,-240 C86,-188 56,-152 6,-152 C-44,-152 -74,-188 -70,-240 C-66,-284 -40,-322 6,-322 Z',
+    top:{x:6,y:-322},w:150,E:[[-16,-214,15,18],[34,-212,13,16]],m:[12,-180],B:[[-42,-188],[62,-186]],ear:[-68,-222],fringe:-264,
+    desc:'Đáy đầu rộng hơn đỉnh nên má phúng phính. Mắt hạt đen đặt thấp, có điểm sáng, thêm cái mũi nhỏ. Dễ thương nhất, gần với chú lính Pip đã dựng.',scores:[5,4,5,4,5]},
+  mochi:{name:'Đầu mochi',kind:'mặt bè, mắt có con ngươi',skin:'#F9DCC4',skinSh:'#EDBE9C',eye:'sclera',browsAlways:true,
+    head:'M-90,-226 A96,74 0 1 1 102,-226 A96,74 0 1 1 -90,-226 Z',
+    top:{x:6,y:-300},w:172,E:[[-22,-220,16,17],[38,-218,14,16]],m:[14,-184],B:[[-56,-194],[76,-192]],ear:[-86,-224],fringe:-258,
+    desc:'Đầu bè ngang như viên mochi. Mắt trắng có con ngươi và lông mày dày, nên phóng đại cảm xúc tốt nhất, hợp với các khoảnh khắc meme.',scores:[4,4,4,5,5]},
+  tofu:{name:'Đầu đậu phụ',kind:'vuông bo góc',skin:'#F3C9A0',skinSh:'#E0AE80',eye:'bead',
+    head:rrect(-74,-310,160,158,48),
+    top:{x:6,y:-310},w:160,E:[[-14,-216,12,20],[34,-214,11,18]],m:[12,-180],B:[[-44,-188],[62,-186]],ear:[-74,-226],fringe:-266,
+    desc:'Đầu vuông bo góc, mắt dọc cao. Bóng dáng lạ nhất, khác hẳn mọi kênh lịch sử hoạt hình đang có. Hơi kém mềm mại hơn hai kiểu kia.',scores:[4,5,5,3,4]}
+};
+const CRIT=['Dễ thương','Khác Historically','Dễ animate bằng code','Biểu cảm mạnh','Rõ trên điện thoại'];
+
+function human(sk,cos,ex,anim,extra){
+  const S=STYLES[sk], skin=extra?'#B97A52':S.skin, skinSh=extra?'#9A6240':S.skinSh;
+  const O=outfit(cos,skin), A={top:S.top,drop:26,w:S.w}, hid='hh'+(uid++), tid='ht'+(uid++), hand={x:62,y:-94};
+  const TORSO='M-44,-62 Q-50,-110 -38,-152 Q2,-162 42,-152 Q52,-110 48,-62 Q2,-54 -44,-62 Z';
+  const limb=(d,c,w)=>`<path d="${d}" fill="none" stroke="${OL}" stroke-width="${w+10}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  let s=`<ellipse cx="6" cy="4" rx="80" ry="10" fill="#000" opacity=".12"/><defs><clipPath id="${hid}"><path d="${S.head}"/></clipPath><clipPath id="${tid}"><path d="${TORSO}"/></clipPath></defs>`;
+  s+=`<g class="${anim?'bob':''}">`;
+  s+=O.behind||'';
+  s+=limb('M-32,-140 L-50,-112 L-52,-84',O.shirt,22)+`<circle cx="-52" cy="-80" r="12" fill="${skinSh}" stroke="${OL}" stroke-width="5"/>`;
+  s+=limb('M-14,-70 L-18,-14',O.pants,26)+limb('M18,-70 L22,-14',O.pants,26);
+  s+=`<ellipse cx="-12" cy="-8" rx="20" ry="11" fill="${O.shoe}" stroke="${OL}" stroke-width="5"/><ellipse cx="32" cy="-8" rx="22" ry="12" fill="${O.shoe}" stroke="${OL}" stroke-width="5"/>`;
+  s+=`<path d="${TORSO}" fill="${O.shirt}"/><g clip-path="url(#${tid})">${O.detail}<rect x="-60" y="-170" width="30" height="120" fill="#000" opacity=".12"/></g><path d="${TORSO}" fill="none" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/>`;
+  s+=limb('M34,-140 L56,-120 L62,-98',O.shirt,22);
+  s+=O.after||'';
+  // head
+  s+=`<ellipse cx="${S.ear[0]}" cy="${S.ear[1]}" rx="13" ry="17" fill="${skin}" stroke="${OL}" stroke-width="5"/>`;
+  s+=`<path d="${S.head}" fill="${skinSh}"/><g clip-path="url(#${hid})"><path d="${S.head}" transform="translate(10,-10)" fill="${skin}"/>`;
+  const f=S.fringe;
+  if(!extra)s+=`<path d="M-140,${f} Q-100,${f+18} -66,${f+2} Q-36,${f+22} -4,${f+4} Q26,${f+20} 52,${f} Q78,${f+16} 140,${f-6} L140,-420 L-140,-420 Z" fill="${C.hair}"/><path d="M-60,${f-22} Q-20,${f-36} 30,${f-30}" stroke="#6A4A38" stroke-width="7" fill="none" stroke-linecap="round"/>`;
+  else s+=`<path d="M-140,-196 Q-60,-182 -30,-170 Q6,-150 44,-170 Q80,-184 140,-196 L140,-100 L-140,-100 Z" fill="#D9D4CC"/>`;
+  s+=`</g><path d="${S.head}" fill="none" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/>`;
+  if(extra)s+=`<path d="M-30,-170 Q6,-150 44,-170" stroke="${OL}" stroke-width="4" fill="none"/><path d="M-6,-188 Q12,-200 30,-188 Q12,-180 -6,-188 Z" fill="#D9D4CC" stroke="${OL}" stroke-width="4"/>`;
+  s+=S.B.map(([x,y])=>`<ellipse cx="${x}" cy="${y}" rx="13" ry="7" fill="${C.blush}" opacity=".55"/>`).join('');
+  s+=`<g class="eyes">${S.E.map(([cx,cy,rx,ry])=>eye(cx,cy,rx,ry,{style:S.eye,expr:ex})).join('')}</g>${brows(S.E,ex,S.browsAlways)}`;
+  if(S.nose)s+=`<path d="M58,-198 q8,4 2,10" stroke="${OL}" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
+  s+=mouth(S.m[0],S.m[1],ex);
+  s+=hat(cos,A);
+  if(!extra){const ty=hatTop(cos,A)+6,x=S.top.x+6;
+    s+=`<g class="${anim?'ahoge':''}"><path d="M${x},${ty} Q${x-8},${ty-30} ${x+14},${ty-40} Q${x+32},${ty-44} ${x+26},${ty-26}" fill="none" stroke="${OL}" stroke-width="13" stroke-linecap="round"/><path d="M${x},${ty} Q${x-8},${ty-30} ${x+14},${ty-40} Q${x+32},${ty-44} ${x+26},${ty-26}" fill="none" stroke="${C.hair}" stroke-width="6" stroke-linecap="round"/></g>`}
+  s+=`</g>`+prop(cos,hand)+`<circle cx="${hand.x}" cy="${hand.y}" r="12.5" fill="${skin}" stroke="${OL}" stroke-width="5"/>`;
+  return s;
+}
+
+const VB='-150 -440 320 460';
+const COS=[['soldier','Lính 1916'],['roman','La Mã'],['king','Vua'],['officer','Sĩ quan']];
+document.getElementById('cards').innerHTML=Object.entries(STYLES).map(([k,S])=>`<article class="card${S.rec?' rec':''}" aria-label="${S.name}">
+  ${S.rec?'<span class="badge">ĐỀ XUẤT</span>':''}
+  <div class="hero"><svg viewBox="${VB}" preserveAspectRatio="xMidYMax meet" role="img" aria-label="Nhân vật chính, kiểu ${S.name}"><g id="hero-${k}"></g></svg></div>
+  <div class="name"><h3>${S.name}</h3><span>${S.kind}</span></div>
+  <p class="desc">${S.desc}</p>
+  <div class="thumbs">${COS.map(([c,l])=>`<div class="thumb"><svg viewBox="${VB}" preserveAspectRatio="xMidYMax meet" aria-hidden="true">${human(k,c,'neutral',false,false)}</svg><small>${l}</small></div>`).join('')}
+    <div class="thumb"><svg viewBox="${VB}" preserveAspectRatio="xMidYMax meet" aria-hidden="true">${human(k,'king','smug',false,true)}</svg><small>Vai phụ, cùng khuôn</small></div>
+    <div class="thumb"><svg viewBox="${VB}" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><g class="sil">${human(k,'none','neutral',false,false)}</g></svg><small>Bóng đen</small></div></div>
+  <ul class="scores">${CRIT.map((c,i)=>`<li><span>${c}</span><span class="dots" aria-label="${S.scores[i]} trên 5">${[1,2,3,4,5].map(n=>`<i class="${n<=S.scores[i]?'on':''}"></i>`).join('')}</span></li>`).join('')}</ul>
+</article>`).join('');
+
+const st={cos:'none',ex:'auto',autoEx:'neutral'}, AUTO=['neutral','happy','shocked','smug'];
+function draw(){const ex=st.ex==='auto'?st.autoEx:st.ex;Object.keys(STYLES).forEach(k=>{document.getElementById('hero-'+k).innerHTML=human(k,st.cos,ex,true,false)})}
+function bind(id,key){const box=document.getElementById(id);box.addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;st[key]=b.dataset[key];
+  box.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',x===b));draw()})}
+bind('cosChips','cos');bind('exChips','ex');draw();
+let ai=0;if(!matchMedia('(prefers-reduced-motion: reduce)').matches)setInterval(()=>{if(st.ex!=='auto')return;ai=(ai+1)%AUTO.length;st.autoEx=AUTO[ai];draw()},2000);
+})();
+</script>

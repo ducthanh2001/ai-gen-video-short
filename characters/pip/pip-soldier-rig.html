@@ -1,0 +1,503 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pip Soldier Rig</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: 9:16 stage on the left like a Shorts frame, control rail on the right; stacks on phones */
+:root{
+  --bg:#E8EBE3; --panel:#F6F7F2; --fg:#1D221E; --muted:#5A645B; --line:#CBD2C5;
+  --accent:#2F6B4F; --accent-fg:#F2F7F3; --brass:#D9A22A; --brass-fg:#2A1E05; --chip:#E1E6DC;
+  --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141815; --panel:#1C221E; --fg:#E5EAE3; --muted:#97A398; --line:#334036;
+  --accent:#5FB487; --accent-fg:#0E1A13; --brass:#E6B03C; --brass-fg:#231804; --chip:#27302A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141815; --panel:#1C221E; --fg:#E5EAE3; --muted:#97A398; --line:#334036;
+  --accent:#5FB487; --accent-fg:#0E1A13; --brass:#E6B03C; --brass-fg:#231804; --chip:#27302A; color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+body{font:15px/1.55 var(--body)}
+.wrap{display:grid;grid-template-columns:auto minmax(280px,400px);gap:32px;max-width:1120px;margin:0 auto;
+  padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));align-items:start;justify-content:center}
+.stage-box{height:min(86vh,900px);aspect-ratio:9/16;max-width:100%;border-radius:16px;overflow:hidden;background:#C9D2CC;box-shadow:0 1px 0 var(--line),0 12px 40px -18px rgba(0,0,0,.35);position:relative}
+.stage-box svg{display:block;width:100%;height:100%}
+.panel{display:flex;flex-direction:column;gap:22px;min-width:0}
+h1{font:800 34px/1.05 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.lede{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec h2{font:600 12px/1 var(--body);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:600 14px/1 var(--body);padding:10px 13px;border:1.5px solid var(--line);background:var(--panel);color:var(--fg);border-radius:10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.fire{background:var(--brass);color:var(--brass-fg);border-color:var(--brass)}
+.btn.demo{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn.demo[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+kbd{font:500 11px/1 var(--mono);padding:3px 5px;border-radius:5px;background:var(--chip);color:var(--muted)}
+.btn[aria-pressed="true"] kbd,.btn.fire kbd,.btn.demo kbd{background:rgba(0,0,0,.14);color:inherit}
+.slider{display:flex;align-items:center;gap:12px}
+.slider input{flex:1;accent-color:var(--accent)}
+.slider output{font:500 13px var(--mono);min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+.notes{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;border-top:1.5px solid var(--line);padding-top:16px}
+.notes li{display:grid;grid-template-columns:92px 1fr;gap:12px;font-size:14px;color:var(--muted)}
+.notes b{color:var(--fg);font-weight:600}
+.foot{font-size:13px;color:var(--muted);margin:0}
+@media (max-width:780px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:22px}
+  .stage-box{height:auto;width:100%}
+  .notes li{grid-template-columns:1fr;gap:2px}
+}
+.cap{font-family:"Baloo 2","Trebuchet MS",sans-serif;font-weight:800}
+</style>
+
+<div class="wrap" lang="vi">
+  <div class="stage-box"><svg id="stage" viewBox="0 0 1080 1920" role="img" aria-label="Nhân vật Pip, lính bộ binh hoạt hình, đi bộ cầm súng, ngắm và bắn"></svg></div>
+
+  <div class="panel">
+    <div>
+      <h1>Pip, lính bộ binh</h1>
+      <p class="lede">Nhân vật gốc, vẽ và chuyển động 100% bằng code (SVG + JavaScript): không ảnh, không AI vẽ, không vẽ từng khung. Đang chạy cảnh demo 12 giây. Bấm nút bất kỳ để tự điều khiển.</p>
+    </div>
+
+    <div class="sec">
+      <h2>Cảnh demo</h2>
+      <div class="row"><button class="btn demo" id="demoBtn" aria-pressed="true">Phát cảnh demo <kbd>D</kbd></button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Hành động</h2>
+      <div class="row">
+        <button class="btn" data-mode="idle" aria-pressed="false">Đứng <kbd>I</kbd></button>
+        <button class="btn" data-mode="walk" aria-pressed="false">Đi bộ <kbd>W</kbd></button>
+        <button class="btn" data-mode="run" aria-pressed="false">Chạy <kbd>R</kbd></button>
+        <button class="btn" data-mode="aim" aria-pressed="false">Ngắm <kbd>A</kbd></button>
+        <button class="btn fire" id="fireBtn">Bắn <kbd>Space</kbd></button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Biểu cảm</h2>
+      <div class="row">
+        <button class="btn" data-expr="neutral" aria-pressed="false">Bình thường <kbd>1</kbd></button>
+        <button class="btn" data-expr="determined" aria-pressed="false">Quyết tâm <kbd>2</kbd></button>
+        <button class="btn" data-expr="scared" aria-pressed="false">Sợ hãi <kbd>3</kbd></button>
+        <button class="btn" data-expr="smug" aria-pressed="false">Đắc ý <kbd>4</kbd></button>
+        <button class="btn" id="talkBtn" aria-pressed="false">Nhép miệng <kbd>T</kbd></button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Soi kỹ</h2>
+      <div class="row">
+        <button class="btn" id="rigBtn" aria-pressed="false">Hiện khung xương <kbd>G</kbd></button>
+        <button class="btn" id="soundBtn" aria-pressed="false">Âm thanh</button>
+      </div>
+      <label class="slider" for="speed">Tốc độ
+        <input type="range" id="speed" min="0.1" max="1.5" step="0.05" value="1">
+        <output id="speedOut">1.00×</output>
+      </label>
+    </div>
+
+    <ul class="notes">
+      <li><b>IK 2 khớp</b><span>Hai bàn tay luôn bám đúng báng và ốp lót súng ở mọi tư thế. Bàn chân bám đất, không trượt khi đi.</span></li>
+      <li><b>Chu kỳ bước</b><span>Đi và chạy tính theo pha, không vẽ tay từng khung. Đổi độ dài bước hay tốc độ là đổi một con số.</span></li>
+      <li><b>Chuyển tư thế</b><span>Mỗi thông số (góc súng, độ nghiêng người, lông mày…) trượt mượt về giá trị mới, nên chuyển đứng → ngắm không bị giật.</span></li>
+      <li><b>Lò xo phụ</b><span>Mũ trễ theo đầu, bi đông lắc, súng giật khi bắn, vỏ đạn văng nảy đất, khói súng, rung khung hình.</span></li>
+      <li><b>Ra video</b><span>Chạy theo thời gian cố định từng khung, chụp PNG rồi ghép bằng ffmpeg, cùng cách pipeline 2D Studio đang làm.</span></li>
+    </ul>
+    <p class="foot">Kéo tốc độ xuống 0.25× và bật khung xương để soi IK và lò xo.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+const D2R=Math.PI/180, OL='#231F1C', S=1.55, GROUND=1480, ANKLE_H=21, HIP_H=192;
+const C={skin:'#F4CFA2',skinSh:'#E3B184',tunic:'#8B8752',tunicSh:'#737040',trousers:'#7A763F',trousersB:'#615E33',
+  puttee:'#A39869',putteeB:'#857C54',boot:'#4A3020',helmet:'#5F6B3C',helmetHi:'#82905A',wood:'#94592E',woodHi:'#B5793F',
+  metal:'#3A3F45',belt:'#5A3B22',brass:'#C9A13B',pack:'#6E6A3A',roll:'#8D7A55',canteen:'#5E6E4C',blush:'#EE8B80'};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const approach=(c,t,k,dt)=>c+(t-c)*(1-Math.exp(-k*dt));
+const svg=document.getElementById('stage');
+
+/* ---------- scene ---------- */
+function cloud(x,y,s){return `<g opacity=".85" fill="#F2F3EE"><ellipse cx="${x}" cy="${y}" rx="${90*s}" ry="${34*s}"/><ellipse cx="${x-60*s}" cy="${y+8*s}" rx="${56*s}" ry="${26*s}"/><ellipse cx="${x+50*s}" cy="${y-18*s}" rx="${60*s}" ry="${36*s}"/></g>`}
+function tile(inner){return `<g>${inner}</g><g transform="translate(1080,0)">${inner}</g>`}
+const farT=`<path d="M0,1330 C160,1270 300,1300 450,1262 C620,1222 800,1300 1080,1330 L1080,1480 L0,1480 Z" fill="#A8B2A1"/>
+ <path d="M300,1290 L305,1150 M303,1205 L332,1172 M304,1182 L284,1150 M760,1300 L763,1205 M762,1240 L785,1222" stroke="#77806F" stroke-width="7" stroke-linecap="round" fill="none"/>`;
+const nearT=`<path d="M0,1402 C200,1352 380,1392 560,1362 C760,1332 900,1380 1080,1402 L1080,1480 L0,1480 Z" fill="#8D9B7B"/>`;
+let midT='';
+[80,440,800].forEach(x=>{
+  midT+=`<path d="M${x},${1380} Q${x+180},${1412} ${x+360},${1380} M${x},${1420} Q${x+180},${1446} ${x+360},${1420}" stroke="#3B3632" stroke-width="3" fill="none"/>`;
+  for(let i=1;i<6;i++){const bx=x+i*60, by1=1380+32*Math.sin(Math.PI*i/6)*0.98, by2=1420+26*Math.sin(Math.PI*i/6);
+    midT+=`<path d="M${bx-5},${by1-5} l10,10 m0,-10 l-10,10 M${bx-5},${by2-5} l10,10 m0,-10 l-10,10" stroke="#3B3632" stroke-width="2.5"/>`}
+  midT+=`<path d="M${x},1472 L${x+4},1358" stroke="#4A3828" stroke-width="11" stroke-linecap="round"/>`;
+});
+[[610,1462],[676,1462],[742,1462],[643,1434],[709,1434],[676,1406]].forEach(([x,y])=>{
+  midT+=`<ellipse cx="${x}" cy="${y}" rx="35" ry="17" fill="#B9A27A" stroke="${OL}" stroke-width="4"/><path d="M${x-14},${y-4} q14,6 28,0" stroke="#977F57" stroke-width="3" fill="none"/>`});
+let gp='M0,1478', ge='M0,1478';
+for(let x=60;x<=1080;x+=60){const y=(x/60)%2?1470:1480; gp+=` Q${x-30},${y-8} ${x},1478`; ge+=` Q${x-30},${y-8} ${x},1478`}
+const groundT=`<path d="${gp} L1080,1498 L0,1498 Z" fill="#7A8441"/><path d="${ge}" stroke="${OL}" stroke-width="4" fill="none"/>
+ <ellipse cx="200" cy="1560" rx="90" ry="13" fill="#5C4431"/><ellipse cx="760" cy="1640" rx="120" ry="15" fill="#5C4431"/><ellipse cx="480" cy="1850" rx="140" ry="17" fill="#5C4431"/>
+ <ellipse cx="900" cy="1530" rx="14" ry="8" fill="#8A7560" stroke="${OL}" stroke-width="3"/><ellipse cx="380" cy="1600" rx="10" ry="6" fill="#8A7560" stroke="${OL}" stroke-width="3"/>`;
+function tuft(x,y,s){return `<path d="M${x},${y} l${-9*s},${-28*s} l${11*s},${15*s} l${4*s},${-32*s} l${6*s},${30*s} l${11*s},${-22*s} l${-4*s},${37*s} Z" fill="#6B7638" stroke="${OL}" stroke-width="3.5" stroke-linejoin="round"/>`}
+const fgT=tuft(90,1620,1.4)+tuft(980,1600,1.2)+tuft(130,1890,1.8)+tuft(940,1880,1.6)+tuft(600,1560,1);
+
+/* ---------- character parts ---------- */
+const BOOT='M-20,-10 L14,-10 Q20,-2 30,2 Q44,6 44,14 L44,20 L-21,20 Q-23,4 -20,-10 Z';
+function legHTML(s){const tr=s==='B'?C.trousersB:C.trousers, pu=s==='B'?C.putteeB:C.puttee;
+  return `<g id="leg${s}"><path id="leg${s}o" fill="none" stroke="${OL}" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <path id="leg${s}f" fill="none" stroke="${tr}" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <path id="put${s}o" fill="none" stroke="${OL}" stroke-width="40" stroke-linecap="round"/>
+  <path id="put${s}f" fill="none" stroke="${pu}" stroke-width="30" stroke-linecap="round"/>
+  <g id="boot${s}"><path d="${BOOT}" fill="${C.boot}" stroke="${OL}" stroke-width="5" stroke-linejoin="round"/><path d="M-21,14 L44,14" stroke="#2B1B12" stroke-width="6"/></g></g>`}
+function armHTML(s){const sl=s==='B'?C.tunicSh:C.tunic, sk=s==='B'?C.skinSh:C.skin;
+  return `<g id="arm${s}"><path id="arm${s}o" fill="none" stroke="${OL}" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  <path id="arm${s}f" fill="none" stroke="${sl}" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle id="hand${s}" r="13.5" fill="${sk}" stroke="${OL}" stroke-width="5"/></g>`}
+function star(n,r1,r2,sx){let p=[];for(let i=0;i<n*2;i++){const a=i*Math.PI/n, r=i%2?r2:r1;p.push((Math.cos(a)*r*sx).toFixed(1)+','+(Math.sin(a)*r).toFixed(1))}return p.join(' ')}
+const TUNIC='M-48,16 Q-54,-60 -44,-136 Q0,-150 46,-134 Q58,-60 52,16 Q2,24 -48,16 Z';
+const RIFLE=`<g id="rifle">
+  <path d="M-62,10 Q30,44 120,6" fill="none" stroke="#5B3A22" stroke-width="3.5"/>
+  <path d="M-76,-13 Q-40,-11 -6,-8 L150,-7 L150,3 L24,4 Q12,6 7,15 L-5,15 Q-7,8 -14,6 L-76,16 Z" fill="${C.wood}" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M-70,-6 Q-40,-5 -8,-3 M40,-2 L140,-2" stroke="${C.woodHi}" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M-76,-13 L-76,16" stroke="${OL}" stroke-width="7"/>
+  <path d="M18,-14 L180,-13 L180,-6 L18,-6 Z" fill="${C.metal}" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M118,-15 L118,4 M60,-15 L60,4" stroke="${OL}" stroke-width="5"/>
+  <path d="M172,-13 L172,-20 L177,-20 L177,-13" fill="${C.metal}" stroke="${OL}" stroke-width="3"/>
+  <path d="M-8,-17 L26,-17 L26,-6 L-8,-6 Z" fill="${C.metal}" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M10,-11 L4,2" stroke="${OL}" stroke-width="4"/><circle cx="4" cy="3" r="4.5" fill="${C.metal}" stroke="${OL}" stroke-width="3"/>
+  <path d="M-2,4 Q4,15 13,4" fill="none" stroke="${OL}" stroke-width="3.5"/>
+  <g id="flash" transform="translate(186,-9)" opacity="0"><polygon points="${star(7,48,15,1.5)}" fill="#FFD866" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/><polygon points="${star(7,24,9,1.4)}" fill="#FFF8DA"/></g>
+</g>`;
+const HEAD=`<g id="head">
+  <ellipse cx="-52" cy="-70" rx="13" ry="17" fill="${C.skin}" stroke="${OL}" stroke-width="5"/><path d="M-54,-76 q6,6 0,12" stroke="${C.skinSh}" stroke-width="4" fill="none"/>
+  <ellipse cx="8" cy="-78" rx="84" ry="78" fill="${C.skinSh}"/>
+  <ellipse cx="17" cy="-87" rx="84" ry="78" fill="${C.skin}" clip-path="url(#headClip)"/>
+  <ellipse cx="8" cy="-78" rx="84" ry="78" fill="none" stroke="${OL}" stroke-width="5"/>
+  <ellipse cx="12" cy="-44" rx="13" ry="7" fill="${C.blush}" opacity=".55"/><ellipse cx="76" cy="-42" rx="9" ry="6" fill="${C.blush}" opacity=".55"/>
+  <g id="eyeN"><ellipse cx="26" cy="-68" rx="16" ry="20" fill="#fff" stroke="${OL}" stroke-width="4.5"/><circle id="pupN" cx="30" cy="-66" r="9" fill="${OL}"/><circle id="hiN" r="3.2" fill="#fff"/></g>
+  <g id="eyeF"><ellipse cx="64" cy="-66" rx="13" ry="18" fill="#fff" stroke="${OL}" stroke-width="4.5"/><circle id="pupF" cx="67" cy="-64" r="8" fill="${OL}"/><circle id="hiF" r="2.8" fill="#fff"/></g>
+  <path id="eyeNc" d="M11,-66 Q26,-58 41,-66" stroke="${OL}" stroke-width="5" fill="none" stroke-linecap="round" opacity="0"/>
+  <path id="eyeFc" d="M52,-64 Q64,-57 76,-64" stroke="${OL}" stroke-width="5" fill="none" stroke-linecap="round" opacity="0"/>
+  <path id="browN" d="M12,-96 L38,-98" stroke="${OL}" stroke-width="7" stroke-linecap="round"/>
+  <path id="browF" d="M54,-95 L74,-93" stroke="${OL}" stroke-width="7" stroke-linecap="round"/>
+  <path d="M84,-58 Q94,-52 85,-46" stroke="${OL}" stroke-width="4.5" fill="${C.skin}" stroke-linecap="round"/>
+  <path id="mouth" stroke-linecap="round" stroke-linejoin="round"/>
+  <path id="mouth2" fill="none" stroke-linecap="round"/>
+  <path id="sweat" d="M104,-104 Q113,-88 104,-82 Q95,-88 104,-104 Z" fill="#9AD8F2" stroke="${OL}" stroke-width="3.5" opacity="0"/>
+  <path d="M-58,-114 Q-52,-30 6,-3" stroke="#4A3424" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+  <g id="helmet">
+    <path d="M-66,-118 Q-62,-188 10,-190 Q82,-188 86,-118 Z" fill="${C.helmet}" stroke="${OL}" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-34,-158 Q-4,-178 36,-174" stroke="${C.helmetHi}" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <ellipse cx="10" cy="-118" rx="106" ry="15" fill="${C.helmet}" stroke="${OL}" stroke-width="5"/>
+    <path d="M-80,-122 Q10,-132 100,-122" stroke="${C.helmetHi}" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+</g>`;
+const TORSO=`<g id="torso">
+  ${armHTML('B')}
+  <rect x="-86" y="-152" width="54" height="25" rx="12.5" fill="${C.roll}" stroke="${OL}" stroke-width="4.5"/>
+  <path d="M-82,-128 L-40,-130 L-36,-44 L-78,-40 Q-88,-82 -82,-128 Z" fill="${C.pack}" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M-82,-128 L-40,-130 L-40,-104 Q-62,-96 -82,-104 Z" fill="${C.tunicSh}" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/>
+  <g id="canteen"><path d="M-44,-14 L-50,4" stroke="#5B3A22" stroke-width="4"/><ellipse cx="-51" cy="18" rx="14" ry="17" fill="${C.canteen}" stroke="${OL}" stroke-width="4.5"/><rect x="-56" y="-2" width="10" height="7" rx="2" fill="${C.metal}" stroke="${OL}" stroke-width="3"/></g>
+  <path d="${TUNIC}" fill="${C.tunic}"/>
+  <rect x="-60" y="-160" width="36" height="190" fill="#000" opacity=".13" clip-path="url(#tunicClip)"/>
+  <path d="${TUNIC}" fill="none" stroke="${OL}" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M14,-118 L40,-120 L41,-100 L15,-98 Z" fill="${C.tunicSh}" stroke="${OL}" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M-22,-140 Q6,-128 34,-138 L30,-126 Q6,-116 -18,-128 Z" fill="${C.tunicSh}" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="38" cy="-86" r="3.4" fill="${C.brass}" stroke="${OL}" stroke-width="2"/><circle cx="39" cy="-62" r="3.4" fill="${C.brass}" stroke="${OL}" stroke-width="2"/>
+  <path d="M-51,-21 L54,-21 L55,-5 L-51,-4 Z" fill="${C.belt}" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/>
+  <rect x="-13" y="-31" width="20" height="23" rx="4" fill="${C.pack}" stroke="${OL}" stroke-width="4"/>
+  <rect x="11" y="-31" width="20" height="23" rx="4" fill="${C.pack}" stroke="${OL}" stroke-width="4"/>
+  <rect x="36" y="-22" width="12" height="17" rx="2" fill="${C.brass}" stroke="${OL}" stroke-width="3"/>
+  ${RIFLE}
+  ${armHTML('F')}
+  ${HEAD}
+</g>`;
+
+svg.innerHTML=`<defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8EA6B4"/><stop offset=".72" stop-color="#D6D4C5"/></linearGradient>
+  <clipPath id="headClip"><ellipse cx="8" cy="-78" rx="84" ry="78"/></clipPath>
+  <clipPath id="tunicClip"><path d="${TUNIC}"/></clipPath>
+</defs>
+<g id="shake">
+  <rect width="1080" height="1500" fill="url(#sky)"/>
+  <g id="clouds">${tile(cloud(220,420,1.2)+cloud(760,620,.9)+cloud(980,300,.7))}</g>
+  <g id="lFar">${tile(farT)}</g>
+  <g id="lNear">${tile(nearT)}</g>
+  <g id="lMid">${tile(midT)}</g>
+  <rect y="1478" width="1080" height="442" fill="#6E5238"/>
+  <g id="lGround">${tile(groundT)}</g>
+  <ellipse id="shadow" cy="${GROUND+2}" rx="90" ry="12" fill="#000" opacity=".22"/>
+  <g id="char">${legHTML('B')}${legHTML('F')}${TORSO}</g>
+  <g id="rigG" opacity="0"></g>
+  <g id="fx"></g>
+  <g id="lFg">${tile(fgT)}</g>
+</g>
+<g id="tag" transform="translate(96,210) rotate(-3)" opacity="0">
+  <rect width="372" height="96" rx="8" fill="#EFE6CF" stroke="${OL}" stroke-width="5"/>
+  <text x="186" y="66" text-anchor="middle" class="cap" font-size="54" fill="${OL}">SOMME · 1916</text>
+</g>
+<text id="cap" class="cap" text-anchor="middle" font-size="96" fill="#fff" stroke="${OL}" stroke-width="16" stroke-linejoin="round" paint-order="stroke" transform="translate(540,1730)"></text>`;
+
+const $=id=>document.getElementById(id);
+const el={};
+['char','shadow','torso','rifle','flash','head','helmet','canteen','eyeN','eyeF','eyeNc','eyeFc','pupN','pupF','hiN','hiF','browN','browF','mouth','mouth2','sweat',
+ 'legBo','legBf','putBo','putBf','bootB','legFo','legFf','putFo','putFf','bootF','armBo','armBf','handB','armFo','armFf','handF',
+ 'clouds','lFar','lNear','lMid','lGround','lFg','shake','fx','rigG','tag','cap'].forEach(k=>el[k]=$(k));
+
+/* rig overlay */
+const NSV='http://www.w3.org/2000/svg';
+function mk(tag,attrs,parent){const e=document.createElementNS(NSV,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);(parent||el.rigG).appendChild(e);return e}
+const rigLines={}, rigDots=[], rigTargets=[];
+['legB','legF','armB','armF','spine'].forEach(k=>rigLines[k]=mk('polyline',{fill:'none',stroke:'#16D6EA','stroke-width':4,'stroke-linejoin':'round'}));
+for(let i=0;i<12;i++)rigDots.push(mk('circle',{r:6,fill:'#fff',stroke:'#16D6EA','stroke-width':3}));
+for(let i=0;i<4;i++)rigTargets.push(mk('path',{d:'M-11,0 L0,-11 L11,0 L0,11 Z',fill:'none',stroke:'#FF4FA3','stroke-width':3.5}));
+
+/* ---------- state ---------- */
+const MODES={
+  idle:{stride:0,lift:0,bob:0,cycle:1,spread:30,crouch:0,ra:-38,rx:24,ry:-58,lean:2,headA:0},
+  walk:{stride:96,lift:30,bob:6,cycle:.9,spread:0,crouch:2,ra:-30,rx:28,ry:-62,lean:5,headA:-2},
+  run:{stride:176,lift:54,bob:11,cycle:.56,spread:0,crouch:14,ra:-54,rx:26,ry:-76,lean:13,headA:-5},
+  aim:{stride:0,lift:0,bob:0,cycle:1,spread:52,crouch:8,ra:0,rx:30,ry:-108,lean:5,headA:5}
+};
+const EXPR={
+  neutral:{browN:0,browF:0,browY:0,eyeOpen:1,pupil:1,lookX:.5,sweat:0,mouth:'neutral'},
+  determined:{browN:16,browF:-16,browY:3,eyeOpen:.72,pupil:1,lookX:.8,sweat:0,mouth:'grit'},
+  scared:{browN:-18,browF:18,browY:-4,eyeOpen:1.16,pupil:.5,lookX:-.7,sweat:1,mouth:'scared'},
+  smug:{browN:-4,browF:-14,browY:-2,eyeOpen:.55,pupil:1,lookX:.9,sweat:0,mouth:'smirk'}
+};
+const MOUTH={
+  neutral:{d:'M42,-36 Q52,-31 62,-36',fill:'none',stroke:OL,sw:5,d2:''},
+  smirk:{d:'M40,-36 Q54,-30 67,-43',fill:'none',stroke:OL,sw:5,d2:''},
+  grit:{d:'M37,-43 L67,-43 Q67,-28 52,-28 Q37,-28 37,-43 Z',fill:'#fff',stroke:OL,sw:4.5,d2:'M38,-36 L66,-36'},
+  scared:{d:'M37,-34 Q42,-41 47,-34 Q52,-27 57,-34 Q62,-41 67,-34',fill:'none',stroke:OL,sw:4.5,d2:''},
+  open:{d:'M41,-42 Q52,-45 63,-42 Q63,-24 52,-24 Q41,-24 41,-42 Z',fill:'#6A2730',stroke:OL,sw:4.5,d2:'M46,-28 Q52,-33 58,-28'}
+};
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const state={mode:'idle',expr:'neutral',talk:false,rig:false,sound:false,speed:1,demo:!reduce,
+  x:540,phase:0,walkTarget:null,lookOverride:null,recoil:0,flash:0,flashRot:0,flashSc:1,shake:0,pendingFire:-1,cool:0,
+  blinkIn:2.2,blinkT:-1,talkT:0,mouthOpen:false,capPop:0};
+const P=Object.assign({},MODES.idle,EXPR.neutral); delete P.mouth;
+let camX=0,T=0,demoT=0,demoIdx=0,particles=[];
+const spr={head:{x:0,v:0},helm:{x:0,v:0},can:{x:0,v:0}};
+let prevBob=0,prevHeadA=0,prevQF=0,prevQB=.5;
+const rig={};
+
+/* ---------- audio ---------- */
+let actx=null;
+function audio(){if(!state.sound)return null;try{if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();}catch(e){return null}return actx}
+function shotSound(){const a=audio();if(!a)return;const t0=a.currentTime,len=.5;
+  const buf=a.createBuffer(1,Math.floor(a.sampleRate*len),a.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);
+  const src=a.createBufferSource();src.buffer=buf;const lp=a.createBiquadFilter();lp.type='lowpass';
+  lp.frequency.setValueAtTime(5200,t0);lp.frequency.exponentialRampToValueAtTime(380,t0+.3);
+  const g=a.createGain();g.gain.setValueAtTime(.8,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.45);
+  src.connect(lp).connect(g).connect(a.destination);src.start(t0);
+  const o=a.createOscillator();o.frequency.setValueAtTime(150,t0);o.frequency.exponentialRampToValueAtTime(40,t0+.18);
+  const g2=a.createGain();g2.gain.setValueAtTime(.7,t0);g2.gain.exponentialRampToValueAtTime(.001,t0+.22);
+  o.connect(g2).connect(a.destination);o.start(t0);o.stop(t0+.25)}
+function tink(){const a=audio();if(!a)return;const t0=a.currentTime,o=a.createOscillator(),g=a.createGain();
+  o.frequency.value=3600+Math.random()*600;g.gain.setValueAtTime(.08,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.09);
+  o.connect(g).connect(a.destination);o.start(t0);o.stop(t0+.1)}
+
+/* ---------- actions ---------- */
+function setMode(m){state.mode=m;syncUI()}
+function setExpr(e){state.expr=e;syncUI()}
+function cap(t){el.cap.textContent=t;state.capPop=1}
+function fire(){if(state.mode!=='aim'){setMode('aim');state.pendingFire=.34;return}if(state.cool<=0)shot()}
+function shot(){state.recoil=1;state.flash=.075;state.flashRot=Math.random()*40-20;state.flashSc=.85+Math.random()*.35;state.shake=1;state.cool=.2;
+  const m=rifleWorld(184,-9), e=rifleWorld(8,-14);
+  for(let i=0;i<3;i++)spawn('smoke',m.x+i*14,m.y-i*6,60+Math.random()*80,-30-Math.random()*50,.9+i*.15);
+  spawn('casing',e.x,e.y,-160-Math.random()*90,-560-Math.random()*120,1.7);
+  spr.helm.v+=-90;shotSound()}
+function spawn(type,x,y,vx,vy,life){let e;
+  if(type==='casing'){e=document.createElementNS(NSV,'g');e.innerHTML=`<rect x="-9" y="-4" width="18" height="8" rx="2.5" fill="${C.brass}" stroke="${OL}" stroke-width="3"/>`}
+  else if(type==='smoke'){e=document.createElementNS(NSV,'circle');e.setAttribute('fill','#EEECE4');e.setAttribute('stroke','#8F8D85');e.setAttribute('stroke-width','4')}
+  else{e=document.createElementNS(NSV,'circle');e.setAttribute('fill','#A88C6B');e.setAttribute('stroke',OL);e.setAttribute('stroke-width','3')}
+  el.fx.appendChild(e);particles.push({type,e,x,y,vx,vy,life,max:life,rot:0,vr:(Math.random()*2-1)*900,b:0})}
+
+/* ---------- demo ---------- */
+const DEMO=[
+  [0,()=>{state.x=-260;camX=0;particles.forEach(p=>p.e.remove());particles=[];setMode('walk');setExpr('neutral');state.talk=false;state.walkTarget=430;state.lookOverride=null;el.tag.setAttribute('opacity',1);cap('1916.')}],
+  [1.1,()=>cap('PRIVATE PIP')],
+  [2.0,()=>cap('WAS ON PATROL')],
+  [3.1,()=>{setExpr('scared');cap('WHEN HE HEARD')}],
+  [4.0,()=>{state.lookOverride=1;cap('SOMETHING.')}],
+  [5.0,()=>{state.lookOverride=null;setExpr('determined');setMode('aim');cap('SO HE DID')}],
+  [5.8,()=>{fire();cap('WHAT ANY')}],
+  [6.25,()=>fire()],
+  [6.7,()=>{fire();cap('SOLDIER WOULD.')}],
+  [7.9,()=>{setMode('idle');setExpr('smug');state.talk=true;syncUI();cap('IT WAS A CHICKEN.')}],
+  [9.6,()=>{state.talk=false;syncUI();cap('')}],
+  [9.9,()=>{setExpr('neutral');setMode('run');state.walkTarget=null}],
+  [11.8,()=>{demoT=0;demoIdx=0}]
+];
+function startDemo(){state.demo=true;demoT=0;demoIdx=0;syncUI()}
+function stopDemo(){if(!state.demo)return;state.demo=false;state.walkTarget=null;state.lookOverride=null;state.pendingFire=-1;cap('');el.tag.setAttribute('opacity',0);syncUI()}
+
+/* ---------- math ---------- */
+function ik(ax,ay,tx,ty,L1,L2,sign){let dx=tx-ax,dy=ty-ay,d=Math.hypot(dx,dy)||.001;const ux=dx/d,uy=dy/d;
+  d=clamp(d,Math.abs(L1-L2)+.5,L1+L2-.5);const a=Math.atan2(uy,ux);
+  const b=Math.acos(clamp((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1)),a1=a+sign*b;
+  return {j:{x:ax+L1*Math.cos(a1),y:ay+L1*Math.sin(a1)},e:{x:ax+ux*d,y:ay+uy*d}}}
+function footAt(q,stride,lift){q=((q%1)+1)%1;if(q<.5){const u=q/.5;return{x:stride/2-stride*u,y:0,a:0}}
+  const u=(q-.5)/.5,e=u*u*(3-2*u),s=Math.sin(Math.PI*u);return{x:-stride/2+stride*e,y:-lift*s,a:(26*(1-u)-16*u)*s*Math.min(1,lift/20)}}
+function rot(x,y,deg){const c=Math.cos(deg*D2R),s=Math.sin(deg*D2R);return{x:x*c-y*s,y:x*s+y*c}}
+function rifleToTorso(x,y){const r=rot(x,y,rig.ra);return{x:rig.rx+r.x,y:rig.ry+r.y}}
+function torsoToChar(p){const r=rot(p.x,p.y,rig.lean);return{x:rig.hx+r.x,y:rig.hy+r.y}}
+function charToStage(p){return{x:rig.sx+p.x*S,y:GROUND+p.y*S}}
+function rifleWorld(x,y){return charToStage(torsoToChar(rifleToTorso(x,y)))}
+const pts=a=>a.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+const path=a=>'M'+a.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join('L');
+
+/* ---------- update ---------- */
+function update(dt){
+  if(state.demo){demoT+=dt;while(demoIdx<DEMO.length&&demoT>=DEMO[demoIdx][0]){DEMO[demoIdx][1]();demoIdx++}}
+  const M=MODES[state.mode],E=EXPR[state.expr];
+  for(const k of ['stride','lift','bob','cycle','spread','crouch'])P[k]=approach(P[k],M[k],6,dt);
+  for(const k of ['ra','rx','ry','lean','headA'])P[k]=approach(P[k],M[k],9,dt);
+  for(const k of ['browN','browF','browY','eyeOpen','pupil','sweat'])P[k]=approach(P[k],E[k],14,dt);
+  P.lookX=approach(P.lookX,state.lookOverride!=null?state.lookOverride:E.lookX,10,dt);
+  state.phase+=dt/P.cycle;
+  state.x+=(2*P.stride/P.cycle)*S*dt;
+  if(state.walkTarget!=null&&state.mode==='walk'&&state.x>=state.walkTarget){setMode('idle');state.walkTarget=null}
+  state.recoil*=Math.exp(-dt*11);state.flash-=dt;state.shake*=Math.exp(-dt*9);state.capPop*=Math.exp(-dt*12);state.cool-=dt;
+  if(state.pendingFire>0){state.pendingFire-=dt;if(state.pendingFire<=0){state.pendingFire=-1;shot()}}
+  state.blinkIn-=dt;if(state.blinkIn<=0){state.blinkT=0;state.blinkIn=2+Math.random()*3}
+  if(state.blinkT>=0){state.blinkT+=dt;if(state.blinkT>.16)state.blinkT=-1}
+  if(state.talk){state.talkT-=dt;if(state.talkT<=0){state.mouthOpen=!state.mouthOpen;state.talkT=.06+Math.random()*.09}}else state.mouthOpen=false;
+  if(!state.demo)camX=approach(camX,state.x-540,3.5,dt);
+  // springs
+  const bob=P.bob*Math.cos(4*Math.PI*state.phase), bobV=(bob-prevBob)/Math.max(dt,1e-4);prevBob=bob;
+  const sp=(s,target,k,c)=>{s.v+=((target-s.x)*k-s.v*c)*dt;s.x+=s.v*dt};
+  sp(spr.head,-bob*.5,140,11);
+  spr.can.v+=-bobV*.9*dt*10;sp(spr.can,-P.lean*1.2,80,4);
+  const hA=P.headA+spr.head.x;sp(spr.helm,hA,170,9);
+  rig.bob=bob;
+  // dust on run footfalls
+  const qF=((state.phase%1)+1)%1,qB=((state.phase+.5)%1+1)%1;
+  if(P.stride>110){if(prevQF>.9&&qF<.1)dust(1);if(prevQB>.9&&qB<.1)dust(-1)}
+  prevQF=qF;prevQB=qB;
+  // particles
+  for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;
+    if(p.type==='casing'){p.vy+=2000*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.vr*dt;
+      if(p.y>GROUND+6&&p.vy>0){p.y=GROUND+6;p.vy*=-.32;p.vx*=.5;p.vr*=.4;if(p.b++<2)tink()}
+      p.e.setAttribute('transform',`translate(${(p.x-0).toFixed(1)},${p.y.toFixed(1)}) rotate(${p.rot.toFixed(0)})`);
+      p.e.setAttribute('opacity',clamp(p.life/.4,0,1).toFixed(2))}
+    else{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.exp(-dt*1.5);const u=1-p.life/p.max;
+      const r=(p.type==='smoke'?14+46*Math.sqrt(u):8+22*u);
+      p.e.setAttribute('cx',p.x.toFixed(1));p.e.setAttribute('cy',p.y.toFixed(1));p.e.setAttribute('r',r.toFixed(1));
+      p.e.setAttribute('opacity',(clamp(p.life/p.max,0,1)*(p.type==='smoke'?.85:.8)).toFixed(2))}
+    if(p.life<=0){p.e.remove();particles.splice(i,1)}}
+}
+function dust(side){const p=charToStage({x:side*8-P.stride*.4,y:0});for(let i=0;i<2;i++)spawn('dust',p.x+i*12,p.y-6,-120-Math.random()*80,-60-Math.random()*40,.5)}
+
+/* ---------- render ---------- */
+function render(){
+  const idleW=1-Math.min(1,P.stride/60), r=state.recoil;
+  const breathe=idleW*1.6*Math.sin(T*2.1);
+  rig.sx=state.x-camX;
+  rig.hx=0;rig.hy=-HIP_H+P.crouch+rig.bob+breathe;
+  rig.lean=P.lean+idleW*.6*Math.sin(T*2.1)-5*r+P.bob*.12*Math.cos(4*Math.PI*state.phase);
+  const sway=(P.bob/6)*2.5*Math.sin(4*Math.PI*state.phase-1);
+  rig.ra=P.ra+sway-10*r;rig.rx=P.rx-14*r;rig.ry=P.ry+.3*P.bob*Math.cos(4*Math.PI*state.phase-.9);
+  const charT=`translate(${rig.sx.toFixed(1)},${GROUND}) scale(${S})`;
+  el.char.setAttribute('transform',charT);el.rigG.setAttribute('transform',charT);
+  el.shadow.setAttribute('cx',rig.sx.toFixed(1));el.shadow.setAttribute('rx',(78+P.stride*.35+P.spread*.5).toFixed(1));
+  // legs
+  const legs={};
+  [['F',state.phase,6+P.spread/2],['B',state.phase+.5,-6-P.spread/2]].forEach(([s,q,off])=>{
+    const f=footAt(q,P.stride,P.lift), hip={x:rig.hx+(s==='F'?5:-5),y:rig.hy};
+    const an={x:off+f.x,y:-ANKLE_H+f.y}, k=ik(hip.x,hip.y,an.x,an.y,88,92,-1), a=k.e;
+    const pu={x:k.j.x+(a.x-k.j.x)*.42,y:k.j.y+(a.y-k.j.y)*.42};
+    const d=path([hip,k.j,a]);el['leg'+s+'o'].setAttribute('d',d);el['leg'+s+'f'].setAttribute('d',d);
+    const d2=path([pu,a]);el['put'+s+'o'].setAttribute('d',d2);el['put'+s+'f'].setAttribute('d',d2);
+    el['boot'+s].setAttribute('transform',`translate(${a.x.toFixed(1)},${a.y.toFixed(1)}) rotate(${f.a.toFixed(1)})`);
+    legs[s]={hip,knee:k.j,ankle:a,target:an}});
+  // torso + rifle
+  el.torso.setAttribute('transform',`translate(${rig.hx},${rig.hy.toFixed(1)}) rotate(${rig.lean.toFixed(2)})`);
+  el.rifle.setAttribute('transform',`translate(${rig.rx.toFixed(1)},${rig.ry.toFixed(1)}) rotate(${rig.ra.toFixed(2)})`);
+  el.canteen.setAttribute('transform',`rotate(${clamp(spr.can.x,-30,30).toFixed(1)},-44,-14)`);
+  if(state.flash>0){el.flash.setAttribute('opacity',1);el.flash.setAttribute('transform',`translate(186,-9) rotate(${state.flashRot.toFixed(0)}) scale(${state.flashSc.toFixed(2)})`)}else el.flash.setAttribute('opacity',0);
+  // arms
+  const arms={};
+  [['F',{x:10,y:-118+breathe*.3},rifleToTorso(0,8)],['B',{x:-6,y:-120+breathe*.3},rifleToTorso(68,3)]].forEach(([s,sh,t])=>{
+    const k=ik(sh.x,sh.y,t.x,t.y,60,58,1),d=path([sh,k.j,k.e]);
+    el['arm'+s+'o'].setAttribute('d',d);el['arm'+s+'f'].setAttribute('d',d);
+    el['hand'+s].setAttribute('cx',k.e.x.toFixed(1));el['hand'+s].setAttribute('cy',k.e.y.toFixed(1));
+    arms[s]={sh,el:k.j,hand:k.e,target:t}});
+  // head
+  const hA=P.headA+spr.head.x+idleW*1.2*Math.sin(T*1.7)-6*r;
+  el.head.setAttribute('transform',`translate(2,-138) rotate(${hA.toFixed(2)})`);
+  el.helmet.setAttribute('transform',`rotate(${(clamp(spr.helm.x-hA,-10,10)-3).toFixed(2)},10,-118)`);
+  // face
+  const bl=state.blinkT>=0?Math.abs(state.blinkT/.08-1):1;
+  const eo=P.eyeOpen*bl*(1-.55*r), closed=eo<.24;
+  [['N',26,-68,30,9,16],['F',64,-66,67,8,13]].forEach(([s,cx,cy,px0,pr,erx])=>{
+    el['eye'+s].setAttribute('opacity',closed?0:1);el['eye'+s+'c'].setAttribute('opacity',closed?1:0);
+    el['eye'+s].setAttribute('transform',`translate(0,${cy}) scale(1,${Math.max(eo,.24).toFixed(3)}) translate(0,${-cy})`);
+    const px=cx+(erx-pr*P.pupil-3)*P.lookX, rr=pr*P.pupil;
+    el['pup'+s].setAttribute('cx',px.toFixed(1));el['pup'+s].setAttribute('cy',(cy+2).toFixed(1));el['pup'+s].setAttribute('r',rr.toFixed(1));
+    el['hi'+s].setAttribute('cx',(px+rr*.35).toFixed(1));el['hi'+s].setAttribute('cy',(cy-rr*.35).toFixed(1));el['hi'+s].setAttribute('r',(rr*.36).toFixed(1))});
+  el.browN.setAttribute('transform',`translate(0,${(P.browY-4*r).toFixed(1)}) rotate(${(P.browN+10*r).toFixed(1)},25,-97)`);
+  el.browF.setAttribute('transform',`translate(0,${(P.browY-4*r).toFixed(1)}) rotate(${(P.browF-10*r).toFixed(1)},64,-94)`);
+  const mk=state.mouthOpen?'open':(r>.3?'grit':EXPR[state.expr].mouth), m=MOUTH[mk];
+  el.mouth.setAttribute('d',m.d);el.mouth.setAttribute('fill',m.fill);el.mouth.setAttribute('stroke',m.stroke);el.mouth.setAttribute('stroke-width',m.sw);
+  el.mouth2.setAttribute('d',m.d2);el.mouth2.setAttribute('stroke',mk==='open'?'#E46D6D':OL);el.mouth2.setAttribute('stroke-width',mk==='open'?5:3);
+  el.sweat.setAttribute('opacity',P.sweat.toFixed(2));el.sweat.setAttribute('transform',`translate(0,${(5*Math.sin(T*3)).toFixed(1)})`);
+  // scene
+  const L=(g,f)=>{const o=((camX*f)%1080+1080)%1080;g.setAttribute('transform',`translate(${(-o).toFixed(1)},0)`)};
+  const cO=((camX*.08+T*10)%1080+1080)%1080;el.clouds.setAttribute('transform',`translate(${(-cO).toFixed(1)},0)`);
+  L(el.lFar,.25);L(el.lNear,.45);L(el.lMid,.7);L(el.lGround,1);L(el.lFg,1.3);
+  const sk=state.shake*14;el.shake.setAttribute('transform',`translate(${((Math.random()*2-1)*sk).toFixed(1)},${((Math.random()*2-1)*sk).toFixed(1)})`);
+  el.cap.setAttribute('transform',`translate(540,1730) scale(${(1+.14*state.capPop).toFixed(3)})`);
+  // rig overlay
+  if(state.rig){
+    const tc=p=>torsoToChar(p), neck=tc({x:2,y:-138}), hc=rot(8,-78,hA), headC=tc({x:2+hc.x,y:-138+hc.y});
+    const aF=arms.F,aB=arms.B;
+    rigLines.legF.setAttribute('points',pts([legs.F.hip,legs.F.knee,legs.F.ankle]));
+    rigLines.legB.setAttribute('points',pts([legs.B.hip,legs.B.knee,legs.B.ankle]));
+    rigLines.armF.setAttribute('points',pts([aF.sh,aF.el,aF.hand].map(tc)));
+    rigLines.armB.setAttribute('points',pts([aB.sh,aB.el,aB.hand].map(tc)));
+    rigLines.spine.setAttribute('points',pts([{x:rig.hx,y:rig.hy},neck,headC]));
+    [legs.F.hip,legs.F.knee,legs.F.ankle,legs.B.knee,legs.B.ankle,tc(aF.sh),tc(aF.el),tc(aF.hand),tc(aB.sh),tc(aB.el),tc(aB.hand),headC]
+      .forEach((p,i)=>{rigDots[i].setAttribute('cx',p.x.toFixed(1));rigDots[i].setAttribute('cy',p.y.toFixed(1))});
+    [legs.F.target,legs.B.target,tc(aF.target),tc(aB.target)].forEach((p,i)=>rigTargets[i].setAttribute('transform',`translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`));
+  }
+}
+
+/* ---------- UI ---------- */
+const modeBtns=[...document.querySelectorAll('[data-mode]')], exprBtns=[...document.querySelectorAll('[data-expr]')];
+function syncUI(){
+  modeBtns.forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===state.mode));
+  exprBtns.forEach(b=>b.setAttribute('aria-pressed',b.dataset.expr===state.expr));
+  $('talkBtn').setAttribute('aria-pressed',state.talk);$('rigBtn').setAttribute('aria-pressed',state.rig);
+  $('soundBtn').setAttribute('aria-pressed',state.sound);$('demoBtn').setAttribute('aria-pressed',state.demo);
+  $('demoBtn').firstChild.textContent=state.demo?'Đang phát demo ':'Phát cảnh demo ';
+}
+modeBtns.forEach(b=>b.addEventListener('click',()=>{stopDemo();state.walkTarget=null;setMode(b.dataset.mode)}));
+exprBtns.forEach(b=>b.addEventListener('click',()=>{stopDemo();setExpr(b.dataset.expr)}));
+$('fireBtn').addEventListener('click',()=>{stopDemo();fire()});
+$('talkBtn').addEventListener('click',()=>{stopDemo();state.talk=!state.talk;syncUI()});
+$('rigBtn').addEventListener('click',()=>{state.rig=!state.rig;el.rigG.setAttribute('opacity',state.rig?1:0);syncUI()});
+$('soundBtn').addEventListener('click',()=>{state.sound=!state.sound;audio();syncUI()});
+$('demoBtn').addEventListener('click',()=>{if(state.demo){stopDemo()}else startDemo()});
+$('speed').addEventListener('input',e=>{state.speed=+e.target.value;$('speedOut').textContent=state.speed.toFixed(2)+'×'});
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.metaKey||e.ctrlKey)return;const k=e.key.toLowerCase();
+  const modes={i:'idle',w:'walk',r:'run',a:'aim'},ex={'1':'neutral','2':'determined','3':'scared','4':'smug'};
+  if(modes[k]){stopDemo();state.walkTarget=null;setMode(modes[k])}
+  else if(ex[k]){stopDemo();setExpr(ex[k])}
+  else if(k===' '){e.preventDefault();stopDemo();fire()}
+  else if(k==='t'){stopDemo();state.talk=!state.talk;syncUI()}
+  else if(k==='g'){$('rigBtn').click()}
+  else if(k==='d'){$('demoBtn').click()}});
+
+syncUI();
+let last=performance.now();
+function frame(now){let dt=Math.min(.05,(now-last)/1000);last=now;dt*=state.speed;T+=dt;update(dt);render();requestAnimationFrame(frame)}
+update(0);render();requestAnimationFrame(frame);
+})();
+</script>

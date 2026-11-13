@@ -1,0 +1,357 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Pip: The Great Emu War v2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&display=swap">
+<style>html,body{margin:0;background:#000;overflow:hidden}svg{display:block;width:100vw;height:100vh}
+.cap{font-family:"Baloo 2","Arial Black",sans-serif;font-weight:800}</style></head>
+<body><svg id="s" viewBox="0 0 1080 1920" preserveAspectRatio="xMidYMid slice"></svg>
+<script>
+/* Pip Short 01 v2: The Great Emu War. 17 shots with real shot grammar (wide, low angle, ECU, insert, OTS, dutch, whip pan),
+   perspective sets, depth of field, rim light and film grain. window.render(t) draws frame t; timeline from tl.json. */
+const OL='#2B2024';
+const C={blush:'#F28C8C',mouth:'#7A2E3A',tongue:'#E46D6D',gold:'#F2C14E',goldSh:'#C99A2A',hair:'#4A3326',tear:'#8FD3F0',vein:'#E0463E',rim:'#FFE8B0'};
+const SKINS=['#F6CFA6','#F3D7C0','#E9B98E','#C98E62','#B9845C','#9E6B47'];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,k)=>a+(b-a)*k, sat=k=>clamp(k,0,1);
+const ss=k=>{k=sat(k);return k*k*(3-2*k)}, eob=k=>{k=sat(k);const c=1.7;return 1+(c+1)*Math.pow(k-1,3)+c*Math.pow(k-1,2)}, eo=k=>1-Math.pow(1-sat(k),3);
+const hash=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)};
+const shade=(h,f=.86)=>{const n=parseInt(h.slice(1),16);const g=v=>Math.max(0,Math.min(255,Math.round(v*f))).toString(16).padStart(2,'0');return '#'+g(n>>16)+g((n>>8)&255)+g(n&255)};
+const ln=(d,w=5.5,c=OL)=>`<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const f1=v=>v.toFixed(1);
+let uid=0, FR=0;
+
+/* ================= PIP TEMPLATE ================= */
+const N=[-14,-222],F=[32,-220],M=[10,-186];
+function lidEye(cx,cy,rx,ry,lid){const lidY=cy-ry+2*ry*lid,t=(lidY-cy)/ry,hw=rx*Math.sqrt(Math.max(0,1-t*t)),lg=lidY<cy?1:0;
+  return `<path d="M${f1(cx-hw)},${f1(lidY)} A${rx},${ry} 0 ${lg} 0 ${f1(cx+hw)},${f1(lidY)} Z" fill="${OL}"/>`+ln(`M${f1(cx-hw-3)},${f1(lidY)} L${f1(cx+hw+3)},${f1(lidY)}`)}
+function dot(c,rx,ry,lx=0){return `<ellipse cx="${c[0]+lx}" cy="${c[1]}" rx="${rx}" ry="${ry}" fill="${OL}"/><circle cx="${c[0]+lx+rx*.36}" cy="${c[1]-ry*.36}" r="${rx*.38}" fill="#fff"/>`}
+function face(ex,o){
+  let e='',x='',m='';const [nx,ny]=N,[fx,fy]=F,[mx,my]=M,lx=o.look||0;
+  if(ex==='happy'){e=ln(`M${nx-11},${ny+3} Q${nx},${ny-13} ${nx+11},${ny+3}`,6)+ln(`M${fx-10},${fy+3} Q${fx},${fy-12} ${fx+10},${fy+3}`,6);
+    m=`<path d="M${mx-14},${my-3} Q${mx},${my+22} ${mx+14},${my-3} Z" fill="${C.mouth}" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/>`}
+  else if(ex==='shocked'){e=[[N,15,18],[F,13,16]].map(([c,rx,ry])=>`<ellipse cx="${c[0]}" cy="${c[1]}" rx="${rx}" ry="${ry}" fill="#fff" stroke="${OL}" stroke-width="4.5"/><circle cx="${c[0]+2}" cy="${c[1]+1}" r="3.6" fill="${OL}"/>`).join('');
+    x=ln(`M${nx-14},${ny-30} Q${nx},${ny-42} ${nx+14},${ny-30}`)+ln(`M${fx-12},${fy-28} Q${fx},${fy-40} ${fx+12},${fy-28}`)+`<path d="M84,-282 Q94,-264 84,-256 Q74,-264 84,-282 Z" fill="${C.tear}" stroke="${OL}" stroke-width="3.5"/>`;
+    m=`<ellipse cx="${mx+1}" cy="${my+6}" rx="9" ry="14" fill="${C.mouth}" stroke="${OL}" stroke-width="4.5"/>`}
+  else if(ex==='smug'){e=lidEye(nx,ny,9.5,12.5,.5)+lidEye(fx,fy,8.5,11.5,.5);x=ln(`M${fx-11},${fy-24} L${fx+11},${fy-33}`);m=ln(`M${mx-10},${my+1} Q${mx+2},${my+8} ${mx+15},${my-7}`,4.5)}
+  else if(ex==='deadpan'){e=lidEye(nx,ny,9.5,12.5,.62)+lidEye(fx,fy,8.5,11.5,.62);x=ln(`M${nx-11},${ny-21} L${nx+11},${ny-21}`)+ln(`M${fx-10},${fy-20} L${fx+10},${fy-20}`);m=ln(`M${mx-8},${my+2} L${mx+10},${my+2}`,4.5)}
+  else if(ex==='angry'||ex==='determined'){e=dot(N,9,9,lx)+dot(F,8,8.5,lx);x=ln(`M${nx-14},${ny-26} L${nx+10},${ny-15}`,7)+ln(`M${fx-10},${fy-14} L${fx+13},${fy-25}`,7);
+    m=ex==='angry'?`<path d="M${mx-13},${my-4} L${mx+15},${my-4} L${mx+15},${my+9} L${mx-13},${my+9} Z" fill="#fff" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/>`+ln(`M${mx-13},${my+2.5} L${mx+15},${my+2.5}`,3):ln(`M${mx-8},${my+3} L${mx+10},${my+1}`,4.5)}
+  else if(ex==='crying'){e=ln(`M${nx-11},${ny-3} Q${nx},${ny+6} ${nx+11},${ny+1}`,6)+ln(`M${fx-10},${fy+1} Q${fx},${fy+6} ${fx+10},${fy-3}`,6);
+    const tl=o.tearLen??62;
+    x=ln(`M${nx-12},${ny-22} L${nx+10},${ny-30}`)+ln(`M${fx-10},${fy-29} L${fx+11},${fy-21}`)+(tl>0?`<rect x="${nx-6}" y="${ny+4}" width="12" height="${tl}" rx="6" fill="${C.tear}" stroke="${OL}" stroke-width="3.5"/><rect x="${fx-5}" y="${fy+4}" width="11" height="${Math.max(0,tl-4)}" rx="5.5" fill="${C.tear}" stroke="${OL}" stroke-width="3.5"/>`:'');
+    m=`<path d="M${mx-14},${my+4} Q${mx-7},${my-8} ${mx},${my+2} Q${mx+7},${my-8} ${mx+14},${my+4} Q${mx},${my+18} ${mx-14},${my+4} Z" fill="${C.mouth}" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/>`}
+  else{ if(o.blink)e=ln(`M${nx-10},${ny} L${nx+10},${ny}`)+ln(`M${fx-9},${fy} L${fx+9},${fy}`); else e=dot(N,9.5,12.5,lx)+dot(F,8.5,11.5,lx);
+    m=ln(`M${mx-8},${my} Q${mx},${my+7} ${mx+8},${my}`,4.5)}
+  return e+x+m;
+}
+const A={top:{x:6,y:-312},drop:26,w:160};
+function helmet(bx,by,w){const st=`stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"`;
+  return `<path d="M${bx-w*.40},${by} Q${bx-w*.40},${by-w*.46} ${bx},${by-w*.47} Q${bx+w*.40},${by-w*.46} ${bx+w*.40},${by} Z" fill="#62703E" ${st}/>${ln(`M${bx-w*.2},${by-w*.33} Q${bx},${by-w*.42} ${bx+w*.18},${by-w*.39}`,8,'#86965A')}<ellipse cx="${bx}" cy="${by}" rx="${w*.62}" ry="${w*.085}" fill="#62703E" ${st}/>${ln(`M${bx-w*.5},${by-w*.03} Q${bx},${by+w*.05} ${bx+w*.55},${by-w*.03}`,3,'#86965A')}`}
+const HAT_TOP=A.top.y+A.drop-A.w*.47;
+function rifle(h,o){const aim=o.aim||0,r=o.recoil||0,rot=lerp(-58,-4,aim)-7*r*aim;
+  return `<g transform="translate(${f1(h.x-14*r*aim)},${h.y}) rotate(${rot.toFixed(2)}) scale(.62)"><path d="M-76,-13 Q-40,-11 -6,-8 L150,-7 L150,3 L24,4 Q12,6 7,15 L-5,15 Q-7,8 -14,6 L-76,16 Z" fill="#94592E" stroke="${OL}" stroke-width="7" stroke-linejoin="round"/><path d="M-60,-6 L-10,-3" stroke="#B5793F" stroke-width="5" stroke-linecap="round"/><path d="M18,-14 L180,-13 L180,-6 L18,-6 Z" fill="#3A3F45" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/><path d="M-8,-17 L26,-17 L26,-6 L-8,-6 Z" fill="#3A3F45" stroke="${OL}" stroke-width="6"/></g>`}
+const HEAD='M-80,-232 A86,80 0 1 1 92,-232 A86,80 0 1 1 -80,-232 Z';
+const TORSO='M-44,-62 Q-50,-110 -38,-152 Q2,-162 42,-152 Q52,-110 48,-62 Q2,-54 -44,-62 Z';
+const ARM={def:['M34,-140 L56,-120 L62,-98',[62,-94]],salute:['M34,-140 L84,-176 L60,-252',[58,-256]],point:['M34,-140 L82,-150 L124,-162',[128,-162]],grip:['M34,-140 L60,-120 L86,-112',[88,-110]],aim:['M34,-140 L52,-130 L68,-126',[68,-122]]};
+const limb=(d,c,w)=>`<path d="${d}" fill="none" stroke="${OL}" stroke-width="${w+10}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+function outfit(cos){const st=`stroke="${OL}" stroke-width="4"`;
+  if(cos==='soldier')return{shirt:'#8B8752',pants:'#77733F',shoe:'#4A3020',detail:`<rect x="-60" y="-88" width="120" height="13" fill="#5A3B22"/><path d="M-60,-88 L60,-88 M-60,-75 L60,-75" stroke="${OL}" stroke-width="3.5"/><rect x="24" y="-90" width="13" height="17" rx="2" fill="${C.gold}" ${st}/><rect x="-6" y="-136" width="22" height="20" rx="3" fill="#76723F" ${st}/><circle cx="36" cy="-118" r="3.5" fill="${C.gold}"/><circle cx="38" cy="-100" r="3.5" fill="${C.gold}"/>`};
+  if(cos==='farmer')return{shirt:'#5F7FA6',pants:'#6B5A48',shoe:'#3A2C24',detail:`<rect x="-60" y="-96" width="120" height="10" fill="#4E3A28"/><path d="M-20,-160 L-26,-62 M30,-160 L36,-62" stroke="#8A6A44" stroke-width="9"/>`};
+  return{shirt:'#4F86B8',pants:'#6B5A48',shoe:'#3A2C24',detail:`<path d="M-38,-154 L52,-64" stroke="#7A4E2D" stroke-width="10"/>`}}
+function person(o){
+  const skin=o.skin||SKINS[0], sh=shade(skin), O=outfit(o.cos), ex=o.ex||'neutral', hid='hh'+(uid++), tid='ht'+(uid++);
+  const w=o.walk||0, wa=o.walkAmp||0, ff=[16*wa*Math.sin(w),-12*wa*Math.max(0,Math.cos(w))], fb=[-16*wa*Math.sin(w),-12*wa*Math.max(0,-Math.cos(w))];
+  const [ad,hd]=ARM[o.pose||(o.aim?'aim':'def')], hand={x:hd[0],y:hd[1]};
+  let s=`<defs><clipPath id="${hid}"><path d="${HEAD}"/></clipPath><clipPath id="${tid}"><path d="${TORSO}"/></clipPath></defs>`;
+  s+=limb(`M-32,-140 L${-50+(o.backSwing||0)},-112 L${-52+(o.backSwing||0)*1.6},-84`,shade(O.shirt,.9),22)+`<circle cx="${-52+(o.backSwing||0)*1.6}" cy="-80" r="12" fill="${sh}" stroke="${OL}" stroke-width="5"/>`;
+  if(!o.noLegs){s+=limb(`M-14,-70 L${-18+fb[0]},${-14+fb[1]}`,shade(O.pants,.9),26)+limb(`M18,-70 L${22+ff[0]},${-14+ff[1]}`,O.pants,26);
+    s+=`<ellipse cx="${-12+fb[0]}" cy="${-8+fb[1]}" rx="20" ry="11" fill="${O.shoe}" stroke="${OL}" stroke-width="5"/><ellipse cx="${32+ff[0]}" cy="${-8+ff[1]}" rx="22" ry="12" fill="${O.shoe}" stroke="${OL}" stroke-width="5"/>`}
+  s+=`<path d="${TORSO}" fill="${O.shirt}"/><g clip-path="url(#${tid})">${O.detail}<rect x="-60" y="-170" width="30" height="120" fill="#000" opacity=".14"/>${o.rim?`<path d="M44,-156 Q56,-110 50,-60" stroke="${C.rim}" stroke-width="12" fill="none" opacity=".7"/>`:''}</g><path d="${TORSO}" fill="none" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/>`;
+  s+=limb(ad,O.shirt,22);
+  s+=`<g transform="rotate(${(o.headTilt||0).toFixed(2)},6,-160)"><ellipse cx="-74" cy="-226" rx="13" ry="17" fill="${skin}" stroke="${OL}" stroke-width="5"/>`;
+  s+=`<path d="${HEAD}" fill="${sh}"/><g clip-path="url(#${hid})"><path d="${HEAD}" transform="translate(10,-10)" fill="${skin}"/>`;
+  const f=-266;
+  if(o.hair)s+=`<path d="M-140,${f} Q-100,${f+18} -66,${f+2} Q-36,${f+22} -4,${f+4} Q26,${f+20} 52,${f} Q78,${f+16} 140,${f-6} L140,-420 L-140,-420 Z" fill="${C.hair}"/>`;
+  if(o.rim)s+=`<path d="M49,-301 A86,80 0 0 1 74,-181" stroke="${C.rim}" stroke-width="14" fill="none" opacity=".75"/>`;
+  s+=`</g><path d="${HEAD}" fill="none" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/>`;
+  if(o.mustache)s+=`<path d="M-6,-196 Q4,-206 12,-198 Q22,-206 32,-196 Q22,-190 12,-194 Q2,-190 -6,-196 Z" fill="#3B2A22" stroke="${OL}" stroke-width="3"/>`;
+  s+=`<ellipse cx="-40" cy="-194" rx="13" ry="7" fill="${C.blush}" opacity=".5"/><ellipse cx="62" cy="-192" rx="10" ry="6" fill="${C.blush}" opacity=".5"/>`;
+  s+=face(ex,o);
+  if(ex==='angry'&&o.vein)s+=ln('M58,-292 q7,7 0,14 M76,-292 q-7,7 0,14 M60,-294 q7,-7 14,0 M60,-276 q7,7 14,0',4.5,C.vein);
+  if(ex==='shocked')s+=`<g clip-path="url(#${hid})">${ln('M-46,-300 l4,22 M-30,-306 l3,22 M-14,-308 l2,20',4.5,'#5C7FC8')}</g>`;
+  if(o.cos==='soldier')s+=helmet(A.top.x,A.top.y+A.drop,A.w);
+  if(o.cos==='farmer'){const bx=6,by=-286,w=160;s+=`<path d="M${bx-w*.34},${by} Q${bx-w*.30},${by-w*.36} ${bx},${by-w*.36} Q${bx+w*.30},${by-w*.36} ${bx+w*.34},${by} Z" fill="#D8B66A" stroke="${OL}" stroke-width="5.5"/><path d="M${bx-w*.33},${by-w*.06} L${bx+w*.33},${by-w*.06}" stroke="#8A5A34" stroke-width="10"/><ellipse cx="${bx}" cy="${by}" rx="${w*.7}" ry="${w*.09}" fill="#D8B66A" stroke="${OL}" stroke-width="5.5"/>`}
+  if(o.ahoge){const ty=(o.cos==='soldier'?HAT_TOP:A.top.y+4)+6,x=12,sw=o.sway||0;
+    const d=`M${x},${ty} Q${x-8+sw},${ty-30} ${x+14+sw*1.4},${ty-40} Q${x+32+sw*1.6},${ty-44} ${x+26+sw*1.5},${ty-26}`;s+=ln(d,13)+ln(d,6,C.hair)}
+  s+=`</g>`;
+  if(o.cos==='soldier'&&!o.noRifle)s+=rifle(hand,o);
+  if(o.fist)s+=`<path d="M${hand.x-6},${hand.y-14} l0,-10 M${hand.x+6},${hand.y-14} l2,-10" stroke="${OL}" stroke-width="4"/>`;
+  s+=`<circle cx="${hand.x}" cy="${hand.y}" r="12.5" fill="${skin}" stroke="${OL}" stroke-width="5"/>`;
+  return s;
+}
+function personBack(o){const skin=o.skin||SKINS[0],O=outfit('soldier'),hid='hb'+(uid++);
+  let s=`<defs><clipPath id="${hid}"><path d="${HEAD}"/></clipPath></defs>`;
+  s+=limb('M-34,-140 L-46,-110 L-30,-92',O.shirt,24)+limb('M44,-140 L64,-112 L84,-96',O.shirt,24);
+  s+=`<path d="${TORSO}" fill="${shade(O.shirt,.92)}" stroke="${OL}" stroke-width="5.5"/><path d="M-36,-150 L46,-70" stroke="#5A3B22" stroke-width="10"/><rect x="-44" y="-140" width="92" height="56" rx="12" fill="#6E6A3A" stroke="${OL}" stroke-width="5"/>`;
+  s+=`<ellipse cx="-80" cy="-226" rx="13" ry="17" fill="${skin}" stroke="${OL}" stroke-width="5"/><ellipse cx="92" cy="-226" rx="13" ry="17" fill="${skin}" stroke="${OL}" stroke-width="5"/>`;
+  s+=`<path d="${HEAD}" fill="${skin}"/><g clip-path="url(#${hid})"><path d="M-140,-178 Q-60,-196 6,-188 Q70,-196 150,-178 L150,-420 L-140,-420 Z" fill="${C.hair}"/>${ln('M-40,-250 Q6,-262 52,-250',6,'#6A4A38')}</g><path d="${HEAD}" fill="none" stroke="${OL}" stroke-width="5.5"/>`;
+  s+=helmet(6,-286,160);
+  const ty=HAT_TOP+6,sw=o.sway||0,d=`M12,${ty} Q${4+sw},${ty-30} ${26+sw*1.4},${ty-40} Q${44+sw*1.6},${ty-44} ${38+sw*1.5},${ty-26}`;s+=ln(d,13)+ln(d,6,C.hair);
+  return s}
+function place(x,y,sc,inner,flip,shadow=1){return `<g transform="translate(${f1(x)},${f1(y)}) scale(${(flip?-sc:sc).toFixed(3)},${sc.toFixed(3)})">${shadow?`<ellipse cx="6" cy="4" rx="84" ry="11" fill="#3A2416" opacity=".22"/>`:''}${inner}</g>`}
+
+/* ================= EMU ================= */
+function shag(cx,cy,rx,ry,n,rot){let d='';const R=rot*Math.PI/180;const P=(a,k)=>{const x=Math.cos(a)*rx*k,y=Math.sin(a)*ry*k;return[f1(cx+x*Math.cos(R)-y*Math.sin(R)),f1(cy+x*Math.sin(R)+y*Math.cos(R))]};
+  for(let i=0;i<=n;i++){const a=i/n*2*Math.PI,[x,y]=P(a,1);if(i===0)d+=`M${x},${y}`;else{const [qx,qy]=P((i-.5)/n*2*Math.PI,1.13);d+=` Q${qx},${qy} ${x},${y}`}}return d+' Z'}
+const EMU_BODY=shag(-4,-112,66,46,22,-10), EMU_HI=shag(4,-124,46,28,14,-10);
+function emu(o){
+  const ph=o.ph||0,run=o.run||0,peck=o.peck||0,ex=o.ex||'neutral';let s='';
+  [[-8,0],[10,Math.PI]].forEach(([bx,off],i)=>{const a=ph+off,fx=bx+run*26*Math.sin(a),fy=-run*18*Math.max(0,Math.cos(a)),hx=bx*.5,hy=-78,kx=(hx+fx)/2-16,ky=(hy+fy)/2;
+    const d=`M${hx},${hy} L${f1(kx)},${f1(ky)} L${f1(fx)},${f1(fy)}`;s+=ln(d,13)+ln(d,6.5,i?'#8A8C93':'#6E7077')+ln(`M${f1(fx)},${f1(fy)} l16,2 M${f1(fx)},${f1(fy)} l10,6 M${f1(fx)},${f1(fy)} l-8,3`,4.5)});
+  const H=[lerp(64,98,peck),lerp(-216,-46,peck)],Cp=[lerp(46,92,peck),lerp(-180,-124,peck)],nd=`M36,-128 Q${f1(Cp[0])},${f1(Cp[1])} ${f1(H[0])},${f1(H[1])}`;
+  s+=ln(nd,27)+ln(nd,17,'#8EA0BC')+ln(nd.replace(/^M36,-128/,'M40,-132'),5,'#B4C4DA');
+  s+=`<path d="${EMU_BODY}" fill="#5E4E42" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/><path d="${EMU_HI}" fill="#76624F"/>`+ln('M-40,-120 q14,10 30,6 M-20,-92 q16,8 34,2 M-52,-96 q10,10 22,10 M-10,-140 q12,6 26,2',4.5,'#4A3C32');
+  s+=`<g transform="translate(${f1(H[0])},${f1(H[1])}) rotate(${(peck*55).toFixed(1)})">`+ln('M-8,-16 l-4,-10 M0,-18 l2,-11',4.5);
+  s+=`<ellipse cx="0" cy="0" rx="22" ry="18" fill="#4F5B74" stroke="${OL}" stroke-width="5"/><path d="M16,-5 Q36,-1 38,6 Q27,9 16,6 Z" fill="#B7A89C" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/>`;
+  if(ex==='shocked')s+=`<circle cx="4" cy="-3" r="10" fill="#fff" stroke="${OL}" stroke-width="4"/><circle cx="6" cy="-3" r="2.6" fill="${OL}"/>`;
+  else{s+=`<circle cx="4" cy="-3" r="8.5" fill="#D88A3A" stroke="${OL}" stroke-width="3.5"/><circle cx="6" cy="-3" r="4.2" fill="${OL}"/><circle cx="7.5" cy="-5.5" r="1.8" fill="#fff"/>`;
+    if(ex==='smug')s+=`<path d="M-5.5,-3 A8.5,8.5 0 0 1 13.5,-3 Z" fill="#4F5B74"/>`+ln('M-7,-3 L15,-3',4.5)+ln('M-6,-16 L14,-12',4.5)}
+  if(o.helmet)s+=`<g transform="rotate(-12)">${helmet(0,-10,72)}</g>`;
+  return s+'</g>'}
+function placeEmu(x,y,sc,o,flip){return `<g transform="translate(${f1(x)},${f1(y)}) scale(${(flip?-sc:sc).toFixed(3)},${sc.toFixed(3)})"><ellipse cx="0" cy="3" rx="62" ry="10" fill="#3A2416" opacity=".2"/>${emu(o)}</g>`}
+
+/* ================= PROPS ================= */
+function lewis(o={}){const r=o.recoil||0;let s=`<g transform="translate(${f1(-16*r)},0) rotate(${(-3*r).toFixed(2)})">`;
+  s+=ln('M196,14 L168,96 M206,14 L232,96',9)+ln('M196,14 L168,96 M206,14 L232,96',4,'#3A3F45');
+  s+=`<path d="M-96,-10 L0,-16 L0,14 L-96,26 Q-104,8 -96,-10 Z" fill="#94592E" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/>`+ln('M-84,-2 L-10,-6',5,'#B5793F');
+  s+=`<path d="M10,12 L2,48 L22,48 L30,12 Z" fill="#7A4A26" stroke="${OL}" stroke-width="5" stroke-linejoin="round"/>`;
+  s+=`<rect x="0" y="-24" width="78" height="38" rx="6" fill="#3A3F45" stroke="${OL}" stroke-width="6"/>`;
+  s+=`<rect x="74" y="-28" width="176" height="44" rx="10" fill="#4B5159" stroke="${OL}" stroke-width="6"/>`;
+  let fins='';for(let x=88;x<244;x+=12)fins+=`M${x},-24 L${x},12 `;s+=`<path d="${fins}" stroke="#2E3238" stroke-width="3"/><path d="M80,-20 L246,-20" stroke="#7D858F" stroke-width="5" stroke-linecap="round"/>`;
+  s+=`<rect x="248" y="-14" width="50" height="16" rx="4" fill="#3A3F45" stroke="${OL}" stroke-width="5"/>`;
+  s+=`<ellipse cx="40" cy="-38" rx="56" ry="13" fill="#4B5159" stroke="${OL}" stroke-width="6"/><ellipse cx="40" cy="-42" rx="48" ry="9" fill="#646B74"/><circle cx="40" cy="-42" r="7" fill="#2E3238"/>`;
+  if(o.flash){const k=o.flash;let p=[];for(let i=0;i<14;i++){const a=i*Math.PI/7+k*2.3,rr=i%2?22:70*(.85+.3*hash(k*91+i));p.push(f1(Math.cos(a)*rr*1.6)+','+f1(Math.sin(a)*rr))}
+    s+=`<g transform="translate(330,-6)"><polygon points="${p.join(' ')}" fill="#FFD866" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/><circle r="22" fill="#FFF8DA"/></g>`}
+  return s+'</g>'}
+function casing(x,y,r,sc=1){return `<g transform="translate(${f1(x)},${f1(y)}) rotate(${r.toFixed(0)}) scale(${sc})"><rect x="-12" y="-5" width="24" height="10" rx="3" fill="${C.gold}" stroke="${OL}" stroke-width="3.5"/><rect x="-12" y="-5" width="6" height="10" fill="#B8862A"/></g>`}
+function pile(cx,cy,w,h,n,seed=1){let s='';for(let i=0;i<n;i++){const a=hash(i*3+seed),b=hash(i*7+seed+1);const x=(a-.5)*w*(1-b*.85),y=-b*h+hash(i+seed)*8;s+=casing(cx+x,cy+y,hash(i*5+seed)*180-90)}
+  return `<path d="M${cx-w/2},${cy+6} Q${cx},${cy-h*1.2} ${cx+w/2},${cy+6} Z" fill="#C79A3A" stroke="${OL}" stroke-width="5"/>`+s}
+function sandbags(x,y,s){let o='';[[0,0],[70,0],[140,0],[35,-30],[105,-30]].forEach(([dx,dy])=>{o+=`<ellipse cx="${dx}" cy="${dy}" rx="40" ry="20" fill="#C9B07E" stroke="${OL}" stroke-width="5"/>`+ln(`M${dx-16},${dy-4} q16,6 32,0`,3,'#A68C5A')});return `<g transform="translate(${x},${y}) scale(${s})">${o}</g>`}
+function house(x,y,s){return `<g transform="translate(${x},${y}) scale(${s})"><path d="M0,0 L0,-120 L150,-150 L150,-20 Z" fill="#E9DCC0" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M150,-150 L260,-120 L260,-10 L150,-20 Z" fill="#CDBE9F" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M-14,-116 L70,-210 L164,-152 Z" fill="#B5533C" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/><path d="M70,-210 L190,-180 L276,-118 L164,-152 Z" fill="#9E4632" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="40" y="-100" width="36" height="40" fill="#7EA6C8" stroke="${OL}" stroke-width="5" transform="skewY(-11)"/><rect x="186" y="-110" width="34" height="56" fill="#6B4A32" stroke="${OL}" stroke-width="5"/>
+  <path d="M150,-150 L150,-20" stroke="${OL}" stroke-width="4"/><path d="M20,-170 L20,-200 L36,-200 L36,-188" fill="#9E4632" stroke="${OL}" stroke-width="5"/></g>`}
+function windmill(x,y,s,t){let b='';for(let i=0;i<12;i++){const a=i*30+t*120;b+=`<path d="M0,0 L-7,-70 L7,-70 Z" fill="#E6E8EA" stroke="${OL}" stroke-width="3" transform="rotate(${a.toFixed(1)})"/>`}
+  return `<g transform="translate(${x},${y}) scale(${s})"><path d="M-40,0 L-6,-300 M40,0 L6,-300 M-34,-50 L30,-100 M34,-50 L-30,-100 M-26,-150 L22,-200 M26,-150 L-22,-200" stroke="${OL}" stroke-width="6" fill="none"/>
+  <path d="M10,-310 L80,-300 L76,-282 L10,-296 Z" fill="#C7493A" stroke="${OL}" stroke-width="4"/><g transform="translate(0,-305)">${b}<circle r="12" fill="#C7493A" stroke="${OL}" stroke-width="4"/></g></g>`}
+function gum(x,y,s){return `<g transform="translate(${x},${y}) scale(${s})"><path d="M0,0 C4,-60 -6,-110 4,-160 M2,-90 L-44,-140 M3,-112 L44,-166" stroke="#EFE8DA" stroke-width="14" stroke-linecap="round" fill="none"/><path d="M-4,0 C0,-60 -10,-110 0,-160" stroke="#C9BFAE" stroke-width="5" fill="none"/>
+  <ellipse cx="-44" cy="-164" rx="52" ry="28" fill="#7E9A5E"/><ellipse cx="44" cy="-186" rx="60" ry="32" fill="#86A365"/><ellipse cx="4" cy="-204" rx="54" ry="30" fill="#93AF70"/><ellipse cx="14" cy="-214" rx="30" ry="14" fill="#A9C487"/></g>`}
+function truck(o){const w=o.wheel||0;let s='';
+  s+=`<rect x="-150" y="-330" width="300" height="130" rx="22" fill="#55603A" stroke="${OL}" stroke-width="6"/><rect x="-90" y="-310" width="180" height="70" rx="10" fill="#9BB7C9" stroke="${OL}" stroke-width="5"/>`;
+  s+=`<g clip-path="url(#bedclip)">${o.rider||''}</g>`;
+  s+=`<rect x="-220" y="-210" width="440" height="150" rx="10" fill="#6B7646" stroke="${OL}" stroke-width="6"/>`;
+  for(let i=0;i<4;i++)s+=ln(`M-220,${-180+i*32} L220,${-180+i*32}`,3,'#55603A');
+  s+=`<rect x="-150" y="-110" width="80" height="34" rx="6" fill="#E9E2CF" stroke="${OL}" stroke-width="4"/><text x="-110" y="-86" text-anchor="middle" class="cap" font-size="22" fill="${OL}">ARMY</text>`;
+  s+=`<circle cx="-190" cy="-140" r="12" fill="#E0463E" stroke="${OL}" stroke-width="4"/><circle cx="190" cy="-140" r="12" fill="#E0463E" stroke="${OL}" stroke-width="4"/>`;
+  [-170,170].forEach(x=>{s+=`<rect x="${x-34}" y="-70" width="68" height="76" rx="16" fill="#2A2A2E" stroke="${OL}" stroke-width="5"/><path d="M${x-34},${-40+12*Math.sin(w)} L${x+34},${-40+12*Math.sin(w)}" stroke="#444" stroke-width="4"/>`});
+  return s}
+
+/* ================= SETS ================= */
+const DEFS=`<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5DA9DE"/><stop offset=".7" stop-color="#BFE0EE"/><stop offset="1" stop-color="#F4E6C8"/></linearGradient>
+ <linearGradient id="haze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6EAD0" stop-opacity="0"/><stop offset=".5" stop-color="#F6EAD0" stop-opacity=".55"/><stop offset="1" stop-color="#F6EAD0" stop-opacity="0"/></linearGradient>
+ <radialGradient id="vig" cx=".5" cy=".45" r=".78"><stop offset=".55" stop-color="#1A0E08" stop-opacity="0"/><stop offset="1" stop-color="#1A0E08" stop-opacity=".45"/></radialGradient>
+ <radialGradient id="sun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6CC"/><stop offset=".35" stop-color="#FFF1B8" stop-opacity=".9"/><stop offset="1" stop-color="#FFF1B8" stop-opacity="0"/></radialGradient>
+ <filter id="b2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.5"/></filter>
+ <filter id="b5" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter>
+ <filter id="b10" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter>
+ <filter id="whip" x="-30%" y="-5%" width="160%" height="110%"><feGaussianBlur stdDeviation="40 0"/></filter>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="SEED" result="n"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .09"/></feComponentTransfer></filter>
+ <clipPath id="bedclip"><rect x="-400" y="-900" width="800" height="700"/></clipPath></defs>`;
+function farm(t,o){
+  const H=o.H, vx=o.vx??540, pan=o.pan||0; let s='';
+  s+=`<rect x="-600" y="-600" width="2300" height="${H+620}" fill="url(#sky)"/>`;
+  if(o.sun!==false)s+=`<circle cx="${o.sunX??860}" cy="${o.sunY??H-560}" r="230" fill="url(#sun)"/><circle cx="${o.sunX??860}" cy="${o.sunY??H-560}" r="70" fill="#FFF6D2"/>`;
+  [[200,H-420,1.1],[700,H-520,.8],[1000,H-380,.9]].forEach(([x,y,k],i)=>{const cx=x+t*8*(i+1)-pan*.05;s+=`<g opacity=".9" fill="#FBFAF4"><ellipse cx="${f1(cx)}" cy="${y}" rx="${110*k}" ry="${34*k}"/><ellipse cx="${f1(cx-70*k)}" cy="${y+10*k}" rx="${66*k}" ry="${26*k}"/><ellipse cx="${f1(cx+60*k)}" cy="${y-18*k}" rx="${70*k}" ry="${36*k}"/></g>`});
+  let far=`<path d="M-600,${H-60} C-200,${H-150} 100,${H-90} 380,${H-120} C640,${H-160} 900,${H-80} 1700,${H-110} L1700,${H+10} L-600,${H+10} Z" fill="#C98A64"/><path d="M-600,${H-20} C-100,${H-70} 300,${H-40} 620,${H-60} C900,${H-80} 1200,${H-30} 1700,${H-50} L1700,${H+10} L-600,${H+10} Z" fill="#B67552"/>`;
+  far+=gum(-60-pan*.2,H+4,.55)+gum(1040-pan*.2,H+6,.5)+gum(260-pan*.2,H+2,.32);
+  if(o.house)far+=house(o.house[0]-pan*.25,H+o.house[1],o.house[2]);
+  if(o.mill)far+=windmill(o.mill[0]-pan*.25,H+o.mill[1],o.mill[2],t);
+  s+=o.farBlur?`<g filter="url(#b${o.farBlur})">${far}</g>`:far;
+  // field in perspective
+  let bands='';const Y=2500;
+  for(let i=-16;i<16;i++){const x0=vx+i*190-pan,x1=vx+(i+1)*190-pan;bands+=`<path d="M${vx},${H} L${x0},${Y} L${x1},${Y} Z" fill="${(i+40)%2?'#E3B84C':'#D6A83C'}"/>`}
+  let field=`<rect x="-600" y="${H}" width="2300" height="${Y-H}" fill="#DDB044"/>`+bands;
+  if(o.road)field+=`<path d="M${vx-8},${H} L${vx-300-pan},${Y} L${vx+300-pan},${Y} L${vx+8},${H} Z" fill="#CF9A62"/><path d="M${vx-3},${H} L${vx-120-pan},${Y} M${vx+3},${H} L${vx+120-pan},${Y}" stroke="#B78450" stroke-width="14"/>`;
+  field+=`<rect x="-600" y="${H-30}" width="2300" height="${(Y-H)*.25+30}" fill="url(#haze)"/>`;
+  let stalks='',ears='';
+  for(let i=-16;i<=16;i++){const xb=vx+i*190-pan;for(let k=1;k<=11;k++){const f=Math.pow(k/11,1.7),y=H+(Y-H)*f,x=vx+(xb-vx)*f+hash(i*13+k)*40*f,sc=(y-H)/(1560-H);
+    if(sc<.07||(o.road&&Math.abs(x-vx+pan*f)<300*f+20))continue;const h=60*sc,sw=5*sc*Math.sin(t*1.7+i+k);
+    stalks+=`M${f1(x)},${f1(y)} q${f1(sw*.5)},${f1(-h*.5)} ${f1(sw)},${f1(-h)} M${f1(x+8*sc)},${f1(y)} q${f1(sw*.5+4*sc)},${f1(-h*.45)} ${f1(sw+10*sc)},${f1(-h*.85)} `;
+    ears+=`<ellipse cx="${f1(x+sw)}" cy="${f1(y-h)}" rx="${f1(6*sc)}" ry="${f1(14*sc)}" fill="#F2CF68"/><ellipse cx="${f1(x+sw+10*sc)}" cy="${f1(y-h*.85)}" rx="${f1(5*sc)}" ry="${f1(12*sc)}" fill="#EBC45A"/>`}}
+  field+=`<path d="${stalks}" stroke="#A9822A" stroke-width="3.5" fill="none" stroke-linecap="round"/>`+ears;
+  if(o.fence){let p='';for(let k=1;k<=9;k++){const f=Math.pow(k/9,1.6),y=H+(Y-H)*f,x=vx-30+(o.fence-vx-30)*f-pan*f,sc=(y-H)/(1560-H);
+    p+=`<rect x="${f1(x-7*sc)}" y="${f1(y-120*sc)}" width="${f1(14*sc)}" height="${f1(120*sc)}" fill="#8A6040" stroke="${OL}" stroke-width="${f1(4*sc+1)}"/>`}
+    field+=ln(`M${vx-30},${H+4} L${o.fence-pan},${Y-200}`,4,'#6B4A32')+ln(`M${vx-30},${H} L${o.fence-pan},${Y-320}`,4,'#6B4A32')+p}
+  s+=field;
+  return s;
+}
+const depth=(y,H)=>(y-H)/(1560-H);
+function fgWheat(t,y0,n,sc,blur,seed=0,dx=0){let s='';for(let i=0;i<n;i++){const x=hash(i+seed)*1300-110+dx,y=y0+hash(i*3+seed)*120,h=(300+hash(i*7)*200)*sc,sw=20*Math.sin(t*1.4+i);
+  s+=`<path d="M${f1(x)},${f1(y)} q${f1(sw*.4)},${f1(-h*.5)} ${f1(sw)},${f1(-h)}" stroke="#B08A2E" stroke-width="${f1(10*sc)}" fill="none" stroke-linecap="round"/><ellipse cx="${f1(x+sw)}" cy="${f1(y-h)}" rx="${f1(16*sc)}" ry="${f1(40*sc)}" fill="#F0C85C" stroke="#A47C22" stroke-width="${f1(4*sc)}"/>`}
+  return `<g filter="url(#b${blur})">${s}</g>`}
+
+/* ================= UI ================= */
+function tag(x,y,txt,k,rot=-3){if(k<=0)return '';const sc=eob(k),w=txt.length*30+70;
+  return `<g transform="translate(${x},${y}) rotate(${rot}) scale(${sc.toFixed(3)})"><rect x="${-w/2+8}" y="-44" width="${w}" height="104" rx="10" fill="#000" opacity=".25"/><rect x="${-w/2}" y="-52" width="${w}" height="104" rx="10" fill="#F4EBD8" stroke="${OL}" stroke-width="6"/><text y="20" text-anchor="middle" class="cap" font-size="58" fill="${OL}">${txt}</text></g>`}
+function counter(x,y,val,label,k,col=OL){if(k<=0)return '';return `<g transform="translate(${x},${y}) scale(${eob(k).toFixed(3)})"><rect x="-300" y="-100" width="616" height="220" rx="26" fill="#000" opacity=".25"/><rect x="-310" y="-110" width="620" height="220" rx="26" fill="#F4EBD8" stroke="${OL}" stroke-width="7"/>
+  <text y="32" text-anchor="middle" class="cap" font-size="150" fill="${col}">${val}</text><text y="94" text-anchor="middle" class="cap" font-size="54" fill="#B06E48">${label}</text></g>`}
+function caption(t){const c=TL.caps.find(c=>t>=c[0]&&t<c[1]);if(!c)return '';
+  const len=c[2].reduce((a,[w])=>a+w.length+1,-1),fit=Math.min(1,960/(len*55)),k=sat((t-c[0])/.12),sc=lerp(1.18,1,ss(k))*fit;
+  return `<text class="cap" text-anchor="middle" font-size="98" stroke="${OL}" stroke-width="20" stroke-linejoin="round" paint-order="stroke" transform="translate(540,1700) scale(${sc.toFixed(3)})">${c[2].map(([w,hl])=>`<tspan fill="${hl?'#FFD44D':'#FFFFFF'}">${w}</tspan>`).join(' ')}</text>`}
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+const view=(cx,cy,z,rot=0)=>`translate(540,960) rotate(${rot.toFixed(2)}) scale(${z.toFixed(4)}) translate(${f1(-cx)},${f1(-cy)})`;
+const W=(inner,cx,cy,z,rot=0)=>`<g transform="${view(cx,cy,z,rot)}">${inner}</g>`;
+const blink=(t,seed)=>((t+hash(seed)*3)%3.3)<.11;
+
+/* ================= SHOTS ================= */
+let TL=null,SHOTS=[];
+const S=id=>TL.L[id][0],E=id=>TL.L[id][1];
+const shots={
+  // S1 establishing wide: farm in perspective, slow push in
+  est(t,u,d){const H=1060;let w=farm(t,{H,house:[170,30,.75],mill:[780,10,.6],fence:-260});
+    [[620,H+60,.0],[700,H+90,1.2],[430,H+80,2.3],[880,H+120,.7]].forEach(([x,y,p],i)=>{w+=placeEmu(x,y,depth(y,H)*.95,{peck:ss(.5+.5*Math.sin(t*4+p))},i%2)});
+    return [W(w,540,960+u*6,1+u*.035),tag(540,300,'AUSTRALIA · 1932',sat((t-.25)/.35))]},
+  // S2 low angle medium: Pip salutes against the sky
+  salute(t,u,d){const H=1760;let w=farm(t,{H,sunX:300,sunY:820,farBlur:5});
+    const k=sat((u-.1)/.25);
+    w+=place(560,1980,2.5,person({cos:'soldier',hair:1,ahoge:1,rim:1,ex:'determined',pose:k>.5?'salute':'def',noRifle:1,sway:4*Math.sin(t*3),headTilt:-3}),false,0);
+    w+=fgWheat(t,2020,7,1.2,10,4);
+    return [W(w,560,1180-u*20,1.02+u*.03,-2),'']},
+  // S3 crash zoom ECU: emu head bursts into frame
+  emuECU(t,u,d){const H=1500;let w=farm(t,{H,farBlur:10,sun:false});
+    const k=eo(u/.22),sh=Math.exp(-u*8)*14*Math.sin(u*60);
+    w+=placeEmu(lerp(1500,700,k),2560,6.2,{ex:'smug',peck:0},true);
+    const flash=Math.max(0,1-u/.12)*.7;
+    return [W(w,540+sh,960+sh*.5,lerp(1.25,1,eo(u/.3))),flash>0?`<rect width="1080" height="1920" fill="#fff" opacity="${flash.toFixed(2)}"/>`:'']},
+  // S4 high angle wide: the field full of emus, counter
+  horde(t,u,d){const H=560;let w=farm(t,{H,house:[60,20,.45],pan:u*40});
+    for(let i=0;i<22;i++){const y=H+60+Math.pow(hash(i*4+1),1.3)*1300,x=hash(i*9+2)*1240-80-u*40*depth(y,H)*1.2;w+=placeEmu(x,y,depth(y,H)*1.15,{peck:ss(.5+.5*Math.sin(t*4.5+i*1.7)),ex:i%4?'neutral':'smug'},i%2)}
+    return [W(w,540,960,1.04+u*.02),counter(540,330,fmt(20000*ss((u-.1)/1.2)),'EMUS',sat(u/.3))]},
+  // S5 insert: emu pecking wheat, farmer furious out of focus behind
+  peck(t,u,d){const H=1150;let w=farm(t,{H,farBlur:5,mill:[820,0,.5]});
+    w+=`<g filter="url(#b5)">${place(820,1420,1.25,person({cos:'farmer',skin:SKINS[3],mustache:1,ex:'angry',vein:1,pose:'point',fist:1,headTilt:4*Math.sin(t*12)}),true)}</g>`;
+    const pk=ss(.5+.5*Math.sin(u*7));w+=placeEmu(360,1900,2.6,{peck:pk,ex:'smug'},false);
+    for(let i=0;i<8;i++){const ph=(u*1.3+i/8)%1;w+=`<ellipse cx="${f1(620+i*14+ph*120)}" cy="${f1(1880-ph*260+ph*ph*420)}" rx="7" ry="15" fill="#F2CF68" stroke="#A47C22" stroke-width="3" transform="rotate(${(ph*400+i*40).toFixed(0)},${f1(620+i*14+ph*120)},${f1(1880-ph*260+ph*ph*420)})" opacity="${(1-ph).toFixed(2)}"/>`}
+    w+=fgWheat(t,2050,9,1.3,5,11);
+    return [W(w,540,1150,1.05+u*.03),'']},
+  // S6 low angle hero: the soldiers march in, camera tracks
+  march(t,u,d){const H=1700;let w=farm(t,{H,sunX:900,sunY:700,pan:u*120,farBlur:2});
+    const wk=u*8.5;
+    w+=place(300+u*90,1960,2.0,person({cos:'soldier',skin:SKINS[3],mustache:1,ex:'deadpan',walk:wk+2,walkAmp:1,rim:1,backSwing:8*Math.sin(wk)}),false);
+    w+=place(600+u*90,1990,2.25,person({cos:'soldier',hair:1,ahoge:1,ex:'determined',walk:wk,walkAmp:1,rim:1,sway:6*Math.sin(wk),backSwing:8*Math.sin(wk+3)}),false);
+    for(let j=0;j<6;j++){const a=((u*2+j/6)%1);w+=`<circle cx="${f1(540+u*90+j*30-a*140)}" cy="${f1(1990-a*30)}" r="${f1(14+a*40)}" fill="#E8C79B" opacity="${(.55*(1-a)).toFixed(2)}"/>`}
+    w+=fgWheat(t,2060,8,1.2,10,7,-u*260);
+    return [W(w,560+u*90,1300,1.0+u*.02,2),'']},
+  // S7 insert: the Lewis gun slides in, a glint, Pip's hand pats it
+  gun(t,u,d){const H=1500;let w=farm(t,{H,farBlur:10,sun:false});
+    w+=sandbags(260,1340,2.2);
+    const k=eo(u/.35);
+    w+=`<g transform="translate(${f1(lerp(-500,250,k))},1150) scale(2.3)">${lewis()}</g>`;
+    const g=sat((u-.4)/.35);if(g>0&&g<1){const gx=lerp(250,1000,g);w+=`<g opacity="${(Math.sin(g*Math.PI)).toFixed(2)}" transform="translate(${f1(gx)},1080) rotate(${u*120})"><path d="M0,-60 Q8,-8 60,0 Q8,8 0,60 Q-8,8 -60,0 Q-8,-8 0,-60 Z" fill="#FFF8D0" stroke="${OL}" stroke-width="4"/></g>`}
+    const pat=sat((u-.7)/.22),hx=lerp(860,640,ss(pat)),hy=lerp(560,1040,ss(pat))+(u>.95?8*Math.sin(u*34):0);
+    if(pat>0){w+=limb(`M${f1(hx+380)},${f1(hy-520)} L${f1(hx+40)},${f1(hy-50)}`,'#8B8752',96);
+      w+=`<g transform="translate(${f1(hx+40)},${f1(hy-50)}) rotate(36)"><rect x="-58" y="-26" width="116" height="40" rx="12" fill="#76723F" stroke="${OL}" stroke-width="6"/></g>`;
+      w+=`<ellipse cx="${f1(hx)}" cy="${f1(hy)}" rx="62" ry="46" fill="${SKINS[0]}" stroke="${OL}" stroke-width="7" transform="rotate(-20,${f1(hx)},${f1(hy)})"/><ellipse cx="${f1(hx+46)}" cy="${f1(hy-28)}" rx="18" ry="26" fill="${SKINS[0]}" stroke="${OL}" stroke-width="6" transform="rotate(30,${f1(hx+46)},${f1(hy-28)})"/>`+ln(`M${f1(hx-34)},${f1(hy+6)} q20,14 44,10 M${f1(hx-24)},${f1(hy+24)} q18,10 38,6`,4.5)}
+    return [W(w,560,1150,1+u*.04),'']},
+  // S8 close-up: Pip smug, "easy, right?"
+  smug(t,u,d){const H=1500;let w=farm(t,{H,farBlur:10});
+    w+=place(520,1900,3.6,person({cos:'soldier',hair:1,ahoge:1,rim:1,ex:'smug',sway:6*Math.sin(u*4),headTilt:-5+3*Math.sin(u*3)}),false,0);
+    const sp=sat((u-.15)/.25);
+    if(sp>0)w+=`<g transform="translate(830,700) rotate(${u*90}) scale(${(eob(sp)*(1-.3*sat((u-.7)/.4))*1.3).toFixed(3)})"><path d="M0,-40 Q6,-6 40,0 Q6,6 0,40 Q-6,6 -40,0 Q-6,-6 0,-40 Z" fill="#FFF3A6" stroke="${OL}" stroke-width="5"/></g>`;
+    return [W(w,560,1060,1+u*.05),'']},
+  // S9 over the shoulder: behind Pip and the gun, emus far away stare back
+  ots(t,u,d){const H=1080;let w=farm(t,{H,fence:1300});
+    [[440,H+50],[520,H+70],[600,H+45],[680,H+80],[760,H+60]].forEach(([x,y],i)=>{w+=placeEmu(x,y,depth(y,H)*1.1,{ex:i===2?'smug':'neutral',peck:i%2?0:.15},i>2)});
+    w+=`<g filter="url(#b2)"><g transform="translate(230,1520) scale(2.2) rotate(-9)">${lewis()}</g></g>`;
+    w+=`<g filter="url(#b5)">${place(150,2350,3.4,personBack({sway:4*Math.sin(u*4)}),false,0)}</g>`;
+    return [W(w,560,1150-u*10,1+u*.06),'']},
+  // S10 firing: dutch angle, rapid fire, casings, shake
+  fire(t,u,d){const H=1250;let w=farm(t,{H,farBlur:2});
+    for(let i=0;i<5;i++){const tt=Math.max(0,u-.2),x=700+i*90+tt*(i%2?260:-160),y=H+90+i*30;w+=`<g filter="url(#b2)">${placeEmu(x,y,depth(y,H)*1.1,{run:1,ph:tt*20+i,ex:'smug'},i%2===0)}</g>`}
+    const shotI=Math.floor((u-.12)/.11),shotT=(u-.12)-shotI*.11,firing=u>.12,rec=firing?Math.exp(-shotT*28):0,fl=firing&&shotT<.045?shotI+1:0;
+    w+=sandbags(140,1700,2);
+    w+=place(300,1740,2.4,person({cos:'soldier',hair:1,ahoge:1,rim:1,ex:u<d-.55?'angry':'shocked',vein:1,pose:'grip',noRifle:1,sway:8*Math.sin(u*9)}),false,0);
+    w+=`<g transform="translate(${f1(470-10*rec)},1470) scale(1.8) rotate(-4)">${lewis({recoil:rec,flash:fl})}</g>`;
+    for(let k=0;k<=shotI;k++){const a=u-.12-k*.11;if(a<0||a>1)continue;const px=560-200*a,py=1420-700*a+1800*a*a;w+=casing(px,Math.min(py,1760),a*1100+k*50,2)}
+    const sk=firing?6*Math.sin(u*31):0;
+    return [W(w,560+sk,1250+sk*.6,1.02+u*.02,-7),'']},
+  // S11 whip pan into the high wide: emus scatter in small groups
+  scatter(t,u,d){const H=520;let w=farm(t,{H,pan:u*60});
+    const G=[[380,820,-1,-.5],[640,760,1,-.4],[460,1150,-1,.15],[700,1120,1,.25],[300,1420,-1,.3],[640,1460,1,.35],[520,980,1,-.1],[200,1100,-1,-.2]];
+    const dust=[];
+    G.forEach(([gx,gy,dx,dy],g)=>{for(let k=0;k<3;k++){const tt=u+.4,x=gx+k*90*dx+dx*tt*170+Math.sin(tt*7+g+k)*40,y=gy+k*40+dy*tt*120,sc=depth(y,H)*1.9;
+      for(let j=0;j<5;j++){const a=((tt*3+j/5+k*.3)%1);dust.push(`<circle cx="${f1(x-dx*a*120)}" cy="${f1(y-4)}" r="${f1((12+a*36)*sc)}" fill="#EBD2A6" opacity="${(.6*(1-a)).toFixed(2)}"/>`)}
+      w+=placeEmu(x,y,sc,{run:1,ph:tt*22+k*2+g,ex:(g+k)%3?'neutral':'smug'},dx<0)}});
+    w=w+dust.join('');
+    w+=sandbags(-60,1480,.9)+place(70,1510,1.0,person({cos:'soldier',hair:1,ahoge:1,ex:'shocked',pose:'grip',noRifle:1}),false);
+    const wp=Math.max(0,1-u/.2);
+    const inner=W(w,540+wp*500,960,1);
+    return [wp>0?`<g filter="url(#whip)">${inner}</g>`:inner,'']},
+  // S12 insert: casings rain into a growing pile, counter ticks
+  rain(t,u,d){const H=900;let w=farm(t,{H,farBlur:5,sun:false});
+    const k=ss((u-.1)/1.9);
+    w+=pile(540,1900,lerp(160,900,k),lerp(30,380,k),Math.floor(lerp(10,90,k)),3);
+    for(let i=0;i<26;i++){const ph=(u*1.6+hash(i))%1;w+=casing(80+hash(i*5)*920,lerp(-100,1700-k*300,ph),ph*720+i*30,2.2)}
+    return [W(w,540,1240-u*40,1+u*.03),counter(540,330,fmt(9860*ss((u-.3)/1.65)),'BULLETS',sat(u/.3))]},
+  // S13 medium: Pip deadpan beside the mountain of casings, an emu peeks
+  heap(t,u,d){const H=1200;let w=farm(t,{H,farBlur:2,mill:[900,0,.5]});
+    w+=pile(700,1820,820,620,140,7);
+    const pk=sat((u-.5)/.3);w+=placeEmu(lerp(1220,1010,eo(pk)),1560,1.8,{ex:'smug'},true);
+    w+=place(270,1860,2.3,person({cos:'soldier',hair:1,ahoge:1,rim:1,ex:'deadpan',blink:blink(t,3),sway:3*Math.sin(u*3)}),false);
+    return [W(w,540,1250,1.02+u*.02),'']},
+  // S14 camp chalkboard: tally marks, 986
+  board(t,u,d){let w=`<rect x="-300" y="-300" width="1700" height="2600" fill="#6E5A44"/><path d="M-300,1560 L1400,1560 L1400,2400 L-300,2400 Z" fill="#8C6E4C"/>`;
+    w+=`<path d="M-300,-300 L540,300 L1400,-300 Z" fill="#7C6650"/>`+ln('M-300,-300 L540,300 L1400,-300',8,'#5A4836');
+    w+=ln('M300,1560 L380,700 M800,1560 L720,700 M540,1560 L540,800',18,'#7A4A26');
+    w+=`<rect x="150" y="560" width="780" height="620" rx="14" fill="#2F4A3A" stroke="#8A5A34" stroke-width="26"/><rect x="150" y="560" width="780" height="620" rx="14" fill="none" stroke="${OL}" stroke-width="6"/>`;
+    w+=`<text x="540" y="680" text-anchor="middle" class="cap" font-size="64" fill="#F2F0E6" opacity=".9">9,860 BULLETS</text>`+ln('M300,700 L780,700',5,'#F2F0E6');
+    const n=Math.floor(22*ss((u-.05)/1.1));let tl='';for(let g=0;g<n;g++){const gx=210+(g%11)*64,gy=760+Math.floor(g/11)*110;tl+=`M${gx},${gy} l0,70 M${gx+11},${gy} l0,70 M${gx+22},${gy} l0,70 M${gx+33},${gy} l0,70 M${gx-8},${gy+58} l52,-46 `}
+    w+=`<path d="${tl}" stroke="#F2F0E6" stroke-width="6" stroke-linecap="round" fill="none" opacity=".85"/>`;
+    const k=sat((t-S('L08')+.05)/.3);if(k>0)w+=`<g transform="translate(540,1120) scale(${eob(k).toFixed(3)})"><text text-anchor="middle" class="cap" font-size="150" fill="#FF8A7A">986</text><text x="0" y="-130" text-anchor="middle" class="cap" font-size="44" fill="#F2F0E6" opacity=".8">CONFIRMED EMUS</text></g>`;
+    w+=place(230,1960,2.0,person({cos:'soldier',hair:1,ahoge:1,ex:'deadpan',pose:'point',noRifle:1,blink:blink(t,5)}),false);
+    return [W(w,540,960,1.02+u*.025),'']},
+  // S15 close-up: Pip cries, stamp slams
+  cry(t,u,d){const H=1500;let w=farm(t,{H,farBlur:10});
+    const k=sat((u-.05)/.25),sh=k>0&&k<1?0:Math.exp(-(u-.3)*10)*16*Math.sin(u*70)*(u>.3?1:0);
+    w+=place(520,1960,3.8,person({cos:'soldier',hair:1,ahoge:1,rim:1,ex:'crying',tearLen:Math.min(80,10+u*150),sway:6*Math.sin(u*10),headTilt:4*Math.sin(u*16)}),false,0);
+    const st=k>0?`<g transform="translate(540,430) rotate(-7) scale(${lerp(2.4,1,ss(k)).toFixed(3)})" opacity="${sat(k*3).toFixed(2)}"><rect x="-450" y="-90" width="900" height="180" rx="18" fill="#C0392B" stroke="${OL}" stroke-width="8"/><rect x="-430" y="-72" width="860" height="144" rx="12" fill="none" stroke="#FFF4E0" stroke-width="4" stroke-dasharray="14 10"/><text y="30" text-anchor="middle" class="cap" font-size="84" fill="#FFF4E0">10 BULLETS PER BIRD</text></g>`:'';
+    return [W(w,560+sh,1080+sh*.5,1+u*.03),st]},
+  // S16 the army truck drives away down the road; emus watch
+  away(t,u,d){const H=1000;let w=farm(t,{H,road:1,house:[880,30,.4]});
+    const k=ss(u/2.2),y=lerp(1750,H+70,Math.pow(k,.7)),sc=lerp(1,.12,Math.pow(k,.7));
+    const rider=place(40,-200,.9,person({cos:'soldier',hair:1,ahoge:1,ex:'crying',tearLen:70,noLegs:1,pose:'salute',noRifle:1,headTilt:6*Math.sin(u*14)}),false,0);
+    for(let j=0;j<6;j++){const a=((u*1.5+j/6)%1);w+=`<circle cx="${f1(540+(hash(j)-.5)*200*sc)}" cy="${f1(y+20*sc-a*60*sc)}" r="${f1((30+a*90)*sc)}" fill="#E8C79B" opacity="${(.55*(1-a)).toFixed(2)}"/>`}
+    w+=`<g transform="translate(540,${f1(y)}) scale(${sc.toFixed(3)})">${truck({wheel:u*20,rider})}</g>`;
+    w+=placeEmu(140,1880,2.0,{ex:'smug'},false)+placeEmu(960,1860,1.8,{ex:'smug',peck:.1},true);
+    return [W(w,540,1100,1.02),'']},
+  // S17 the emu in Pip's helmet walks into close-up
+  win(t,u,d){const H=1300;let w=farm(t,{H,farBlur:5,house:[100,30,.6],mill:[800,10,.55]});
+    for(let i=0;i<6;i++){const x=200+i*140,hop=Math.abs(Math.sin(t*7+i))*40;w+=`<g filter="url(#b5)">${placeEmu(x,1420-hop,.9,{peck:0,ex:'neutral'},i%2)}</g>`}
+    const k=sat(u/1.0),run=1-ss((u-.8)/.3);
+    w+=placeEmu(lerp(1500,560,ss(k)),2000,3.4,{helmet:1,ex:u>1?'smug':'neutral',run:Math.max(0,run)*.8,ph:u*14},true);
+    return [W(w,560,1180,1+u*.03),tag(540,300,'THE GREAT EMU WAR',sat((t-(S('L11')+.9))/.35),2)]}
+};
+function buildShots(){const withT=TL.caps.find(c=>c[2][0][0]==='WITH')[0]-.05;
+  const B=[[0,'est'],[S('L01')+1.45,'salute'],[S('L02')-.08,'emuECU'],[S('L03')-.15,'horde'],[S('L03')+1.5,'peck'],[S('L04')-.15,'march'],[withT,'gun'],
+    [S('L05')-.15,'smug'],[S('L06')-.2,'ots'],[S('L06')+1.15,'fire'],[S('L06')+2.85,'scatter'],[S('L07')-.25,'rain'],[S('L07')+2.3,'heap'],[S('L08')-.25,'board'],
+    [S('L09')-.15,'cry'],[S('L10')-.45,'away'],[S('L11')-.3,'win']];
+  SHOTS=B.map(([s,fn],i)=>({s,e:i+1<B.length?B[i+1][0]:TL.total,fn}))}
+function render(t){
+  uid=0;FR=Math.round(t*30);
+  const sh=SHOTS.find(x=>t>=x.s&&t<x.e)||SHOTS[SHOTS.length-1];
+  const [world,ui]=shots[sh.fn](t,t-sh.s,sh.e-sh.s);
+  document.getElementById('s').innerHTML=DEFS.replace('SEED',String(FR%12))+world+`<rect width="1080" height="1920" fill="url(#vig)"/><rect width="1080" height="1920" filter="url(#grain)"/>`+ui+caption(t);
+}
+window.render=render;
+fetch('tl.json').then(r=>r.json()).then(async j=>{TL=j;window.DUR=j.total;buildShots();try{await document.fonts.load('800 96px "Baloo 2"');await document.fonts.ready}catch(e){}
+  const q=new URLSearchParams(location.search);render(+(q.get('t')||0));window.READY=true});
+</script></body></html>

@@ -1,0 +1,302 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pip Character Bible</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap">
+<style>
+/* Layout: character bible. Hero stage + controls, then expression sheet, cast lineup, and the style rules */
+:root{
+  --bg:#EEF1F5; --card:#FFFFFF; --stage:#E3E9F1; --fg:#1C2230; --muted:#5B6477; --line:#D2D9E4;
+  --accent:#3D74AE; --accent-fg:#F3F7FC; --brand:#4F86B8; --chipbg:#E6EBF2;
+  --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161E; --card:#1A1F2A; --stage:#232A38; --fg:#E7EAF1; --muted:#9AA3B6; --line:#2E3646;
+  --accent:#7FB0E3; --accent-fg:#0D1724; --brand:#4F86B8; --chipbg:#262D3B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161E; --card:#1A1F2A; --stage:#232A38; --fg:#E7EAF1; --muted:#9AA3B6; --line:#2E3646;
+  --accent:#7FB0E3; --accent-fg:#0D1724; --brand:#4F86B8; --chipbg:#262D3B; color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+body{font:15px/1.55 var(--body)}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:34px}
+.top{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:28px;align-items:start}
+.stage{background:var(--stage);border-radius:18px;aspect-ratio:1/1;max-width:100%;overflow:hidden}
+.stage svg{width:100%;height:100%;display:block}
+.intro{display:flex;flex-direction:column;gap:18px;min-width:0}
+h1{font:800 54px/1 var(--display);margin:0}
+.sub{font:600 16px var(--body);color:var(--muted);margin:4px 0 0}
+.lede{margin:0;max-width:60ch}
+.ctl{display:flex;flex-direction:column;gap:8px}
+.lbl{font:600 12px/1 var(--body);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 14px/1 var(--body);padding:9px 13px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+.chip:hover{border-color:var(--accent)}
+.chip:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.sigs{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;border-top:1.5px solid var(--line);padding-top:14px}
+.sigs li{display:grid;grid-template-columns:120px 1fr;gap:12px;font-size:14px}
+.sigs b{font-weight:600}
+.sigs span{color:var(--muted)}
+section{display:flex;flex-direction:column;gap:14px}
+section h2{font:800 28px/1.1 var(--display);margin:0}
+section > p{margin:0;color:var(--muted);max-width:70ch}
+.strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+.cell{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.cell svg{width:100%;aspect-ratio:1/1;background:var(--stage);border-radius:12px;display:block}
+.cell b{font-size:13.5px;font-weight:600;text-align:center;line-height:1.25}
+.cell small{font-size:12px;color:var(--muted);text-align:center;line-height:1.3}
+.cast .cell svg{aspect-ratio:3/4}
+.rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.rule{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px 18px;min-width:0}
+.rule h3{font:800 19px/1.2 var(--display);margin:0 0 10px}
+.rule ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.sw{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.sw div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
+.sw i{width:38px;height:38px;border-radius:10px;border:2px solid var(--line);display:block}
+.cmp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.cmp .rule h3{display:flex;align-items:center;gap:8px}
+.tag{font:700 11px/1 var(--body);padding:5px 8px;border-radius:999px;background:var(--chipbg);color:var(--muted);letter-spacing:.04em}
+@media (max-width:980px){.top{grid-template-columns:minmax(0,1fr)}.strip{grid-template-columns:repeat(4,minmax(0,1fr))}.rules{grid-template-columns:minmax(0,1fr)}.cmp{grid-template-columns:minmax(0,1fr)}h1{font-size:44px}}
+@media (max-width:520px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}.sigs li{grid-template-columns:1fr;gap:2px}}
+.bob{animation:bob 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.eyes{animation:blink 4.4s infinite;transform-box:fill-box;transform-origin:center}
+.ahoge{animation:sway 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:20% 100%}
+.sil{filter:brightness(0)}
+@keyframes bob{0%,100%{transform:scale(1,1)}50%{transform:scale(1.025,.975)}}
+@keyframes blink{0%,91%,97%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+@keyframes sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(8deg)}}
+@media (prefers-reduced-motion: reduce){.bob,.eyes,.ahoge{animation:none}}
+</style>
+
+<div class="wrap" lang="vi">
+  <div class="top">
+    <div class="stage"><svg id="hero" viewBox="-170 -450 350 470" preserveAspectRatio="xMidYMax meet" role="img" aria-label="Pip, nhân vật chính"></svg></div>
+    <div class="intro">
+      <div><h1>Pip</h1><p class="sub">Nhân vật chính của kênh · tên tạm, đổi tùy bạn</p></div>
+      <p class="lede">Lấy tinh thần từ mẫu Historically: người chibi đầu tròn, mặt tối giản, biểu cảm meme phóng đại, cả dàn vai dùng chung một khuôn. Phần nhận diện là của riêng kênh bạn.</p>
+      <div class="ctl"><p class="lbl">Pip đóng vai</p>
+        <div class="chips" id="cosChips">
+          <button class="chip" data-v="none" aria-pressed="true">Đồ thường</button>
+          <button class="chip" data-v="soldier" aria-pressed="false">Lính 1916</button>
+          <button class="chip" data-v="roman" aria-pressed="false">La Mã</button>
+          <button class="chip" data-v="king" aria-pressed="false">Nhà vua</button>
+          <button class="chip" data-v="officer" aria-pressed="false">Sĩ quan</button>
+          <button class="chip" data-v="scientist" aria-pressed="false">Nhà khoa học</button>
+          <button class="chip" data-v="pharaoh" aria-pressed="false">Pharaoh</button>
+        </div></div>
+      <div class="ctl"><p class="lbl">Biểu cảm</p>
+        <div class="chips" id="exChips">
+          <button class="chip" data-v="auto" aria-pressed="true">Tự đổi</button>
+          <button class="chip" data-v="neutral" aria-pressed="false">Bình thường</button>
+          <button class="chip" data-v="happy" aria-pressed="false">Vui</button>
+          <button class="chip" data-v="shocked" aria-pressed="false">Sốc</button>
+          <button class="chip" data-v="smug" aria-pressed="false">Đắc ý</button>
+          <button class="chip" data-v="deadpan" aria-pressed="false">Cạn lời</button>
+          <button class="chip" data-v="angry" aria-pressed="false">Tức</button>
+          <button class="chip" data-v="crying" aria-pressed="false">Khóc</button>
+        </div></div>
+      <ul class="sigs">
+        <li><b>Sợi tóc dựng</b><span>Dấu hiệu số 1. Luôn chĩa lên, xuyên qua mọi loại mũ.</span></li>
+        <li><b>Áo xanh, túi đeo chéo</b><span>Màu xanh này là màu nhận diện kênh, dùng cho logo và thumbnail.</span></li>
+        <li><b>Da màu thật</b><span>Mỗi nhân vật một tông da, không có đầu trắng chung.</span></li>
+        <li><b>Mắt có điểm sáng</b><span>Mắt hạt nhỏ đặt thấp, có một chấm sáng, má hồng nhạt.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <section>
+    <h2>Bảng biểu cảm</h2>
+    <p>Bảy biểu cảm dùng lại suốt kênh. Cái hài của thể loại này nằm ở mặt phóng đại, nên mỗi biểu cảm có thêm ký hiệu kiểu manga: giọt mồ hôi, vạch sốc, gân tức, dòng nước mắt.</p>
+    <div class="strip" id="exStrip"></div>
+  </section>
+
+  <section class="cast">
+    <h2>Dàn vai phụ, cùng một khuôn</h2>
+    <p>Mọi nhân vật lịch sử đều dựng từ cùng thân và đầu của Pip, chỉ đổi tông da, tóc, râu, kính và trang phục. Một khuôn dùng cho mọi tập, không phải vẽ lại từ đầu.</p>
+    <div class="strip" id="castStrip"></div>
+  </section>
+
+  <section>
+    <h2>Quy tắc vẽ để luôn đồng nhất</h2>
+    <div class="rules">
+      <div class="rule"><h3>Màu</h3>
+        <div class="sw" id="swatches"></div>
+        <ul><li>Viền nâu đen ấm, không dùng đen tuyền.</li><li>Tông da lấy từ bảng 6 màu này.</li><li>Xanh áo Pip chỉ dành cho Pip và nhận diện kênh.</li></ul></div>
+      <div class="rule"><h3>Tỉ lệ</h3>
+        <ul><li>Đầu cao bằng một nửa cả người.</li><li>Đầu hơi bè ngang (rộng hơn cao khoảng 7%).</li><li>Mắt nằm ở khoảng 55% chiều cao đầu tính từ đỉnh, cách nhau rộng.</li><li>Viền dày 5,5 đơn vị ở khung 1080 px, ngang nhau cho mọi nhân vật.</li></ul></div>
+      <div class="rule"><h3>Không làm</h3>
+        <ul><li>Không dùng đầu trắng tròn cho cả dàn: đó là nhận diện của Historically.</li><li>Không dùng thẻ địa danh gạch xanh cyan, không giả giọng Hà Lan.</li><li>Không thêm chi tiết làm bóng dáng rối. Phải nhận ra được qua bóng đen.</li></ul></div>
+    </div>
+    <div class="cmp">
+      <div class="rule"><h3>Lấy từ mẫu <span class="tag">THỂ LOẠI CHUNG</span></h3>
+        <ul><li>Chibi đầu to, thân ngắn, tay chân tròn.</li><li>Mặt tối giản, mắt hạt nhỏ, không mũi.</li><li>Biểu cảm phóng đại kiểu meme.</li><li>Một khuôn cho mọi nhân vật, đổi trang phục theo thời đại.</li></ul></div>
+      <div class="rule"><h3>Chất riêng của bạn <span class="tag">NHẬN DIỆN</span></h3>
+        <ul><li>Sợi tóc dựng, áo xanh và túi đeo chéo của Pip.</li><li>Da màu thật, nhiều tông, má hồng, mắt có điểm sáng.</li><li>Viền nâu ấm, bảng màu ấm dịu.</li><li>Ký hiệu manga cho từng biểu cảm.</li></ul></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+const OL='#2B2024';
+let uid=0;
+const C={blush:'#F28C8C',mouth:'#7A2E3A',tongue:'#E46D6D',gold:'#F2C14E',goldSh:'#C99A2A',iron:'#A9B1B8',hair:'#4A3326',tear:'#8FD3F0',vein:'#E0463E'};
+const SKINS=['#F6CFA6','#F3D7C0','#E9B98E','#C98E62','#B9845C','#9E6B47'];
+const shade=h=>{const n=parseInt(h.slice(1),16);const f=v=>Math.max(0,Math.round(v*.86)).toString(16).padStart(2,'0');return '#'+f(n>>16)+f((n>>8)&255)+f(n&255)};
+
+/* ---------- face ---------- */
+const N=[-14,-222],F=[32,-220],M=[10,-186];
+function lidEye(cx,cy,rx,ry,lid){
+  const id='ec'+(uid++),lidY=cy-ry+2*ry*lid,t=(lidY-cy)/ry,hw=rx*Math.sqrt(Math.max(0,1-t*t)),lg=lidY<cy?1:0;
+  const d=`M${(cx-hw).toFixed(1)},${lidY.toFixed(1)} A${rx},${ry} 0 ${lg} 0 ${(cx+hw).toFixed(1)},${lidY.toFixed(1)} Z`;
+  return `<path d="${d}" fill="${OL}"/><path d="M${(cx-hw-3).toFixed(1)},${lidY.toFixed(1)} L${(cx+hw+3).toFixed(1)},${lidY.toFixed(1)}" stroke="${OL}" stroke-width="5.5" stroke-linecap="round"/>`;
+}
+function dot(c,rx,ry){return `<ellipse cx="${c[0]}" cy="${c[1]}" rx="${rx}" ry="${ry}" fill="${OL}"/><circle cx="${c[0]+rx*.36}" cy="${c[1]-ry*.36}" r="${rx*.38}" fill="#fff"/>`}
+const ln=(d,w=5.5,c=OL)=>`<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+function face(ex,o){
+  let e='',x='',m='';
+  const [nx,ny]=N,[fx,fy]=F,[mx,my]=M;
+  if(ex==='happy'){e=ln(`M${nx-11},${ny+3} Q${nx},${ny-13} ${nx+11},${ny+3}`,6)+ln(`M${fx-10},${fy+3} Q${fx},${fy-12} ${fx+10},${fy+3}`,6);
+    m=`<path d="M${mx-14},${my-3} Q${mx},${my+22} ${mx+14},${my-3} Z" fill="${C.mouth}" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/>`+ln(`M${mx-6},${my+9} Q${mx},${my+4} ${mx+6},${my+9}`,5,C.tongue)}
+  else if(ex==='shocked'){
+    e=[[N,15,18],[F,13,16]].map(([c,rx,ry])=>`<ellipse cx="${c[0]}" cy="${c[1]}" rx="${rx}" ry="${ry}" fill="#fff" stroke="${OL}" stroke-width="4.5"/><circle cx="${c[0]+2}" cy="${c[1]+1}" r="3.6" fill="${OL}"/>`).join('');
+    x=ln(`M${nx-14},${ny-30} Q${nx},${ny-42} ${nx+14},${ny-30}`)+ln(`M${fx-12},${fy-28} Q${fx},${fy-40} ${fx+12},${fy-28}`)+
+      `<path d="M84,-282 Q94,-264 84,-256 Q74,-264 84,-282 Z" fill="${C.tear}" stroke="${OL}" stroke-width="3.5"/>`;
+    m=`<ellipse cx="${mx+1}" cy="${my+6}" rx="9" ry="14" fill="${C.mouth}" stroke="${OL}" stroke-width="4.5"/>`}
+  else if(ex==='smug'){e=lidEye(nx,ny,9.5,12.5,.5)+lidEye(fx,fy,8.5,11.5,.5);
+    x=ln(`M${fx-11},${fy-24} L${fx+11},${fy-33}`);m=ln(`M${mx-10},${my+1} Q${mx+2},${my+8} ${mx+15},${my-7}`,4.5)}
+  else if(ex==='deadpan'){e=lidEye(nx,ny,9.5,12.5,.62)+lidEye(fx,fy,8.5,11.5,.62);
+    x=ln(`M${nx-11},${ny-21} L${nx+11},${ny-21}`)+ln(`M${fx-10},${fy-20} L${fx+10},${fy-20}`);m=ln(`M${mx-8},${my+2} L${mx+10},${my+2}`,4.5)}
+  else if(ex==='angry'){e=dot(N,9,9)+dot(F,8,8.5);
+    x=ln(`M${nx-14},${ny-26} L${nx+10},${ny-15}`,7)+ln(`M${fx-10},${fy-14} L${fx+13},${fy-25}`,7)+
+      ln('M58,-292 q7,7 0,14 M76,-292 q-7,7 0,14 M60,-294 q7,-7 14,0 M60,-276 q7,7 14,0',4.5,C.vein);
+    m=`<path d="M${mx-13},${my-4} L${mx+15},${my-4} L${mx+15},${my+9} L${mx-13},${my+9} Z" fill="#fff" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/>`+ln(`M${mx-13},${my+2.5} L${mx+15},${my+2.5}`,3)}
+  else if(ex==='crying'){e=ln(`M${nx-11},${ny-3} Q${nx},${ny+6} ${nx+11},${ny+1}`,6)+ln(`M${fx-10},${fy+1} Q${fx},${fy+6} ${fx+10},${fy-3}`,6);
+    x=ln(`M${nx-12},${ny-22} L${nx+10},${ny-30}`)+ln(`M${fx-10},${fy-29} L${fx+11},${fy-21}`)+
+      `<rect x="${nx-6}" y="${ny+4}" width="12" height="62" rx="6" fill="${C.tear}" stroke="${OL}" stroke-width="3.5"/><rect x="${fx-5}" y="${fy+4}" width="11" height="58" rx="5.5" fill="${C.tear}" stroke="${OL}" stroke-width="3.5"/>`;
+    m=`<path d="M${mx-14},${my+4} Q${mx-7},${my-8} ${mx},${my+2} Q${mx+7},${my-8} ${mx+14},${my+4} Q${mx},${my+18} ${mx-14},${my+4} Z" fill="${C.mouth}" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/>`}
+  else{e=dot(N,9.5,12.5)+dot(F,8.5,11.5);m=ln(`M${mx-8},${my} Q${mx},${my+7} ${mx+8},${my}`,4.5)}
+  if(o.lashes&&!['happy','crying'].includes(ex))e+=ln(`M${nx-9},${ny-10} l-7,-6 M${fx+8},${fy-9} l7,-6`,4);
+  if(o.eyeliner&&!['happy','crying','shocked'].includes(ex))e+=ln(`M${nx-10},${ny+2} l-12,-5 M${fx+9},${fy+2} l12,-5`,4);
+  let g='';
+  if(o.glasses)g=`<circle cx="${nx}" cy="${ny}" r="19" fill="#fff" fill-opacity=".22" stroke="${OL}" stroke-width="4.5"/><circle cx="${fx}" cy="${fy}" r="17" fill="#fff" fill-opacity=".22" stroke="${OL}" stroke-width="4.5"/>`+ln(`M${nx+19},${ny} Q${(nx+fx)/2},${ny-6} ${fx-17},${fy}`,4)+ln(`M${nx-19},${ny-2} L-70,-228`,4);
+  return `<g class="eyes">${e}</g>${x}${m}${g}`;
+}
+
+/* ---------- hats ---------- */
+const HATS={soldier:'helmet',roman:'galea',king:'crown',officer:'bicorne',pharaoh:'nemes',peasant:'scarf'};
+function hatTop(cos,A){const by=A.top.y+A.drop,w=A.w,h=HATS[cos];
+  return h==='helmet'?by-w*.47:h==='galea'?by-w*.66:h==='crown'?by-w*.38:h==='bicorne'?by-w*.56:h==='nemes'?A.top.y-14:h==='scarf'?A.top.y-12:A.top.y+4}
+function hat(cos,A){
+  const h=HATS[cos],bx=A.top.x,by=A.top.y+A.drop,w=A.w,st=`stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"`;
+  if(h==='helmet')return `<path d="M${bx-w*.40},${by} Q${bx-w*.40},${by-w*.46} ${bx},${by-w*.47} Q${bx+w*.40},${by-w*.46} ${bx+w*.40},${by} Z" fill="#62703E" ${st}/>${ln(`M${bx-w*.2},${by-w*.33} Q${bx},${by-w*.42} ${bx+w*.18},${by-w*.39}`,8,'#86965A')}<ellipse cx="${bx}" cy="${by}" rx="${w*.62}" ry="${w*.085}" fill="#62703E" ${st}/>`;
+  if(h==='galea')return `<path d="M${bx-w*.30},${by-w*.34} Q${bx-w*.05},${by-w*.95} ${bx+w*.32},${by-w*.36} Q${bx},${by-w*.50} ${bx-w*.30},${by-w*.34} Z" fill="#C8372D" ${st}/><path d="M${bx-w*.40},${by} Q${bx-w*.40},${by-w*.46} ${bx},${by-w*.47} Q${bx+w*.40},${by-w*.46} ${bx+w*.40},${by} Z" fill="${C.iron}" ${st}/>${ln(`M${bx-w*.38},${by-w*.1} Q${bx},${by-w*.16} ${bx+w*.38},${by-w*.1}`,7,C.gold)}<ellipse cx="${bx}" cy="${by}" rx="${w*.48}" ry="${w*.06}" fill="${C.iron}" ${st}/>`;
+  if(h==='crown'){const L=bx-w*.36,R=bx+w*.36,t=by-w*.14,p=by-w*.38,s=(R-L)/4;let d=`M${L},${by} L${L},${t}`;
+    for(let i=0;i<4;i++)d+=` L${L+s*i+s/2},${i%2?p+8:p} L${L+s*(i+1)},${t}`;d+=` L${R},${by} Z`;
+    return `<path d="${d}" fill="${C.gold}" ${st}/><path d="M${L},${by-w*.07} L${R},${by-w*.07}" stroke="${C.goldSh}" stroke-width="4"/><circle cx="${bx-w*.18}" cy="${by-w*.07}" r="6" fill="#D43A4A" stroke="${OL}" stroke-width="3"/><circle cx="${bx}" cy="${by-w*.07}" r="7" fill="#3A6FD4" stroke="${OL}" stroke-width="3"/><circle cx="${bx+w*.18}" cy="${by-w*.07}" r="6" fill="#D43A4A" stroke="${OL}" stroke-width="3"/>`}
+  if(h==='bicorne')return `<path d="M${bx-w*.62},${by-w*.02} Q${bx-w*.3},${by-w*.62} ${bx},${by-w*.56} Q${bx+w*.3},${by-w*.62} ${bx+w*.62},${by-w*.02} Q${bx},${by-w*.2} ${bx-w*.62},${by-w*.02} Z" fill="#2E2B35" ${st}/>${ln(`M${bx-w*.54},${by-w*.05} Q${bx},${by-w*.22} ${bx+w*.54},${by-w*.05}`,4,C.gold)}<circle cx="${bx+w*.08}" cy="${by-w*.3}" r="${w*.07}" fill="${C.gold}" stroke="${OL}" stroke-width="4"/><circle cx="${bx+w*.08}" cy="${by-w*.3}" r="${w*.03}" fill="#C8372D"/>`;
+  if(h==='nemes'){const id='nm'+(uid++),d='M-92,-150 L-88,-250 Q-84,-328 6,-330 Q96,-328 100,-250 L104,-150 L78,-150 L74,-232 Q6,-260 -62,-232 L-66,-150 Z';
+    let stripes='';for(let y=-330;y<-140;y+=14)stripes+=`<rect x="-110" y="${y}" width="230" height="7" fill="#2F5DA8"/>`;
+    return `<defs><clipPath id="${id}"><path d="${d}"/></clipPath></defs><path d="${d}" fill="${C.gold}"/><g clip-path="url(#${id})">${stripes}</g><path d="${d}" fill="none" ${st}/>
+     <path d="M-64,-240 Q6,-268 76,-240" stroke="${C.gold}" stroke-width="12" fill="none"/>${ln('M-64,-240 Q6,-268 76,-240',2.5)}
+     <path d="M20,-268 q-6,-18 4,-26 q10,8 4,26 Z" fill="${C.gold}" stroke="${OL}" stroke-width="4"/>`}
+  if(h==='scarf')return `<path d="M-88,-214 Q-96,-326 6,-330 Q104,-326 98,-214 Q62,-254 6,-256 Q-50,-254 -88,-214 Z" fill="#C25B3F" ${st}/>
+     <circle cx="-40" cy="-292" r="4" fill="#F2D3A0"/><circle cx="0" cy="-304" r="4" fill="#F2D3A0"/><circle cx="42" cy="-296" r="4" fill="#F2D3A0"/><circle cx="-60" cy="-262" r="4" fill="#F2D3A0"/><circle cx="70" cy="-266" r="4" fill="#F2D3A0"/>
+     <path d="M-86,-222 q-30,6 -38,30 q20,-4 34,-14 Z M-84,-216 q-16,22 -8,44 q12,-16 12,-36 Z" fill="#C25B3F" ${st}/>`;
+  return '';
+}
+
+/* ---------- props ---------- */
+function prop(cos,h){
+  if(cos==='soldier')return `<g transform="translate(${h.x},${h.y}) rotate(-58) scale(.62)"><path d="M-76,-13 Q-40,-11 -6,-8 L150,-7 L150,3 L24,4 Q12,6 7,15 L-5,15 Q-7,8 -14,6 L-76,16 Z" fill="#94592E" stroke="${OL}" stroke-width="7" stroke-linejoin="round"/><path d="M18,-14 L180,-13 L180,-6 L18,-6 Z" fill="#3A3F45" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/><path d="M-8,-17 L26,-17 L26,-6 L-8,-6 Z" fill="#3A3F45" stroke="${OL}" stroke-width="6"/></g>`;
+  if(cos==='roman')return `<g transform="translate(${h.x+4},${h.y+14}) rotate(5)"><rect x="-32" y="-62" width="66" height="116" rx="16" fill="#B8392E" stroke="${OL}" stroke-width="5.5"/><rect x="-24" y="-54" width="50" height="100" rx="11" fill="none" stroke="${C.gold}" stroke-width="4"/><path d="M1,-54 L1,46 M-24,-4 L26,-4" stroke="${C.gold}" stroke-width="4"/><circle cx="1" cy="-4" r="14" fill="${C.gold}" stroke="${OL}" stroke-width="4.5"/></g>`;
+  if(cos==='king')return ln(`M${h.x+2},${h.y+46} L${h.x+14},${h.y-82}`,15)+ln(`M${h.x+2},${h.y+46} L${h.x+14},${h.y-82}`,7,C.gold)+`<circle cx="${h.x+15}" cy="${h.y-96}" r="15" fill="${C.gold}" stroke="${OL}" stroke-width="5"/>`+ln(`M${h.x+16},${h.y-112} l0,-16 M${h.x+9},${h.y-121} l14,0`,5);
+  if(cos==='officer')return ln(`M${h.x},${h.y} Q${h.x+40},${h.y-62} ${h.x+16},${h.y-132}`,15)+ln(`M${h.x},${h.y} Q${h.x+40},${h.y-62} ${h.x+16},${h.y-132}`,7,'#DCE2E8')+ln(`M${h.x-14},${h.y-6} Q${h.x+2},${h.y-20} ${h.x+18},${h.y-8}`,7,C.gold);
+  if(cos==='scientist')return `<g transform="translate(${h.x+6},${h.y-14})"><path d="M-7,-30 L7,-30 L7,-12 L22,14 Q24,22 13,22 L-13,22 Q-24,22 -22,14 L-7,-12 Z" fill="#E3F2F7" stroke="${OL}" stroke-width="4.5" stroke-linejoin="round"/><path d="M-19,6 L19,6 L22,14 Q24,22 13,22 L-13,22 Q-24,22 -22,14 Z" fill="#7BD389"/><circle cx="-4" cy="-38" r="5" fill="#7BD389" stroke="${OL}" stroke-width="3"/><circle cx="6" cy="-52" r="3.5" fill="#7BD389" stroke="${OL}" stroke-width="2.5"/></g>`;
+  if(cos==='peasant')return ln(`M${h.x-2},${h.y+50} L${h.x+12},${h.y-96}`,13)+ln(`M${h.x-2},${h.y+50} L${h.x+12},${h.y-96}`,6,'#9A6A3C')+ln(`M${h.x-8},${h.y-96} Q${h.x+12},${h.y-106} ${h.x+32},${h.y-94} M${h.x-8},${h.y-96} L${h.x-10},${h.y-138} M${h.x+12},${h.y-100} L${h.x+12},${h.y-142} M${h.x+32},${h.y-94} L${h.x+34},${h.y-136}`,5,'#7E868E');
+  if(cos==='pharaoh')return ln(`M${h.x},${h.y+40} L${h.x+10},${h.y-100} Q${h.x+12},${h.y-128} ${h.x+34},${h.y-124} Q${h.x+44},${h.y-112} ${h.x+34},${h.y-102}`,15)+`<path d="M${h.x},${h.y+40} L${h.x+10},${h.y-100} Q${h.x+12},${h.y-128} ${h.x+34},${h.y-124} Q${h.x+44},${h.y-112} ${h.x+34},${h.y-102}" fill="none" stroke="${C.gold}" stroke-width="7" stroke-linecap="round"/><path d="M${h.x},${h.y+40} L${h.x+10},${h.y-100}" stroke="#2F5DA8" stroke-width="7" stroke-dasharray="8 10"/>`;
+  return '';
+}
+
+/* ---------- outfits ---------- */
+function outfit(cos,skin){
+  const st=`stroke="${OL}" stroke-width="4"`;
+  switch(cos){
+  case 'soldier':return{shirt:'#8B8752',pants:'#77733F',shoe:'#4A3020',detail:`<rect x="-60" y="-88" width="120" height="13" fill="#5A3B22"/><path d="M-60,-88 L60,-88 M-60,-75 L60,-75" stroke="${OL}" stroke-width="3.5"/><rect x="24" y="-90" width="13" height="17" rx="2" fill="${C.gold}" ${st}/><rect x="-6" y="-136" width="22" height="20" rx="3" fill="#76723F" ${st}/>`};
+  case 'roman':{let p='';for(let x=-50;x<=50;x+=13)p+=`<path d="M${x},-78 L${x},-50" stroke="#86251D" stroke-width="3.5"/>`;
+    return{shirt:'#B8392E',pants:skin,shoe:'#7A4E2D',detail:`<rect x="-60" y="-170" width="120" height="66" fill="${C.iron}"/><path d="M-60,-148 L60,-148 M-60,-126 L60,-126 M-60,-104 L60,-104" stroke="${OL}" stroke-width="3.5"/>${p}`}}
+  case 'king':{let d='';for(let y=-150;y<=-66;y+=16)d+=`<path d="M27,${y} l0,7 M24,${y+3} l6,0" stroke="${OL}" stroke-width="2.5"/>`;
+    return{shirt:'#A3263A',pants:'#A3263A',shoe:'#3A2C24',behind:`<path d="M-40,-150 Q-84,-70 -76,-6 L66,-6 Q74,-70 40,-150 Z" fill="#7E1A2B" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/><path d="M-76,-10 L66,-10" stroke="#F7F3EA" stroke-width="9"/>`,
+    detail:`<rect x="16" y="-170" width="22" height="120" fill="#F7F3EA"/><path d="M16,-170 L16,-50 M38,-170 L38,-50" stroke="${OL}" stroke-width="3.5"/>${d}<path d="M-30,-146 Q4,-112 40,-146" stroke="${C.gold}" stroke-width="6" fill="none"/>`}}
+  case 'officer':return{shirt:'#2C3E6B',pants:'#EDE8DA',shoe:'#1F1E24',detail:`<path d="M-40,-152 L48,-66 M40,-152 L-44,-66" stroke="#EDE8DA" stroke-width="11"/><circle cx="4" cy="-108" r="7" fill="${C.gold}" ${st}/><rect x="-60" y="-160" width="120" height="10" fill="#B8392E"/>`,
+    after:`<ellipse cx="38" cy="-146" rx="17" ry="9" fill="${C.gold}" stroke="${OL}" stroke-width="4"/><path d="M24,-140 l0,10 M32,-139 l0,11 M40,-139 l0,11 M48,-140 l0,10" stroke="${C.goldSh}" stroke-width="3"/>`};
+  case 'scientist':return{shirt:'#F1F1EC',pants:'#4B4F5C',shoe:'#2A2A30',detail:`<path d="M-10,-160 L6,-112 L22,-160 Z" fill="#9DB7D5" ${st}/><path d="M-30,-160 L4,-96 L40,-160" fill="none" stroke="#C9CCC4" stroke-width="5"/><rect x="18" y="-120" width="20" height="16" rx="2" fill="none" ${st}/><path d="M24,-124 l0,-10 M31,-124 l0,-8" stroke="#3A6FD4" stroke-width="4"/>`};
+  case 'peasant':return{shirt:'#7B5B3E',pants:'#5B4430',shoe:'#3A2C24',skirt:`<path d="M-46,-74 L-60,-22 Q6,-10 70,-22 L52,-74 Z" fill="#7B5B3E" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/><path d="M-6,-72 L-12,-20 Q16,-16 40,-20 L34,-72 Z" fill="#EFE4CC" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/>`,
+    detail:`<rect x="-60" y="-96" width="120" height="10" fill="#4E3A28"/><path d="M-20,-160 Q6,-140 30,-160" fill="#EFE4CC" ${st}/>`};
+  case 'pharaoh':return{shirt:skin,pants:skin,shoe:'#9A6A3C',skirt:`<path d="M-46,-78 L-56,-40 L62,-40 L52,-78 Z" fill="#F3EEDF" stroke="${OL}" stroke-width="5" stroke-linejoin="round"/><path d="M6,-76 L2,-42 M18,-76 L22,-42" stroke="#C9C1AE" stroke-width="3"/><rect x="-48" y="-84" width="102" height="10" fill="${C.gold}" ${st}/>`,
+    detail:`<path d="M-60,-170 Q6,-96 70,-170 L70,-150 Q6,-78 -60,-150 Z" fill="#2F5DA8"/><path d="M-60,-164 Q6,-108 70,-164" stroke="${C.gold}" stroke-width="8" fill="none"/><path d="M-60,-150 Q6,-86 70,-150" stroke="${C.gold}" stroke-width="6" fill="none"/>`};
+  default:return{shirt:'#4F86B8',pants:'#6B5A48',shoe:'#3A2C24',detail:`<path d="M-38,-154 L52,-64" stroke="#7A4E2D" stroke-width="10"/><rect x="-30" y="-120" width="22" height="18" rx="3" fill="#3F6F9B" stroke="${OL}" stroke-width="3.5"/>`,
+    after:`<rect x="40" y="-84" width="30" height="26" rx="6" fill="#8A5A34" stroke="${OL}" stroke-width="4.5"/><path d="M40,-74 L70,-74" stroke="${OL}" stroke-width="3"/>`};
+  }
+}
+
+/* ---------- the template ---------- */
+const HEAD='M-80,-232 A86,80 0 1 1 92,-232 A86,80 0 1 1 -80,-232 Z';
+const TORSO='M-44,-62 Q-50,-110 -38,-152 Q2,-162 42,-152 Q52,-110 48,-62 Q2,-54 -44,-62 Z';
+const A={top:{x:6,y:-312},drop:26,w:160}, HAND={x:62,y:-94};
+function person(o){
+  const skin=o.skin||SKINS[0], sh=shade(skin), O=outfit(o.cos,skin), ex=o.ex||'neutral', hid='hh'+(uid++), tid='ht'+(uid++);
+  const limb=(d,c,w)=>`<path d="${d}" fill="none" stroke="${OL}" stroke-width="${w+10}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  let s=`<ellipse cx="6" cy="4" rx="80" ry="10" fill="#000" opacity=".12"/><defs><clipPath id="${hid}"><path d="${HEAD}"/></clipPath><clipPath id="${tid}"><path d="${TORSO}"/></clipPath></defs><g class="${o.anim?'bob':''}">`;
+  s+=O.behind||'';
+  s+=limb('M-32,-140 L-50,-112 L-52,-84',O.shirt,22)+`<circle cx="-52" cy="-80" r="12" fill="${sh}" stroke="${OL}" stroke-width="5"/>`;
+  s+=limb('M-14,-70 L-18,-14',O.pants,26)+limb('M18,-70 L22,-14',O.pants,26);
+  s+=`<ellipse cx="-12" cy="-8" rx="20" ry="11" fill="${O.shoe}" stroke="${OL}" stroke-width="5"/><ellipse cx="32" cy="-8" rx="22" ry="12" fill="${O.shoe}" stroke="${OL}" stroke-width="5"/>`;
+  s+=O.skirt||'';
+  s+=`<path d="${TORSO}" fill="${O.shirt}"/><g clip-path="url(#${tid})">${O.detail}<rect x="-60" y="-170" width="30" height="120" fill="#000" opacity=".12"/></g><path d="${TORSO}" fill="none" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/>`;
+  s+=limb('M34,-140 L56,-120 L62,-98',O.shirt,22)+(O.after||'');
+  if(o.hair==='wild')s+=`<path d="M-70,-290 q-34,-6 -30,26 q-26,8 -10,30 q-18,18 6,30 Z M84,-292 q34,-6 30,26 q26,8 10,30 q18,18 -6,30 Z" fill="#EEEEE8" stroke="${OL}" stroke-width="5" stroke-linejoin="round"/>`;
+  s+=`<ellipse cx="-74" cy="-226" rx="13" ry="17" fill="${skin}" stroke="${OL}" stroke-width="5"/>`;
+  s+=`<path d="${HEAD}" fill="${sh}"/><g clip-path="url(#${hid})"><path d="${HEAD}" transform="translate(10,-10)" fill="${skin}"/>`;
+  const f=-266;
+  if(o.hair==='pip'||o.hair==='short')s+=`<path d="M-140,${f} Q-100,${f+18} -66,${f+2} Q-36,${f+22} -4,${f+4} Q26,${f+20} 52,${f} Q78,${f+16} 140,${f-6} L140,-420 L-140,-420 Z" fill="${o.hairC||C.hair}"/>${ln(`M-60,${f-22} Q-20,${f-36} 30,${f-30}`,7,'#6A4A38')}`;
+  if(o.hair==='wild')s+=ln('M-30,-306 q10,-10 22,0 M14,-310 q10,-12 24,-2',5,'#EEEEE8');
+  if(o.beard)s+=`<path d="M-120,-210 Q-70,-196 -30,-176 Q8,-160 48,-178 Q84,-196 130,-210 L130,-120 L-120,-120 Z" fill="${o.beardC||'#D9D4CC'}"/>`;
+  s+=`</g><path d="${HEAD}" fill="none" stroke="${OL}" stroke-width="5.5" stroke-linejoin="round"/>`;
+  if(o.beard)s+=ln('M-30,-176 Q8,-160 48,-178',4);
+  if(o.mustache)s+=`<path d="M-6,-196 Q4,-206 12,-198 Q22,-206 32,-196 Q22,-190 12,-194 Q2,-190 -6,-196 Z" fill="#3B2A22" stroke="${OL}" stroke-width="3"/>`;
+  s+=`<ellipse cx="-40" cy="-194" rx="13" ry="7" fill="${C.blush}" opacity=".5"/><ellipse cx="62" cy="-192" rx="10" ry="6" fill="${C.blush}" opacity=".5"/>`;
+  s+=face(ex,o);
+  if(ex==='shocked')s+=`<g clip-path="url(#${hid})">${ln('M-46,-300 l4,22 M-30,-306 l3,22 M-14,-308 l2,20',4.5,'#5C7FC8')}</g>`;
+  s+=hat(o.cos,A);
+  if(o.ahoge){const ty=hatTop(o.cos,A)+6,x=A.top.x+6;
+    s+=`<g class="${o.anim?'ahoge':''}">${ln(`M${x},${ty} Q${x-8},${ty-30} ${x+14},${ty-40} Q${x+32},${ty-44} ${x+26},${ty-26}`,13)}${ln(`M${x},${ty} Q${x-8},${ty-30} ${x+14},${ty-40} Q${x+32},${ty-44} ${x+26},${ty-26}`,6,o.hairC||C.hair)}</g>`}
+  s+=`</g>`+prop(o.cos,HAND)+`<circle cx="${HAND.x}" cy="${HAND.y}" r="12.5" fill="${skin}" stroke="${OL}" stroke-width="5"/>`;
+  return s;
+}
+
+/* ---------- page ---------- */
+const PIP={hair:'pip',ahoge:true,skin:SKINS[0]};
+const VB='-170 -450 350 470', VBF='-125 -360 260 260', VBC='-150 -440 320 460';
+const EXS=[['neutral','Bình thường','kể chuyện'],['happy','Vui','tin tốt'],['shocked','Sốc','plot twist'],['smug','Đắc ý','"tôi biết mà"'],['deadpan','Cạn lời','chuyện vô lý'],['angry','Tức','bị lừa'],['crying','Khóc','kết buồn']];
+document.getElementById('exStrip').innerHTML=EXS.map(([k,l,u])=>`<div class="cell"><svg viewBox="${VBF}" aria-label="Pip ${l}">${person({...PIP,cos:'none',ex:k})}</svg><b>${l}</b><small>${u}</small></div>`).join('');
+const CAST=[
+  ['Pip','nhân vật chính',{...PIP,cos:'none',ex:'happy'}],
+  ['Nhà vua','da nâu, râu bạc',{cos:'king',skin:SKINS[3],beard:true,ex:'smug'}],
+  ['Lính La Mã','tóc đen',{cos:'roman',hair:'short',skin:SKINS[2],ex:'angry'}],
+  ['Sĩ quan 1800','ria mép',{cos:'officer',hair:'short',mustache:true,skin:SKINS[1],ex:'deadpan'}],
+  ['Nhà khoa học','tóc bù, kính',{cos:'scientist',hair:'wild',glasses:true,skin:SKINS[0],ex:'shocked'}],
+  ['Nông dân','khăn trùm, mi mắt',{cos:'peasant',skin:SKINS[4],lashes:true,ex:'angry'}],
+  ['Pharaoh','kẻ mắt',{cos:'pharaoh',skin:SKINS[5],eyeliner:true,ex:'neutral'}]];
+document.getElementById('castStrip').innerHTML=CAST.map(([n,d,o])=>`<div class="cell"><svg viewBox="${VBC}" preserveAspectRatio="xMidYMax meet" aria-label="${n}">${person(o)}</svg><b>${n}</b><small>${d}</small></div>`).join('');
+document.getElementById('swatches').innerHTML=[[OL,'Viền'],['#4F86B8','Áo Pip'],...SKINS.map((c,i)=>[c,'Da '+(i+1)])].map(([c,l])=>`<div><i style="background:${c}"></i>${l}</div>`).join('');
+
+const st={cos:'none',ex:'auto',autoEx:'neutral'}, AUTO=['neutral','happy','shocked','smug','deadpan','angry','crying'];
+const hero=document.getElementById('hero');
+function draw(){hero.innerHTML=person({...PIP,cos:st.cos,ex:st.ex==='auto'?st.autoEx:st.ex,anim:true})}
+function bind(id,key){const box=document.getElementById(id);box.addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;st[key]=b.dataset.v;
+  box.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',x===b));draw()})}
+bind('cosChips','cos');bind('exChips','ex');draw();
+let ai=0;if(!matchMedia('(prefers-reduced-motion: reduce)').matches)setInterval(()=>{if(st.ex!=='auto')return;ai=(ai+1)%AUTO.length;st.autoEx=AUTO[ai];draw()},1800);
+})();
+</script>
